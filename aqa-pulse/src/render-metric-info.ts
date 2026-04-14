@@ -36,10 +36,13 @@ const METRIC_ICON_BY_KEY: Record<string, string> = {
     flakyScore: '🌪️',
     unstableRuns: '🎲',
     lastStatus: '🏁',
+    timeToDetect: '🔔',
+    timeToFixFlaky: '🛠️',
     costSection: '💸',
     costOfFlakiness: '💸',
     developerFriction: '🧠',
     releaseConfidenceScore: '🛡️',
+    automationRoi: '📈',
     costStructure: '🧮',
     configAssumptions: '⚙️',
     codeQuality: '🧼',
@@ -129,10 +132,13 @@ function createMetricIconLabelMap(): Map<string, string> {
     register(ru.dashboard.metrics.flakyScore, 'flakyScore')
     register(ru.dashboard.metrics.unstableRuns, 'unstableRuns')
     register(ru.dashboard.metrics.lastStatus, 'lastStatus')
+    register(ru.dashboard.metrics.timeToDetect, 'timeToDetect')
+    register(ru.dashboard.metrics.timeToFixFlaky, 'timeToFixFlaky')
     register(ru.dashboard.metrics.costSection, 'costSection')
     register(ru.dashboard.metrics.costOfFlakiness, 'costOfFlakiness')
     register(ru.dashboard.metrics.developerFriction, 'developerFriction')
     register(ru.dashboard.metrics.releaseConfidenceScore, 'releaseConfidenceScore')
+    register(ru.dashboard.metrics.automationRoi, 'automationRoi')
     register(ru.dashboard.metrics.costStructure, 'costStructure')
     register(ru.dashboard.metrics.configAssumptions, 'configAssumptions')
     register(ru.dashboard.metrics.codeQuality, 'codeQuality')

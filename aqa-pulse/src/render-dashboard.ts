@@ -1087,25 +1087,25 @@ export function renderDashboardHtml(
                     </div>
                 </div>
                 <div class="business-signal-grid">
-                    <div class="business-signal-card ${escapeHtml(getBusinessDriverSignalClass(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub, 'ci'))}" data-driver-signal="ci">
-                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.extraRetryTime)}</div>
-                        <div class="business-signal-value">${escapeHtml(formatMinutes(summary.businessMetrics.costOfFlakiness.extraRetryMinutes))}</div>
-                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.ciFormula)}</div>
-                    </div>
-                    <div class="business-signal-card ${escapeHtml(getBusinessDriverSignalClass(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub, 'development'))}" data-driver-signal="development">
-                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.unstableRuns)}</div>
-                        <div class="business-signal-value">${summary.businessMetrics.costOfFlakiness.unstableRuns}</div>
-                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.developmentCostHintPrefix)}: ${summary.businessMetrics.costOfFlakiness.unstableRuns}</div>
+                    <div class="business-signal-card">
+                        <div class="business-signal-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.timeToDetect, METRIC_DESCRIPTIONS.timeToDetect)}</div>
+                        <div class="business-signal-value">${escapeHtml(formatNullableMinutes(summary.businessMetrics.timeToDetect.minutes))}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.timeToDetectHint)}</div>
                     </div>
                     <div class="business-signal-card">
-                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.activeDays)}</div>
-                        <div class="business-signal-value">${summary.businessMetrics.costOfFlakiness.activeDays}</div>
-                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDayHint)}</div>
+                        <div class="business-signal-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.timeToFixFlaky, METRIC_DESCRIPTIONS.timeToFixFlaky)}</div>
+                        <div class="business-signal-value">${escapeHtml(formatNullableDays(summary.businessMetrics.timeToFixFlaky.averageDays))}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.timeToFixHintPrefix)}: ${summary.businessMetrics.timeToFixFlaky.resolvedIncidents}</div>
+                    </div>
+                    <div class="business-signal-card">
+                        <div class="business-signal-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.releaseConfidenceScore, METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
+                        <div class="business-signal-value">${escapeHtml(formatScore(summary.businessMetrics.releaseConfidenceScore))}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceHint)}</div>
                     </div>
                     <div class="business-signal-card">
                         <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDay)}</div>
                         <div class="business-signal-value" data-cost-per-day-hero>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}</div>
-                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.totalFormula)}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.costScenarioDescription)}</div>
                     </div>
                 </div>
                 <div class="muted" data-assumptions-status-hint>${escapeHtml(getBusinessScenarioStatusHint(summary.businessMetrics.costOfFlakiness.assumptions))}</div>
@@ -1118,8 +1118,21 @@ export function renderDashboardHtml(
                 </div>
             </div>
 
-            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costSection, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+            <div class="table-title">${escapeHtml(DASHBOARD_TEXT.business.businessOverviewTitle)}</div>
+            <div class="muted" style="margin-bottom: 16px;">${escapeHtml(DASHBOARD_TEXT.business.businessOverviewDescription)}</div>
             <div class="kpi-grid business-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.timeToDetect, METRIC_DESCRIPTIONS.timeToDetect)}</div>
+                    <div class="kpi-value">${escapeHtml(formatNullableMinutes(summary.businessMetrics.timeToDetect.minutes))}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.timeToDetectPending)}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.timeToDetectHint)}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.timeToFixFlaky, METRIC_DESCRIPTIONS.timeToFixFlaky)}</div>
+                    <div class="kpi-value">${escapeHtml(formatNullableDays(summary.businessMetrics.timeToFixFlaky.averageDays))}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.timeToFixHintPrefix)}: ${summary.businessMetrics.timeToFixFlaky.resolvedIncidents}</div>
+                    <div class="trend-neutral">${escapeHtml(summary.businessMetrics.timeToFixFlaky.averageDays === null ? DASHBOARD_TEXT.business.timeToFixPending : 'Среднее по восстановленным flaky-инцидентам из истории.')}</div>
+                </div>
                 <div class="kpi-card cost-kpi-card ${escapeHtml(getBusinessImpactClass(summary.businessMetrics.costOfFlakiness.totalRub, summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}" data-cost-kpi-card>
                     <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.costOfFlakiness, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
                     <div class="kpi-value" data-cost-total>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.totalRub))}</div>
@@ -1139,8 +1152,16 @@ export function renderDashboardHtml(
                     <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceDetails)}</div>
                     <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceHint)}</div>
                 </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.automationRoi, METRIC_DESCRIPTIONS.automationRoi)}</div>
+                    <div class="kpi-value">${escapeHtml(formatNullablePercent(summary.businessMetrics.automationRoi.percent))}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.automationRoiPending)}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.automationRoiHint)}</div>
+                </div>
             </div>
 
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costSection, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+            <div class="muted" style="margin-bottom: 16px;">${escapeHtml(DASHBOARD_TEXT.business.costScenarioDescription)}</div>
             <div class="charts-grid-2">
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costStructure, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
@@ -2251,6 +2272,10 @@ function formatMinutes(value: number): string {
     return `${value.toFixed(2)} мин`
 }
 
+function formatNullableMinutes(value: number | null): string {
+    return value === null ? '—' : formatMinutes(value)
+}
+
 function formatDailyRatio(value: number): string {
     return `${value.toFixed(2)} / день`
 }
@@ -2261,6 +2286,10 @@ function formatScore(value: number): string {
 
 function formatNullableDays(value: number | null): string {
     return value === null ? '—' : `${value.toFixed(2)} дн`
+}
+
+function formatNullablePercent(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(1)}%`
 }
 
 function formatCostAssumptions(summary: DashboardSummary): string {

@@ -162,6 +162,21 @@ export interface DashboardFlakyResolutionMetric {
     fixedAt: string | null
 }
 
+export interface DashboardBusinessTimeToDetectMetric {
+    minutes: number | null
+    source: 'pendingIntegration'
+}
+
+export interface DashboardBusinessTimeToFixMetric {
+    averageDays: number | null
+    resolvedIncidents: number
+}
+
+export interface DashboardBusinessAutomationRoiMetric {
+    percent: number | null
+    source: 'pendingAssumptions'
+}
+
 export interface DashboardAdvancedMetrics {
     performance: {
         p95DurationMs: number
@@ -189,6 +204,8 @@ export interface DashboardAdvancedMetrics {
         flakyTrend: DashboardChartDataset
     }
     businessMetrics: {
+        timeToDetect: DashboardBusinessTimeToDetectMetric
+        timeToFixFlaky: DashboardBusinessTimeToFixMetric
         costOfFlakiness: {
             totalRub: number | null
             ciCostRub: number | null
@@ -211,6 +228,7 @@ export interface DashboardAdvancedMetrics {
             activeDays: number
         }
         releaseConfidenceScore: number
+        automationRoi: DashboardBusinessAutomationRoiMetric
     }
 }
 
@@ -813,6 +831,21 @@ function collectFlakyCandidates(archivedRuns: Array<{ run: DashboardHistoryEntry
 function collectFirstFlakeToFixMetric(
     archivedRuns: Array<{ run: DashboardHistoryEntry; report: ReporterRoot }>,
 ): DashboardFlakyResolutionMetric | null {
+    const resolvedCandidates = collectResolvedFlakyFixMetrics(archivedRuns)
+        .sort((left, right) => {
+            if (left.days !== right.days) {
+                return left.days - right.days
+            }
+
+            return getObservationTime(left.detectedAt) - getObservationTime(right.detectedAt)
+        })
+
+    return resolvedCandidates[0] ?? null
+}
+
+function collectResolvedFlakyFixMetrics(
+    archivedRuns: Array<{ run: DashboardHistoryEntry; report: ReporterRoot }>,
+): DashboardFlakyResolutionMetric[] {
     const candidates = new Map<string, {
         title: string
         file: string
@@ -851,7 +884,7 @@ function collectFirstFlakeToFixMetric(
         }
     }
 
-    const resolvedCandidates = [...candidates.values()]
+    return [...candidates.values()]
         .map((candidate) => {
             const observations = [...candidate.observations]
                 .filter((observation) => Number.isFinite(getObservationTime(observation.timestamp)))
@@ -884,15 +917,6 @@ function collectFirstFlakeToFixMetric(
             }
         })
         .filter((candidate): candidate is DashboardFlakyResolutionMetric => candidate !== null)
-        .sort((left, right) => {
-            if (left.days !== right.days) {
-                return left.days - right.days
-            }
-
-            return getObservationTime(left.detectedAt) - getObservationTime(right.detectedAt)
-        })
-
-    return resolvedCandidates[0] ?? null
 }
 
 function isUnstableObservation(status: string, flaky: boolean): boolean {
@@ -1016,6 +1040,7 @@ function buildBusinessMetrics(
     const extraRetryMinutes = roundToTwoDigits(sum(observedTests.map(getExtraRetryDurationMs)) / 60000)
     const unstableRuns = observedTests.filter(isUnstableTestObservation).length
     const activeDays = getActiveDays(historyRuns, report)
+    const resolvedFixMetrics = collectResolvedFlakyFixMetrics(archivedRuns)
     const ciMinuteCostRub = readOptionalNumberFromEnv('AQA_PULSE_CI_MINUTE_COST')
     const developerHourlyCostRub = readOptionalNumberFromEnv('AQA_PULSE_DEV_HOURLY_COST')
     const analysisMinutesPerUnstable = readOptionalNumberFromEnv('AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE')
@@ -1048,6 +1073,16 @@ function buildBusinessMetrics(
     )
 
     return {
+        timeToDetect: {
+            minutes: null,
+            source: 'pendingIntegration',
+        },
+        timeToFixFlaky: {
+            averageDays: resolvedFixMetrics.length > 0
+                ? roundToTwoDigits(average(resolvedFixMetrics.map((metric) => metric.days)))
+                : null,
+            resolvedIncidents: resolvedFixMetrics.length,
+        },
         costOfFlakiness: {
             totalRub,
             ciCostRub,
@@ -1065,11 +1100,23 @@ function buildBusinessMetrics(
         },
         developerFriction,
         releaseConfidenceScore,
+        automationRoi: {
+            percent: null,
+            source: 'pendingAssumptions',
+        },
     }
 }
 
 function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'] {
     return {
+        timeToDetect: {
+            minutes: null,
+            source: 'pendingIntegration',
+        },
+        timeToFixFlaky: {
+            averageDays: null,
+            resolvedIncidents: 0,
+        },
         costOfFlakiness: {
             totalRub: null,
             ciCostRub: null,
@@ -1092,6 +1139,10 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
             activeDays: 0,
         },
         releaseConfidenceScore: 0,
+        automationRoi: {
+            percent: null,
+            source: 'pendingAssumptions',
+        },
     }
 }
 

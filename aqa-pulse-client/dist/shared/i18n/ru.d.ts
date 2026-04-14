@@ -1,7 +1,7 @@
 export declare const ru: {
     readonly dashboard: {
-        readonly title: "AQA Pulse — наблюдаемость Playwright";
-        readonly badge: "Наблюдаемость Playwright";
+        readonly title: "AQA Pulse — Observability Playwright";
+        readonly badge: "Observability Playwright";
         readonly sourceHint: "Отдельный модуль в корне репозитория • визуально повторяет стиль dashboard.html • источник:";
         readonly generatedAt: "Отчёт построен";
         readonly runTime: "Время прогона";
@@ -200,7 +200,7 @@ export declare const ru: {
     };
     readonly testHistory: {
         readonly titleSuffix: "история теста";
-        readonly headerEyebrow: "Наблюдаемость Playwright • страница истории теста";
+        readonly headerEyebrow: "Observability Playwright • страница истории теста";
         readonly headerDescription: "История конкретного теста по архиву запусков. Источник данных — серверный маршрут поверх существующего API.";
         readonly backToDashboard: "← Назад к дашборду";
         readonly openJson: "Открыть JSON";

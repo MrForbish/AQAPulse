@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ru = void 0;
 exports.ru = {
     dashboard: {
-        title: 'AQA Pulse — наблюдаемость Playwright',
-        badge: 'Наблюдаемость Playwright',
+        title: 'AQA Pulse — Observability Playwright',
+        badge: 'Observability Playwright',
         sourceHint: 'Отдельный модуль в корне репозитория • визуально повторяет стиль dashboard.html • источник:',
         generatedAt: 'Отчёт построен',
         runTime: 'Время прогона',
@@ -219,7 +219,7 @@ exports.ru = {
     },
     testHistory: {
         titleSuffix: 'история теста',
-        headerEyebrow: 'Наблюдаемость Playwright • страница истории теста',
+        headerEyebrow: 'Observability Playwright • страница истории теста',
         headerDescription: 'История конкретного теста по архиву запусков. Источник данных — серверный маршрут поверх существующего API.',
         backToDashboard: '← Назад к дашборду',
         openJson: 'Открыть JSON',

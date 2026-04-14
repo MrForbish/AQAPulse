@@ -436,6 +436,305 @@ export function renderDashboardHtml(
             align-items: center;
             flex-wrap: wrap;
         }
+        .business-summary-card {
+            padding: 20px;
+            margin-bottom: 24px;
+            background:
+                radial-gradient(circle at top right, rgba(47, 129, 247, 0.16), transparent 28%),
+                linear-gradient(180deg, rgba(88, 166, 255, 0.06) 0%, #161b22 100%);
+        }
+        .business-summary-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .business-summary-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .business-summary-description {
+            max-width: 820px;
+            color: #8b949e;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .scenario-status-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .scenario-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            font-size: 12px;
+            font-weight: 600;
+            background: #21262d;
+            color: #c9d1d9;
+        }
+        .scenario-status-pill::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: currentColor;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .scenario-status-ready {
+            color: #3fb950;
+            border-color: rgba(63, 185, 80, 0.35);
+            background: rgba(63, 185, 80, 0.12);
+        }
+        .scenario-status-partial {
+            color: #d29922;
+            border-color: rgba(210, 153, 34, 0.35);
+            background: rgba(210, 153, 34, 0.12);
+        }
+        .scenario-status-empty {
+            color: #8b949e;
+            border-color: rgba(139, 148, 158, 0.35);
+            background: rgba(139, 148, 158, 0.12);
+        }
+        .impact-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            font-size: 12px;
+            font-weight: 600;
+            background: #21262d;
+            color: #c9d1d9;
+        }
+        .impact-pill::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: currentColor;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .impact-high {
+            color: #f85149;
+            border-color: rgba(248, 81, 73, 0.35);
+            background: rgba(248, 81, 73, 0.12);
+        }
+        .impact-medium {
+            color: #d29922;
+            border-color: rgba(210, 153, 34, 0.35);
+            background: rgba(210, 153, 34, 0.12);
+        }
+        .impact-low {
+            color: #3fb950;
+            border-color: rgba(63, 185, 80, 0.35);
+            background: rgba(63, 185, 80, 0.12);
+        }
+        .impact-unknown {
+            color: #8b949e;
+            border-color: rgba(139, 148, 158, 0.35);
+            background: rgba(139, 148, 158, 0.12);
+        }
+        .business-signal-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .business-signal-card {
+            background: rgba(13, 17, 23, 0.72);
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 14px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .business-signal-card.is-dominant {
+            border-color: rgba(88, 166, 255, 0.45);
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.16);
+            transform: translateY(-1px);
+        }
+        .business-signal-label {
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .business-signal-value {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .business-signal-hint {
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .formula-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .formula-card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .formula-card-title {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .formula-card-body {
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .cost-breakdown-stack {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .cost-breakdown-item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .cost-breakdown-item.is-dominant {
+            border-color: rgba(88, 166, 255, 0.45);
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.16);
+        }
+        .cost-breakdown-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .cost-breakdown-title {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .cost-breakdown-meta {
+            color: #8b949e;
+            font-size: 12px;
+        }
+        .cost-breakdown-bar {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: #21262d;
+            overflow: hidden;
+        }
+        .cost-breakdown-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: inherit;
+            transition: width 0.2s ease;
+        }
+        .cost-breakdown-fill-ci {
+            background: linear-gradient(90deg, #2f81f7 0%, #58a6ff 100%);
+        }
+        .cost-breakdown-fill-dev {
+            background: linear-gradient(90deg, #d29922 0%, #f2cc60 100%);
+        }
+        .assumptions-note {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+        }
+        .assumptions-note-title {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .assumptions-note-body {
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .business-insight-card {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+        }
+        .business-insight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .business-insight-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .business-insight-body {
+            color: #c9d1d9;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .cost-kpi-card {
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .cost-kpi-card.impact-high {
+            box-shadow: 0 0 0 1px rgba(248, 81, 73, 0.16);
+        }
+        .cost-kpi-card.impact-medium {
+            box-shadow: 0 0 0 1px rgba(210, 153, 34, 0.16);
+        }
+        .cost-kpi-card.impact-low {
+            box-shadow: 0 0 0 1px rgba(63, 185, 80, 0.16);
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .preset-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #c9d1d9;
+            cursor: pointer;
+            font-size: 12px;
+            transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+        }
+        .preset-button.is-active {
+            background: rgba(47, 129, 247, 0.16);
+            border-color: rgba(47, 129, 247, 0.45);
+            color: #ffffff;
+        }
         canvas {
             max-height: 280px;
         }
@@ -448,7 +747,9 @@ export function renderDashboardHtml(
             }
             .business-kpi-grid,
             .comparison-grid,
-            .assumptions-grid {
+            .assumptions-grid,
+            .business-signal-grid,
+            .formula-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -773,9 +1074,53 @@ export function renderDashboardHtml(
         </section>
 
         <section class="tab-panel" data-tab-panel="business">
+            <div class="chart-card business-summary-card">
+                <div class="business-summary-header">
+                    <div>
+                        <div class="business-summary-title">${escapeHtml(DASHBOARD_TEXT.business.summaryTitle)}</div>
+                        <div class="business-summary-description">${escapeHtml(DASHBOARD_TEXT.business.summaryDescription)}</div>
+                    </div>
+                    <div class="scenario-status-box">
+                        <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.scenarioSummaryTitle)}</div>
+                        <span class="scenario-status-pill ${escapeHtml(getBusinessScenarioStatusClass(summary.businessMetrics.costOfFlakiness.assumptions))}" data-assumptions-status-pill>${escapeHtml(getBusinessScenarioStatusLabel(summary.businessMetrics.costOfFlakiness.assumptions))}</span>
+                        <span class="impact-pill ${escapeHtml(getBusinessImpactClass(summary.businessMetrics.costOfFlakiness.totalRub, summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}" data-cost-impact-pill>${escapeHtml(getBusinessImpactLabel(summary.businessMetrics.costOfFlakiness.totalRub, summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}</span>
+                    </div>
+                </div>
+                <div class="business-signal-grid">
+                    <div class="business-signal-card ${escapeHtml(getBusinessDriverSignalClass(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub, 'ci'))}" data-driver-signal="ci">
+                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.extraRetryTime)}</div>
+                        <div class="business-signal-value">${escapeHtml(formatMinutes(summary.businessMetrics.costOfFlakiness.extraRetryMinutes))}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.ciFormula)}</div>
+                    </div>
+                    <div class="business-signal-card ${escapeHtml(getBusinessDriverSignalClass(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub, 'development'))}" data-driver-signal="development">
+                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.unstableRuns)}</div>
+                        <div class="business-signal-value">${summary.businessMetrics.costOfFlakiness.unstableRuns}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.developmentCostHintPrefix)}: ${summary.businessMetrics.costOfFlakiness.unstableRuns}</div>
+                    </div>
+                    <div class="business-signal-card">
+                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.activeDays)}</div>
+                        <div class="business-signal-value">${summary.businessMetrics.costOfFlakiness.activeDays}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDayHint)}</div>
+                    </div>
+                    <div class="business-signal-card">
+                        <div class="business-signal-label">${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDay)}</div>
+                        <div class="business-signal-value" data-cost-per-day-hero>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}</div>
+                        <div class="business-signal-hint">${escapeHtml(DASHBOARD_TEXT.business.totalFormula)}</div>
+                    </div>
+                </div>
+                <div class="muted" data-assumptions-status-hint>${escapeHtml(getBusinessScenarioStatusHint(summary.businessMetrics.costOfFlakiness.assumptions))}</div>
+                <div class="business-insight-card ${escapeHtml(getBusinessImpactClass(summary.businessMetrics.costOfFlakiness.totalRub, summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}" data-cost-driver-card>
+                    <div class="business-insight-header">
+                        <div class="business-insight-title" data-cost-driver-title>${escapeHtml(getBusinessDriverInsightTitle(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub))}</div>
+                        <span class="muted">${escapeHtml(DASHBOARD_TEXT.business.topDriverTitle)}</span>
+                    </div>
+                    <div class="business-insight-body" data-cost-driver-body>${escapeHtml(getBusinessDriverInsightBody(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub))}</div>
+                </div>
+            </div>
+
             <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costSection, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
             <div class="kpi-grid business-kpi-grid">
-                <div class="kpi-card">
+                <div class="kpi-card cost-kpi-card ${escapeHtml(getBusinessImpactClass(summary.businessMetrics.costOfFlakiness.totalRub, summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}" data-cost-kpi-card>
                     <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.costOfFlakiness, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
                     <div class="kpi-value" data-cost-total>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.totalRub))}</div>
                     <div class="trend-neutral" data-cost-breakdown>${escapeHtml(DASHBOARD_TEXT.business.ciBreakdown)}: ${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.ciCostRub))} • ${escapeHtml(DASHBOARD_TEXT.business.developerBreakdown)}: ${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.developerCostRub))}</div>
@@ -799,6 +1144,21 @@ export function renderDashboardHtml(
             <div class="charts-grid-2">
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costStructure, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+                    <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.formulaDescription)}</div>
+                    <div class="formula-grid">
+                        <div class="formula-card">
+                            <div class="formula-card-title">${escapeHtml(DASHBOARD_TEXT.business.ciCost)}</div>
+                            <div class="formula-card-body">${escapeHtml(DASHBOARD_TEXT.business.ciFormula)}</div>
+                        </div>
+                        <div class="formula-card">
+                            <div class="formula-card-title">${escapeHtml(DASHBOARD_TEXT.business.developmentCost)}</div>
+                            <div class="formula-card-body">${escapeHtml(DASHBOARD_TEXT.business.developerFormula)}</div>
+                        </div>
+                        <div class="formula-card">
+                            <div class="formula-card-title">${escapeHtml(DASHBOARD_TEXT.business.overallCost)}</div>
+                            <div class="formula-card-body">${escapeHtml(DASHBOARD_TEXT.business.totalFormula)}</div>
+                        </div>
+                    </div>
                     <div class="list">
                         <div class="list-item">
                             <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.overallCost)}</span><span data-cost-total-breakdown>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.totalRub))}</span></div>
@@ -815,6 +1175,22 @@ export function renderDashboardHtml(
                         <div class="list-item">
                             <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDay)}</span><span data-cost-per-day>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}</span></div>
                             <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDayHint)}</div>
+                        </div>
+                    </div>
+                    <div class="cost-breakdown-stack">
+                        <div class="cost-breakdown-item ${escapeHtml(getBusinessBreakdownItemClass(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub, 'ci'))}" data-cost-breakdown-item="ci">
+                            <div class="cost-breakdown-head">
+                                <span class="cost-breakdown-title">${escapeHtml(DASHBOARD_TEXT.business.ciShare)}</span>
+                                <span class="cost-breakdown-meta" data-cost-ci-share-label>${escapeHtml(formatCostShare(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.totalRub))}</span>
+                            </div>
+                            <div class="cost-breakdown-bar"><div class="cost-breakdown-fill cost-breakdown-fill-ci" data-cost-ci-share-bar style="width: ${escapeHtml(formatCostShareWidth(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.totalRub))};"></div></div>
+                        </div>
+                        <div class="cost-breakdown-item ${escapeHtml(getBusinessBreakdownItemClass(summary.businessMetrics.costOfFlakiness.ciCostRub, summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub, 'development'))}" data-cost-breakdown-item="development">
+                            <div class="cost-breakdown-head">
+                                <span class="cost-breakdown-title">${escapeHtml(DASHBOARD_TEXT.business.developmentShare)}</span>
+                                <span class="cost-breakdown-meta" data-cost-dev-share-label>${escapeHtml(formatCostShare(summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub))}</span>
+                            </div>
+                            <div class="cost-breakdown-bar"><div class="cost-breakdown-fill cost-breakdown-fill-dev" data-cost-dev-share-bar style="width: ${escapeHtml(formatCostShareWidth(summary.businessMetrics.costOfFlakiness.developerCostRub, summary.businessMetrics.costOfFlakiness.totalRub))};"></div></div>
                         </div>
                     </div>
                 </div>
@@ -834,8 +1210,19 @@ export function renderDashboardHtml(
                             <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.assumptionsMissing)}</div>
                         </div>
                     </div>
+                    <div class="assumptions-note">
+                        <div class="assumptions-note-title">${escapeHtml(DASHBOARD_TEXT.business.assumptionsConfiguredTitle)}</div>
+                        <div class="assumptions-note-body" data-assumptions-note>${escapeHtml(DASHBOARD_TEXT.business.assumptionsConfiguredHint)}</div>
+                    </div>
                     <div class="assumptions-editor">
                         <div class="assumptions-editor-title">${escapeHtml(DASHBOARD_TEXT.business.scenarioRecalculation)}</div>
+                        <div class="muted" style="margin-bottom: 12px;">${escapeHtml(DASHBOARD_TEXT.business.editorHint)}</div>
+                        <div class="muted" style="margin-bottom: 8px;">${escapeHtml(DASHBOARD_TEXT.business.presetDescription)}</div>
+                        <div class="preset-buttons">
+                            <button class="preset-button" type="button" data-assumption-preset="conservative">${escapeHtml(DASHBOARD_TEXT.business.presetConservative)}</button>
+                            <button class="preset-button" type="button" data-assumption-preset="realistic">${escapeHtml(DASHBOARD_TEXT.business.presetRealistic)}</button>
+                            <button class="preset-button" type="button" data-assumption-preset="enterprise">${escapeHtml(DASHBOARD_TEXT.business.presetEnterprise)}</button>
+                        </div>
                         <div class="assumptions-grid">
                             <label class="filter-field">
                                 <span class="filter-label">${escapeHtml(DASHBOARD_TEXT.business.ciMinuteCost)}, ₽</span>
@@ -1139,6 +1526,7 @@ export function renderDashboardHtml(
             analysisMinutesPerIncident: document.querySelector('[data-assumption-input="analysisMinutesPerIncident"]'),
         };
         const assumptionResetButton = document.querySelector('[data-assumption-reset]');
+        const assumptionPresetButtons = Array.from(document.querySelectorAll('[data-assumption-preset]'));
         const businessCostTargets = {
             total: document.querySelector('[data-cost-total]'),
             breakdown: document.querySelector('[data-cost-breakdown]'),
@@ -1147,9 +1535,26 @@ export function renderDashboardHtml(
             ci: document.querySelector('[data-cost-ci]'),
             developer: document.querySelector('[data-cost-developer]'),
             perDay: document.querySelector('[data-cost-per-day]'),
+            perDayHero: document.querySelector('[data-cost-per-day-hero]'),
             assumptionCi: document.querySelector('[data-assumption-ci-label]'),
             assumptionDev: document.querySelector('[data-assumption-dev-label]'),
             assumptionAnalysis: document.querySelector('[data-assumption-analysis-label]'),
+            assumptionStatusPill: document.querySelector('[data-assumptions-status-pill]'),
+            assumptionStatusHint: document.querySelector('[data-assumptions-status-hint]'),
+            assumptionNote: document.querySelector('[data-assumptions-note]'),
+            impactPill: document.querySelector('[data-cost-impact-pill]'),
+            costKpiCard: document.querySelector('[data-cost-kpi-card]'),
+            driverCard: document.querySelector('[data-cost-driver-card]'),
+            driverTitle: document.querySelector('[data-cost-driver-title]'),
+            driverBody: document.querySelector('[data-cost-driver-body]'),
+            signalCi: document.querySelector('[data-driver-signal="ci"]'),
+            signalDevelopment: document.querySelector('[data-driver-signal="development"]'),
+            breakdownCiItem: document.querySelector('[data-cost-breakdown-item="ci"]'),
+            breakdownDevItem: document.querySelector('[data-cost-breakdown-item="development"]'),
+            ciShareLabel: document.querySelector('[data-cost-ci-share-label]'),
+            devShareLabel: document.querySelector('[data-cost-dev-share-label]'),
+            ciShareBar: document.querySelector('[data-cost-ci-share-bar]'),
+            devShareBar: document.querySelector('[data-cost-dev-share-bar]'),
         };
 
         if (
@@ -1157,6 +1562,11 @@ export function renderDashboardHtml(
             && assumptionInputs.developerHourlyCost instanceof HTMLInputElement
             && assumptionInputs.analysisMinutesPerIncident instanceof HTMLInputElement
         ) {
+            const assumptionPresets = {
+                conservative: { ciMinuteCost: 3, developerHourlyCost: 2500, analysisMinutesPerIncident: 15 },
+                realistic: { ciMinuteCost: 5, developerHourlyCost: 3000, analysisMinutesPerIncident: 20 },
+                enterprise: { ciMinuteCost: 10, developerHourlyCost: 5000, analysisMinutesPerIncident: 30 },
+            };
             const defaultAssumptions = {
                 ciMinuteCost: normalizeOptionalNumber(businessCostConfig.assumptions && businessCostConfig.assumptions.ciMinuteCostRub),
                 developerHourlyCost: normalizeOptionalNumber(businessCostConfig.assumptions && businessCostConfig.assumptions.developerHourlyCostRub),
@@ -1174,6 +1584,21 @@ export function renderDashboardHtml(
                     const assumptions = readAssumptionsFromInputs();
                     saveStoredBusinessAssumptions(assumptions);
                     renderBusinessCostMetrics(assumptions);
+                });
+            });
+
+            assumptionPresetButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const presetName = button.getAttribute('data-assumption-preset');
+                    const presetValues = presetName ? assumptionPresets[presetName] : null;
+
+                    if (!presetValues) {
+                        return;
+                    }
+
+                    setAssumptionInputs(presetValues);
+                    saveStoredBusinessAssumptions(presetValues);
+                    renderBusinessCostMetrics(presetValues);
                 });
             });
 
@@ -1266,6 +1691,180 @@ export function renderDashboardHtml(
                 + ' мин/инцидент';
         }
 
+        function getAssumptionsState(assumptions) {
+            const isCiConfigured = assumptions.ciMinuteCost !== null;
+            const isDeveloperConfigured = assumptions.developerHourlyCost !== null && assumptions.analysisMinutesPerIncident !== null;
+            const hasAnyValue = isCiConfigured || assumptions.developerHourlyCost !== null || assumptions.analysisMinutesPerIncident !== null;
+
+            if (isCiConfigured && isDeveloperConfigured) {
+                return 'ready';
+            }
+
+            if (hasAnyValue) {
+                return 'partial';
+            }
+
+            return 'empty';
+        }
+
+        function getAssumptionsStatusLabel(assumptions) {
+            const state = getAssumptionsState(assumptions);
+
+            if (state === 'ready') {
+                return dashboardText.business.scenarioStatusReady;
+            }
+
+            if (state === 'partial') {
+                return dashboardText.business.scenarioStatusPartial;
+            }
+
+            return dashboardText.business.scenarioStatusEmpty;
+        }
+
+        function getAssumptionsStatusHint(assumptions) {
+            const state = getAssumptionsState(assumptions);
+
+            if (state === 'ready') {
+                return dashboardText.business.scenarioStatusReadyHint;
+            }
+
+            if (state === 'partial') {
+                return dashboardText.business.scenarioStatusPartialHint;
+            }
+
+            return dashboardText.business.scenarioStatusEmptyHint;
+        }
+
+        function getAssumptionsStatusClassName(assumptions) {
+            const state = getAssumptionsState(assumptions);
+            return 'scenario-status-pill scenario-status-' + state;
+        }
+
+        function formatShareValue(value, total) {
+            if (value === null || total === null || total <= 0) {
+                return '—';
+            }
+
+            return roundToTwoDigits((value / total) * 100) + '%';
+        }
+
+        function formatShareWidthValue(value, total) {
+            if (value === null || total === null || total <= 0) {
+                return '0%';
+            }
+
+            return Math.max(0, Math.min(100, roundToTwoDigits((value / total) * 100))) + '%';
+        }
+
+        function getImpactLevel(totalCost, costPerDay) {
+            if (totalCost === null) {
+                return 'unknown';
+            }
+
+            if (totalCost >= 50000 || (costPerDay !== null && costPerDay >= 10000)) {
+                return 'high';
+            }
+
+            if (totalCost >= 15000 || (costPerDay !== null && costPerDay >= 3000)) {
+                return 'medium';
+            }
+
+            return 'low';
+        }
+
+        function getImpactLabel(totalCost, costPerDay) {
+            const level = getImpactLevel(totalCost, costPerDay);
+
+            if (level === 'high') {
+                return dashboardText.business.impactHigh;
+            }
+
+            if (level === 'medium') {
+                return dashboardText.business.impactMedium;
+            }
+
+            if (level === 'low') {
+                return dashboardText.business.impactLow;
+            }
+
+            return dashboardText.business.impactUnknown;
+        }
+
+        function getImpactClassName(totalCost, costPerDay) {
+            return 'impact-pill impact-' + getImpactLevel(totalCost, costPerDay);
+        }
+
+        function getDriverType(ciCost, developerCost, totalCost) {
+            if (totalCost === null || totalCost <= 0) {
+                return 'missing';
+            }
+
+            const normalizedCiCost = ciCost || 0;
+            const normalizedDeveloperCost = developerCost || 0;
+            const delta = Math.abs(normalizedCiCost - normalizedDeveloperCost);
+
+            if (delta <= totalCost * 0.15) {
+                return 'balanced';
+            }
+
+            return normalizedCiCost > normalizedDeveloperCost ? 'ci' : 'development';
+        }
+
+        function getDriverInsightTitle(ciCost, developerCost, totalCost) {
+            const driverType = getDriverType(ciCost, developerCost, totalCost);
+
+            if (driverType === 'ci') {
+                return dashboardText.business.topDriverCiTitle;
+            }
+
+            if (driverType === 'development') {
+                return dashboardText.business.topDriverDevelopmentTitle;
+            }
+
+            if (driverType === 'balanced') {
+                return dashboardText.business.topDriverBalancedTitle;
+            }
+
+            return dashboardText.business.topDriverMissingTitle;
+        }
+
+        function getDriverInsightBody(ciCost, developerCost, totalCost) {
+            const driverType = getDriverType(ciCost, developerCost, totalCost);
+
+            if (driverType === 'ci') {
+                return dashboardText.business.topDriverCiBody;
+            }
+
+            if (driverType === 'development') {
+                return dashboardText.business.topDriverDevelopmentBody;
+            }
+
+            if (driverType === 'balanced') {
+                return dashboardText.business.topDriverBalancedBody;
+            }
+
+            return dashboardText.business.topDriverMissingBody;
+        }
+
+        function updatePresetButtonsState(assumptions) {
+            const presets = {
+                conservative: { ciMinuteCost: 3, developerHourlyCost: 2500, analysisMinutesPerIncident: 15 },
+                realistic: { ciMinuteCost: 5, developerHourlyCost: 3000, analysisMinutesPerIncident: 20 },
+                enterprise: { ciMinuteCost: 10, developerHourlyCost: 5000, analysisMinutesPerIncident: 30 },
+            };
+
+            assumptionPresetButtons.forEach(function (button) {
+                const presetName = button.getAttribute('data-assumption-preset');
+                const presetValues = presetName ? presets[presetName] : null;
+                const isActive = Boolean(presetValues)
+                    && assumptions.ciMinuteCost === presetValues.ciMinuteCost
+                    && assumptions.developerHourlyCost === presetValues.developerHourlyCost
+                    && assumptions.analysisMinutesPerIncident === presetValues.analysisMinutesPerIncident;
+
+                button.classList.toggle('is-active', isActive);
+            });
+        }
+
         function setAssumptionInputs(assumptions) {
             assumptionInputs.ciMinuteCost.value = assumptions.ciMinuteCost === null ? '' : String(assumptions.ciMinuteCost);
             assumptionInputs.developerHourlyCost.value = assumptions.developerHourlyCost === null ? '' : String(assumptions.developerHourlyCost);
@@ -1292,6 +1891,8 @@ export function renderDashboardHtml(
                 ? null
                 : roundToTwoDigits((ciCost || 0) + (developerCost || 0));
             const costPerDay = totalCost === null || activeDays === 0 ? null : roundToTwoDigits(totalCost / activeDays);
+            const impactLevel = getImpactLevel(totalCost, costPerDay);
+            const driverType = getDriverType(ciCost, developerCost, totalCost);
 
             if (businessCostTargets.total) {
                 businessCostTargets.total.textContent = formatCurrencyValue(totalCost);
@@ -1314,6 +1915,9 @@ export function renderDashboardHtml(
             if (businessCostTargets.perDay) {
                 businessCostTargets.perDay.textContent = formatCurrencyValue(costPerDay);
             }
+            if (businessCostTargets.perDayHero) {
+                businessCostTargets.perDayHero.textContent = formatCurrencyValue(costPerDay);
+            }
             if (businessCostTargets.assumptionCi) {
                 businessCostTargets.assumptionCi.textContent = formatAssumptionDisplay(assumptions.ciMinuteCost, '₽/мин');
             }
@@ -1323,6 +1927,58 @@ export function renderDashboardHtml(
             if (businessCostTargets.assumptionAnalysis) {
                 businessCostTargets.assumptionAnalysis.textContent = formatAssumptionDisplay(assumptions.analysisMinutesPerIncident, 'мин/инцидент');
             }
+            if (businessCostTargets.assumptionStatusPill) {
+                businessCostTargets.assumptionStatusPill.textContent = getAssumptionsStatusLabel(assumptions);
+                businessCostTargets.assumptionStatusPill.className = getAssumptionsStatusClassName(assumptions);
+            }
+            if (businessCostTargets.assumptionStatusHint) {
+                businessCostTargets.assumptionStatusHint.textContent = getAssumptionsStatusHint(assumptions);
+            }
+            if (businessCostTargets.assumptionNote) {
+                businessCostTargets.assumptionNote.textContent = formatAssumptionsSummary(assumptions);
+            }
+            if (businessCostTargets.impactPill) {
+                businessCostTargets.impactPill.textContent = getImpactLabel(totalCost, costPerDay);
+                businessCostTargets.impactPill.className = getImpactClassName(totalCost, costPerDay);
+            }
+            if (businessCostTargets.costKpiCard) {
+                businessCostTargets.costKpiCard.className = 'kpi-card cost-kpi-card impact-' + impactLevel;
+            }
+            if (businessCostTargets.driverCard) {
+                businessCostTargets.driverCard.className = 'business-insight-card impact-' + impactLevel;
+            }
+            if (businessCostTargets.driverTitle) {
+                businessCostTargets.driverTitle.textContent = getDriverInsightTitle(ciCost, developerCost, totalCost);
+            }
+            if (businessCostTargets.driverBody) {
+                businessCostTargets.driverBody.textContent = getDriverInsightBody(ciCost, developerCost, totalCost);
+            }
+            if (businessCostTargets.ciShareLabel) {
+                businessCostTargets.ciShareLabel.textContent = formatShareValue(ciCost, totalCost);
+            }
+            if (businessCostTargets.devShareLabel) {
+                businessCostTargets.devShareLabel.textContent = formatShareValue(developerCost, totalCost);
+            }
+            if (businessCostTargets.ciShareBar) {
+                businessCostTargets.ciShareBar.style.width = formatShareWidthValue(ciCost, totalCost);
+            }
+            if (businessCostTargets.devShareBar) {
+                businessCostTargets.devShareBar.style.width = formatShareWidthValue(developerCost, totalCost);
+            }
+            if (businessCostTargets.breakdownCiItem) {
+                businessCostTargets.breakdownCiItem.classList.toggle('is-dominant', driverType === 'ci');
+            }
+            if (businessCostTargets.breakdownDevItem) {
+                businessCostTargets.breakdownDevItem.classList.toggle('is-dominant', driverType === 'development');
+            }
+            if (businessCostTargets.signalCi) {
+                businessCostTargets.signalCi.classList.toggle('is-dominant', driverType === 'ci');
+            }
+            if (businessCostTargets.signalDevelopment) {
+                businessCostTargets.signalDevelopment.classList.toggle('is-dominant', driverType === 'development');
+            }
+
+            updatePresetButtonsState(assumptions);
         }
 
         function readStoredBusinessAssumptions() {
@@ -1623,6 +2279,168 @@ function formatAssumptionValue(value: number | null, unit: string): string {
     }
 
     return `${value} ${unit}`
+}
+
+function getBusinessAssumptionsState(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): 'ready' | 'partial' | 'empty' {
+    const isCiConfigured = assumptions.ciMinuteCostRub !== null
+    const isDeveloperConfigured = assumptions.developerHourlyCostRub !== null && assumptions.analysisMinutesPerUnstable !== null
+    const hasAnyValue = isCiConfigured || assumptions.developerHourlyCostRub !== null || assumptions.analysisMinutesPerUnstable !== null
+
+    if (isCiConfigured && isDeveloperConfigured) {
+        return 'ready'
+    }
+
+    if (hasAnyValue) {
+        return 'partial'
+    }
+
+    return 'empty'
+}
+
+function getBusinessScenarioStatusClass(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): string {
+    return `scenario-status-${getBusinessAssumptionsState(assumptions)}`
+}
+
+function getBusinessScenarioStatusLabel(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): string {
+    const state = getBusinessAssumptionsState(assumptions)
+
+    if (state === 'ready') {
+        return DASHBOARD_TEXT.business.scenarioStatusReady
+    }
+
+    if (state === 'partial') {
+        return DASHBOARD_TEXT.business.scenarioStatusPartial
+    }
+
+    return DASHBOARD_TEXT.business.scenarioStatusEmpty
+}
+
+function getBusinessScenarioStatusHint(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): string {
+    const state = getBusinessAssumptionsState(assumptions)
+
+    if (state === 'ready') {
+        return DASHBOARD_TEXT.business.scenarioStatusReadyHint
+    }
+
+    if (state === 'partial') {
+        return DASHBOARD_TEXT.business.scenarioStatusPartialHint
+    }
+
+    return DASHBOARD_TEXT.business.scenarioStatusEmptyHint
+}
+
+function getBusinessImpactLevel(totalCost: number | null, costPerDay: number | null): 'high' | 'medium' | 'low' | 'unknown' {
+    if (totalCost === null) {
+        return 'unknown'
+    }
+
+    if (totalCost >= 50000 || (costPerDay !== null && costPerDay >= 10000)) {
+        return 'high'
+    }
+
+    if (totalCost >= 15000 || (costPerDay !== null && costPerDay >= 3000)) {
+        return 'medium'
+    }
+
+    return 'low'
+}
+
+function getBusinessImpactClass(totalCost: number | null, costPerDay: number | null): string {
+    return `impact-${getBusinessImpactLevel(totalCost, costPerDay)}`
+}
+
+function getBusinessImpactLabel(totalCost: number | null, costPerDay: number | null): string {
+    const impactLevel = getBusinessImpactLevel(totalCost, costPerDay)
+
+    if (impactLevel === 'high') {
+        return DASHBOARD_TEXT.business.impactHigh
+    }
+
+    if (impactLevel === 'medium') {
+        return DASHBOARD_TEXT.business.impactMedium
+    }
+
+    if (impactLevel === 'low') {
+        return DASHBOARD_TEXT.business.impactLow
+    }
+
+    return DASHBOARD_TEXT.business.impactUnknown
+}
+
+function getBusinessDriverType(ciCost: number | null, developerCost: number | null, totalCost: number | null): 'ci' | 'development' | 'balanced' | 'missing' {
+    if (totalCost === null || totalCost <= 0) {
+        return 'missing'
+    }
+
+    const normalizedCiCost = ciCost ?? 0
+    const normalizedDeveloperCost = developerCost ?? 0
+    const delta = Math.abs(normalizedCiCost - normalizedDeveloperCost)
+
+    if (delta <= totalCost * 0.15) {
+        return 'balanced'
+    }
+
+    return normalizedCiCost > normalizedDeveloperCost ? 'ci' : 'development'
+}
+
+function getBusinessBreakdownItemClass(ciCost: number | null, developerCost: number | null, totalCost: number | null, target: 'ci' | 'development'): string {
+    return getBusinessDriverType(ciCost, developerCost, totalCost) === target ? 'is-dominant' : ''
+}
+
+function getBusinessDriverSignalClass(ciCost: number | null, developerCost: number | null, totalCost: number | null, target: 'ci' | 'development'): string {
+    return getBusinessDriverType(ciCost, developerCost, totalCost) === target ? 'is-dominant' : ''
+}
+
+function getBusinessDriverInsightTitle(ciCost: number | null, developerCost: number | null, totalCost: number | null): string {
+    const driverType = getBusinessDriverType(ciCost, developerCost, totalCost)
+
+    if (driverType === 'ci') {
+        return DASHBOARD_TEXT.business.topDriverCiTitle
+    }
+
+    if (driverType === 'development') {
+        return DASHBOARD_TEXT.business.topDriverDevelopmentTitle
+    }
+
+    if (driverType === 'balanced') {
+        return DASHBOARD_TEXT.business.topDriverBalancedTitle
+    }
+
+    return DASHBOARD_TEXT.business.topDriverMissingTitle
+}
+
+function getBusinessDriverInsightBody(ciCost: number | null, developerCost: number | null, totalCost: number | null): string {
+    const driverType = getBusinessDriverType(ciCost, developerCost, totalCost)
+
+    if (driverType === 'ci') {
+        return DASHBOARD_TEXT.business.topDriverCiBody
+    }
+
+    if (driverType === 'development') {
+        return DASHBOARD_TEXT.business.topDriverDevelopmentBody
+    }
+
+    if (driverType === 'balanced') {
+        return DASHBOARD_TEXT.business.topDriverBalancedBody
+    }
+
+    return DASHBOARD_TEXT.business.topDriverMissingBody
+}
+
+function formatCostShare(value: number | null, total: number | null): string {
+    if (value === null || total === null || total <= 0) {
+        return '—'
+    }
+
+    return `${((value / total) * 100).toFixed(1)}%`
+}
+
+function formatCostShareWidth(value: number | null, total: number | null): string {
+    if (value === null || total === null || total <= 0) {
+        return '0%'
+    }
+
+    return `${Math.max(0, Math.min(100, (value / total) * 100)).toFixed(1)}%`
 }
 
 function getTrendClass(delta: number | null, inverted: boolean): string {

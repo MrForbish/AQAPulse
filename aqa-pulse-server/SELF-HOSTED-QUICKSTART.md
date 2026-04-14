@@ -2,7 +2,7 @@
 
 Полная версия: [`SELF-HOSTED-INSTALL.md`](./SELF-HOSTED-INSTALL.md)
 
-## Что нужно1
+## Что нужно
 
 - Docker
 - Docker Compose

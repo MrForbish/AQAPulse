@@ -735,6 +735,161 @@ export function renderDashboardHtml(
             border-color: rgba(47, 129, 247, 0.45);
             color: #ffffff;
         }
+        .context-note {
+            margin-bottom: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+        }
+        .context-note.is-info {
+            border-color: rgba(47, 129, 247, 0.35);
+            background: rgba(47, 129, 247, 0.08);
+        }
+        .context-note.is-warning {
+            border-color: rgba(210, 153, 34, 0.35);
+            background: rgba(210, 153, 34, 0.08);
+        }
+        .context-note-title {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .context-note-body {
+            color: #c9d1d9;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .business-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .business-component-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .business-component-item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+        }
+        .business-component-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .business-component-label {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .business-component-formula {
+            color: #8b949e;
+            font-size: 12px;
+        }
+        .business-component-progress {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: #21262d;
+            overflow: hidden;
+        }
+        .business-component-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: #3fb950;
+        }
+        .business-component-fill.warning {
+            background: #d29922;
+        }
+        .business-component-fill.danger {
+            background: #f85149;
+        }
+        .business-component-total {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .business-component-total-label {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .business-component-total-value {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .metric-readiness-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .metric-readiness-item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+        }
+        .metric-readiness-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .metric-readiness-title {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .metric-readiness-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 26px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            font-size: 11px;
+            font-weight: 600;
+            background: #21262d;
+            color: #c9d1d9;
+        }
+        .metric-readiness-pill.is-ready {
+            color: #3fb950;
+            border-color: rgba(63, 185, 80, 0.35);
+            background: rgba(63, 185, 80, 0.12);
+        }
+        .metric-readiness-pill.is-partial {
+            color: #d29922;
+            border-color: rgba(210, 153, 34, 0.35);
+            background: rgba(210, 153, 34, 0.12);
+        }
+        .metric-readiness-pill.is-pending {
+            color: #8b949e;
+            border-color: rgba(139, 148, 158, 0.35);
+            background: rgba(139, 148, 158, 0.12);
+        }
+        .metric-readiness-body {
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.6;
+        }
         canvas {
             max-height: 280px;
         }
@@ -746,6 +901,7 @@ export function renderDashboardHtml(
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
             .business-kpi-grid,
+            .business-details-grid,
             .comparison-grid,
             .assumptions-grid,
             .business-signal-grid,
@@ -1023,6 +1179,7 @@ export function renderDashboardHtml(
             </div>
 
             <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topFlakyTests, METRIC_DESCRIPTIONS.topFlakyTests)}</div>
+            ${renderFlakyHistoryInsight(summary)}
             <div class="table-container">
                 <table>
                     <thead>
@@ -1039,7 +1196,7 @@ export function renderDashboardHtml(
                     <tbody>
                         ${summary.flakyAnalytics.topFlakyTests.length > 0
                             ? summary.flakyAnalytics.topFlakyTests.map((test) => renderFlakyTestRow(test, summary.filters, testDetailsBasePath)).join('')
-                            : `<tr><td colspan="7">${escapeHtml(DASHBOARD_TEXT.states.flakyTestsEmpty)}</td></tr>`}
+                            : `<tr><td colspan="7">${escapeHtml(getFlakyTopTestsEmptyState(summary))}</td></tr>`}
                     </tbody>
                 </table>
             </div>
@@ -1158,6 +1315,11 @@ export function renderDashboardHtml(
                     <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.automationRoiPending)}</div>
                     <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.automationRoiHint)}</div>
                 </div>
+            </div>
+
+            <div class="business-details-grid">
+                ${renderReleaseConfidenceBreakdown(summary)}
+                ${renderBusinessMetricReadiness(summary)}
             </div>
 
             <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costSection, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
@@ -2308,6 +2470,229 @@ function formatAssumptionValue(value: number | null, unit: string): string {
     }
 
     return `${value} ${unit}`
+}
+
+function renderFlakyHistoryInsight(summary: DashboardSummary): string {
+    const hasHistoricalRanking = summary.flakyAnalytics.topFlakyTests.length > 0
+    const noteClass = hasHistoricalRanking
+        ? 'context-note is-info'
+        : summary.kpis.flakyTests > 0
+            ? 'context-note is-warning'
+            : 'context-note'
+    const currentRunLine = DASHBOARD_TEXT.flakyInsights.currentRunLine.replace('{count}', String(summary.kpis.flakyTests))
+    const finalLine = hasHistoricalRanking
+        ? DASHBOARD_TEXT.flakyInsights.historyReady
+        : summary.kpis.flakyTests > 0
+            ? DASHBOARD_TEXT.flakyInsights.historyMissing
+            : DASHBOARD_TEXT.flakyInsights.historyLine
+
+    return `
+        <div class="${escapeHtml(noteClass)}">
+            <div class="context-note-title">${escapeHtml(DASHBOARD_TEXT.flakyInsights.title)}</div>
+            <div class="context-note-body">${escapeHtml(currentRunLine)} ${escapeHtml(DASHBOARD_TEXT.flakyInsights.historyLine)} ${escapeHtml(finalLine)}</div>
+        </div>
+    `
+}
+
+function getFlakyTopTestsEmptyState(summary: DashboardSummary): string {
+    if (summary.kpis.flakyTests > 0) {
+        return DASHBOARD_TEXT.states.flakyTestsHistoryMissing
+    }
+
+    return DASHBOARD_TEXT.states.flakyTestsEmpty
+}
+
+function renderReleaseConfidenceBreakdown(summary: DashboardSummary): string {
+    const breakdown = buildReleaseConfidenceBreakdown(summary)
+    const thresholdHint = breakdown.total >= 75
+        ? DASHBOARD_TEXT.business.releaseConfidenceHealthyThreshold
+        : DASHBOARD_TEXT.business.releaseConfidenceRiskThreshold
+
+    return `
+        <div class="chart-card">
+            <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.business.releaseConfidenceBreakdownTitle, METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
+            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceBreakdownDescription)}</div>
+            <div class="business-component-list">
+                ${breakdown.components.map((component) => `
+                    <div class="business-component-item">
+                        <div class="business-component-head">
+                            <span class="business-component-label">${escapeHtml(component.label)}</span>
+                            <span class="business-component-formula">${escapeHtml(component.formula)}</span>
+                        </div>
+                        <div class="business-component-progress"><div class="business-component-fill ${escapeHtml(component.tone)}" style="width: ${escapeHtml(component.width)};"></div></div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="business-component-total">
+                <span class="business-component-total-label">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceTotal)}</span>
+                <span class="business-component-total-value">${escapeHtml(formatScore(summary.businessMetrics.releaseConfidenceScore))}</span>
+            </div>
+            <div class="muted" style="margin-top: 12px;">${escapeHtml(thresholdHint)}</div>
+        </div>
+    `
+}
+
+function renderBusinessMetricReadiness(summary: DashboardSummary): string {
+    return `
+        <div class="chart-card">
+            <div class="chart-title">${escapeHtml(DASHBOARD_TEXT.business.readinessTitle)}</div>
+            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.readinessDescription)}</div>
+            <div class="metric-readiness-list">
+                ${buildBusinessMetricReadiness(summary).map((item) => `
+                    <div class="metric-readiness-item">
+                        <div class="metric-readiness-head">
+                            <span class="metric-readiness-title">${escapeHtml(item.label)}</span>
+                            <span class="metric-readiness-pill is-${escapeHtml(item.status)}">${escapeHtml(item.statusLabel)}</span>
+                        </div>
+                        <div class="metric-readiness-body">${escapeHtml(item.hint)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `
+}
+
+function buildReleaseConfidenceBreakdown(summary: DashboardSummary): {
+    total: number
+    components: Array<{
+        label: string
+        formula: string
+        width: string
+        tone: string
+    }>
+} {
+    const passRateValue = clampDashboardScore(summary.kpis.passRate)
+    const inverseFlakyValue = clampDashboardScore(100 - summary.kpis.flakyRatio)
+    const errorHealthValue = summary.kpis.totalTests === 0
+        ? 100
+        : clampDashboardScore(100 - ((summary.errorClusters.length / summary.kpis.totalTests) * 100))
+    const recentRuns = summary.history.recentRuns.slice(-5)
+    const historyConsistencyValue = recentRuns.length > 0
+        ? clampDashboardScore(averageDashboardNumber(recentRuns.map((run) => run.passRate - run.flakyRatio)))
+        : clampDashboardScore(summary.kpis.passRate - summary.kpis.flakyRatio)
+
+    const componentDefinitions = [
+        {
+            label: DASHBOARD_TEXT.business.releaseConfidencePassRate,
+            rawValue: passRateValue,
+            weight: 0.4,
+        },
+        {
+            label: DASHBOARD_TEXT.business.releaseConfidenceFlakyRatio,
+            rawValue: inverseFlakyValue,
+            weight: 0.3,
+        },
+        {
+            label: DASHBOARD_TEXT.business.releaseConfidenceErrorHealth,
+            rawValue: errorHealthValue,
+            weight: 0.15,
+        },
+        {
+            label: DASHBOARD_TEXT.business.releaseConfidenceHistoryConsistency,
+            rawValue: historyConsistencyValue,
+            weight: 0.15,
+        },
+    ]
+
+    return {
+        total: roundToOneDigit(componentDefinitions.reduce((total, component) => total + (component.rawValue * component.weight), 0)),
+        components: componentDefinitions.map((component) => ({
+            label: component.label,
+            formula: `${roundToOneDigit(component.rawValue)} × ${component.weight} = ${roundToOneDigit(component.rawValue * component.weight)}`,
+            width: `${roundToOneDigit(component.rawValue)}%`,
+            tone: getDashboardScoreTone(component.rawValue),
+        })),
+    }
+}
+
+function buildBusinessMetricReadiness(summary: DashboardSummary): Array<{
+    label: string
+    status: 'ready' | 'partial' | 'pending'
+    statusLabel: string
+    hint: string
+}> {
+    const costAssumptionsState = getBusinessAssumptionsState(summary.businessMetrics.costOfFlakiness.assumptions)
+    const costStatus = costAssumptionsState === 'empty' ? 'pending' : costAssumptionsState
+    const timeToFixStatus = summary.businessMetrics.timeToFixFlaky.averageDays === null ? 'pending' : 'ready'
+
+    return [
+        {
+            label: DASHBOARD_TEXT.metrics.timeToDetect,
+            status: 'pending',
+            statusLabel: DASHBOARD_TEXT.business.readinessPending,
+            hint: DASHBOARD_TEXT.business.readinessTimeToDetectHint,
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.timeToFixFlaky,
+            status: timeToFixStatus,
+            statusLabel: getBusinessReadinessStatusLabel(timeToFixStatus),
+            hint: DASHBOARD_TEXT.business.readinessTimeToFixHint,
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.costOfFlakiness,
+            status: costStatus,
+            statusLabel: getBusinessReadinessStatusLabel(costStatus),
+            hint: DASHBOARD_TEXT.business.readinessCostHint,
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.developerFriction,
+            status: 'ready',
+            statusLabel: DASHBOARD_TEXT.business.readinessReady,
+            hint: DASHBOARD_TEXT.business.readinessDeveloperFrictionHint,
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.releaseConfidenceScore,
+            status: 'ready',
+            statusLabel: DASHBOARD_TEXT.business.readinessReady,
+            hint: DASHBOARD_TEXT.business.readinessReleaseConfidenceHint,
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.automationRoi,
+            status: 'pending',
+            statusLabel: DASHBOARD_TEXT.business.readinessPending,
+            hint: DASHBOARD_TEXT.business.readinessAutomationRoiHint,
+        },
+    ]
+}
+
+function getBusinessReadinessStatusLabel(status: 'ready' | 'partial' | 'pending'): string {
+    if (status === 'ready') {
+        return DASHBOARD_TEXT.business.readinessReady
+    }
+
+    if (status === 'partial') {
+        return DASHBOARD_TEXT.business.readinessPartial
+    }
+
+    return DASHBOARD_TEXT.business.readinessPending
+}
+
+function getDashboardScoreTone(value: number): string {
+    if (value >= 80) {
+        return ''
+    }
+
+    if (value >= 60) {
+        return 'warning'
+    }
+
+    return 'danger'
+}
+
+function clampDashboardScore(value: number): number {
+    return Math.min(Math.max(value, 0), 100)
+}
+
+function averageDashboardNumber(values: number[]): number {
+    if (values.length === 0) {
+        return 0
+    }
+
+    return values.reduce((total, value) => total + value, 0) / values.length
+}
+
+function roundToOneDigit(value: number): number {
+    return Math.round(value * 10) / 10
 }
 
 function getBusinessAssumptionsState(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): 'ready' | 'partial' | 'empty' {

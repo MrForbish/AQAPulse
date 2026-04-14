@@ -16,6 +16,9 @@ COPY aqa-pulse-server/README.md ./aqa-pulse-server/README.md
 
 RUN cd /app/aqa-pulse && npm ci && npm run compile
 RUN cd /app/aqa-pulse-server && npm ci && npm run build
+RUN mkdir -p /app/aqa-pulse-server/dist/assets \
+	&& cp /app/aqa-pulse/node_modules/chart.js/dist/chart.umd.js /app/aqa-pulse-server/dist/assets/chart.umd.js \
+	&& test -f /app/aqa-pulse-server/dist/assets/chart.umd.js
 
 WORKDIR /app/aqa-pulse-server
 

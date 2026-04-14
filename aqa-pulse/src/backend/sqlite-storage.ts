@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { DatabaseSync as NodeSqliteDatabaseSync } from 'node:sqlite'
-import { readDashboardSummary, type DashboardSummary, type ReporterRoot } from '../dashboard-utils'
+import { normalizeDashboardSummary, readDashboardSummary, type DashboardSummary, type ReporterRoot } from '../dashboard-utils'
 import {
     createEmptyHistory,
     findArchivedRunDirectory as findArchivedRunDirectoryInFiles,
@@ -71,7 +71,7 @@ export class SqliteWorkspaceRunStorage implements WorkspaceRunStorage, Dashboard
             throw new Error(`Не найден summary для workspace "${this.workspaceSlug}" в SQLite storage.`)
         }
 
-        return summary
+        return normalizeDashboardSummary(summary)
     }
 
     readHistory(): DashboardHistory {

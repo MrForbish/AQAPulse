@@ -299,9 +299,43 @@ export function readDashboardSummary(summaryPath: string): DashboardSummary {
         throw new Error(`В файле \"${summaryPath}\" отсутствуют обязательные поля kpis/charts. Сначала сгенерируй dashboard-data.json.`)
     }
 
+    return normalizeDashboardSummary(summary)
+}
+
+export function normalizeDashboardSummary(summary: DashboardSummary): DashboardSummary {
+    const fallbackBusinessMetrics = buildEmptyBusinessMetrics()
+    const businessMetrics = summary.businessMetrics
+
     return {
         ...summary,
-        businessMetrics: summary.businessMetrics ?? buildEmptyBusinessMetrics(),
+        businessMetrics: {
+            ...fallbackBusinessMetrics,
+            ...businessMetrics,
+            timeToDetect: {
+                ...fallbackBusinessMetrics.timeToDetect,
+                ...(businessMetrics?.timeToDetect ?? {}),
+            },
+            timeToFixFlaky: {
+                ...fallbackBusinessMetrics.timeToFixFlaky,
+                ...(businessMetrics?.timeToFixFlaky ?? {}),
+            },
+            costOfFlakiness: {
+                ...fallbackBusinessMetrics.costOfFlakiness,
+                ...(businessMetrics?.costOfFlakiness ?? {}),
+                assumptions: {
+                    ...fallbackBusinessMetrics.costOfFlakiness.assumptions,
+                    ...(businessMetrics?.costOfFlakiness?.assumptions ?? {}),
+                },
+            },
+            developerFriction: {
+                ...fallbackBusinessMetrics.developerFriction,
+                ...(businessMetrics?.developerFriction ?? {}),
+            },
+            automationRoi: {
+                ...fallbackBusinessMetrics.automationRoi,
+                ...(businessMetrics?.automationRoi ?? {}),
+            },
+        },
     }
 }
 

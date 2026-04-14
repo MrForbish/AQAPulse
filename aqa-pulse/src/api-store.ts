@@ -3,6 +3,7 @@ import {
     buildDashboardSummary,
     type DashboardAvailableFilters,
     type DashboardFilters,
+    normalizeDashboardSummary,
     readDashboardSummary,
     type DashboardSummary,
     type ReporterRoot,
@@ -94,7 +95,7 @@ export class ApiStore {
     }
 
     getSummary(): DashboardSummary {
-        return this.storage.readSummary()
+        return normalizeDashboardSummary(this.storage.readSummary())
     }
 
     getFilteredSummary(filters: ApiFilters = {}): DashboardSummary {

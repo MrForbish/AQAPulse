@@ -48,7 +48,7 @@ export function renderDashboardHtml(summary: DashboardSummary): string {
     <title>${escapeHtml(DASHBOARD_TEXT.title)}</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%232f81f7'/%3E%3C/svg%3E">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="./assets/chart.umd.js"></script>
+    <script src="/assets/chart.umd.js"></script>
     <style>
         * {
             margin: 0;

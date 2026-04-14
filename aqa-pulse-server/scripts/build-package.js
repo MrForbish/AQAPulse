@@ -5,6 +5,8 @@ const packageRoot = path.resolve(__dirname, '..')
 const aqaPulseRoot = path.resolve(packageRoot, '..', 'aqa-pulse')
 const sourceRoot = path.resolve(packageRoot, '..', 'aqa-pulse', 'dist-ts')
 const distRoot = path.resolve(packageRoot, 'dist')
+const chartAssetSourcePath = path.resolve(aqaPulseRoot, 'node_modules', 'chart.js', 'dist', 'chart.umd.js')
+const chartAssetTargetPath = path.resolve(distRoot, 'assets', 'chart.umd.js')
 
 const runtimeFiles = [
     'api-store.js',

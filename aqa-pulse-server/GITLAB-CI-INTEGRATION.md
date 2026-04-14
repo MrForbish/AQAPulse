@@ -32,7 +32,7 @@ Dashboard: GET /w/:slug
 Важно:
 
 - если ты собираешь `aqa-pulse-server` **из исходников**, на сервере должны быть рядом и `aqa-pulse`, и `aqa-pulse-server`, потому что build использует `../aqa-pulse`;
-- если ты привозишь уже собранный пакет / tarball, достаточно самого server bundle.
+- если ты привозишь уже собранный пакет / tarball с `dist/**/*`, достаточно самого `aqa-pulse-server` bundle.
 
 ## Рекомендуемый вариант деплоя
 
@@ -41,7 +41,7 @@ Dashboard: GET /w/:slug
 На сервер перенеси минимум:
 
 - `aqa-pulse-server/`
-- `aqa-pulse/` (если будешь собирать на сервере из source)
+- `aqa-pulse/` (только если будешь собирать на сервере из source)
 
 Дальше на сервере:
 
@@ -112,44 +112,69 @@ npm run start
 
 ## Первый bootstrap после запуска
 
+### Рекомендуемый короткий путь: через CLI на сервере
+
+Если у тебя есть shell-доступ к серверу или контейнеру, самый аккуратный onboarding — не через ручные HTTP-вызовы, а одной CLI-командой:
+
+```bash
+cd /opt/aqa-pulse-server
+npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com
+```
+
+Команда сразу напечатает:
+
+- `workspace slug`
+- `workspace API key`
+- `workspace user token` (если `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`)
+- готовый блок GitLab variables
+
+Если сервер работает в Docker Compose:
+
+```bash
+cd /opt/aqa-pulse-server
+docker compose exec aqa-pulse-server npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com
+```
+
+### Альтернатива: через admin API/UI
+
 ### 1. Получить admin JWT
 
-```powershell
-$adminLogin = Invoke-WebRequest -Method Post -UseBasicParsing "https://aqa-pulse.example.com/auth/admin/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"change-me-admin-token"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+ADMIN_JWT=$(curl --silent --show-error --fail \
+  -X POST "https://aqa-pulse.example.com/auth/admin/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"change-me-admin-token"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 ```
 
 ### 2. Создать workspace под текущий проект
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "https://aqa-pulse.example.com/api/workspaces" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"slug":"autotests-main","name":"Autotests main","apiKeyLabel":"GitLab CI upload key"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "https://aqa-pulse.example.com/api/workspaces" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"autotests-main","name":"Autotests main","apiKeyLabel":"GitLab CI upload key"}'
 ```
 
 ### 3. Создать workspace user
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "https://aqa-pulse.example.com/api/workspaces/autotests-main/users" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"label":"Dashboard viewer","role":"viewer"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "https://aqa-pulse.example.com/api/workspaces/autotests-main/users" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"Dashboard viewer","role":"viewer"}'
 ```
 
 ### 4. Создать ingestion API key
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "https://aqa-pulse.example.com/api/workspaces/autotests-main/api-keys" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"label":"GitLab CI upload key"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "https://aqa-pulse.example.com/api/workspaces/autotests-main/api-keys" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"GitLab CI upload key"}'
 ```
 
 Сохрани отдельно:
@@ -158,6 +183,27 @@ Invoke-WebRequest -Method Post -UseBasicParsing "https://aqa-pulse.example.com/a
 - `workspace API key`
 - `workspace user token`
 - `dashboard URL`
+
+## Какие секреты реально нужны в GitLab CI
+
+В GitLab CI/CD variables для upload нужны только:
+
+- `AQA_PULSE_BASE_URL`
+- `AQA_PULSE_WORKSPACE_SLUG`
+- `AQA_PULSE_WORKSPACE_API_KEY`
+
+Не нужно класть в GitLab:
+
+- `AQA_PULSE_ADMIN_TOKEN`
+- ingestion JWT
+- workspace read JWT
+- workspace user token
+
+Почему так:
+
+- admin token нужен только для provisioning;
+- `Playwright/scripts/upload-aqa-pulse-report.js` сам делает exchange `workspace API key -> ingestion JWT` на каждый pipeline/job run;
+- workspace user token нужен только для интерактивного входа в dashboard, если включён `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`.
 
 ## Что нужно в текущем GitLab CI
 
@@ -201,7 +247,16 @@ Playwright/test-results/dashboard/data.json
 
 Это нормально, если ты хочешь видеть историю по сегментам.
 
-Если хочешь один run на весь pipeline, нужен отдельный этап агрегации report'ов перед ingestion.
+Если хочешь один run на проектный поток, лучший путь — отдельная aggregation/upload job после всех test jobs этого проекта.
+
+Практически это выглядит так:
+
+1. каждая test job генерирует свой `data.json` в уникальный artifact path;
+2. отдельная post-test job скачивает artifacts всех нужных сегментов внутри одного проекта (`purchase`, `cpu`, `first`, `second` для `ui`, либо API-модули для `api`);
+3. merge-скрипт собирает один итоговый `data.json` только внутри этого проекта;
+4. только эта job делает один `npm run aqa-pulse:upload`.
+
+Так ты избежишь ситуации `одна job = один ingestion run` и получишь на стороне AQA Pulse один запуск на проектный поток (`ui` отдельно, `api` отдельно).
 
 ## Минимальный shell snippet для GitLab job
 
@@ -243,6 +298,14 @@ curl --silent --show-error --fail \
 
 ## Как встроить это в текущий `.gitlab`
 
+В `aqa-pulse-server` уже добавлен готовый reusable snippet:
+
+```text
+aqa-pulse-server/templates/gitlab/aqa-pulse-upload.gitlab-ci.yml
+```
+
+Его можно подключать через `include:local`, если хочешь вынести upload в отдельный job и не копировать shell-фрагмент по репозиториям вручную.
+
 Есть 2 нормальных варианта.
 
 ### Вариант 1. Upload в конце каждой test job
@@ -263,6 +326,9 @@ curl --silent --show-error --fail \
 
 - можно аккуратно отделить test execution от ingestion;
 - можно хранить `data.json` как artifact.
+- это правильная база для будущего merge нескольких UI/API сегментов в один run.
+
+Важно: `ui` и `api` merge-ить между собой не нужно. Aggregation должна происходить только внутри одного Playwright project.
 
 Минусы:
 
@@ -280,7 +346,9 @@ curl --silent --show-error --fail \
    - либо одного UI job;
 4. убедиться, что ingestion стабильно работает;
 5. потом подключить остальные jobs;
-6. если понадобится единый run на весь pipeline — отдельно добавить шаг агрегации.
+6. если понадобится единый run внутри `ui` или внутри `api` — отдельно добавить шаг агрегации для этого проекта.
+
+Если ты **заранее знаешь**, что целевая модель именно `один project flow = один JSON = один run`, то лучше сразу проектировать схему вокруг отдельной aggregation/upload job, а не вокруг upload внутри test jobs.
 
 ## Как открыть dashboard
 
@@ -305,4 +373,3 @@ https://aqa-pulse.example.com/w/autotests-main/login
 - raw `workspace user token` больше не используется как прямой Bearer для dashboard routes;
 - сначала нужен exchange `workspace user token -> workspace JWT/session`;
 - для build из source на сервере нужен не только `aqa-pulse-server`, но и соседний `aqa-pulse`.
-

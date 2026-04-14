@@ -15,58 +15,105 @@
 - auth middleware и UI flow для admin, workspace API key и workspace user token
 - CLI: `aqa-pulse-server start`
 - CLI: `aqa-pulse-server init`
+- CLI: `aqa-pulse-server bootstrap-workspace`
 - CLI: `aqa-pulse-server bootstrap-demo`
 - CLI: `aqa-pulse-server sqlite-migrate`
 - CLI: `aqa-pulse-server sqlite-backup`
 
 ## Быстрый self-hosted запуск
 
-```powershell
+```bash
 npm install
 npm run build
 
-$env:AQA_PULSE_DATA_ROOT = "C:\data\aqa-pulse"
-$env:AQA_PULSE_STORAGE_DRIVER = "file"
-$env:AQA_PULSE_SQLITE_PATH = "C:\data\aqa-pulse\aqa-pulse.sqlite"
-$env:AQA_PULSE_POSTGRES_URL = "postgresql://postgres:postgres@127.0.0.1:5432/aqa_pulse"
-$env:AQA_PULSE_ADMIN_TOKEN = "local-admin-token"
-$env:AQA_PULSE_JWT_SECRET = "change-me-jwt-secret"
-$env:AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS = "28800"
-$env:AQA_PULSE_ENABLE_DEV_BOOTSTRAP = "false"
-$env:AQA_PULSE_REQUIRE_WORKSPACE_AUTH = "true"
+export AQA_PULSE_DATA_ROOT="/srv/aqa-pulse"
+export AQA_PULSE_STORAGE_DRIVER="file"
+export AQA_PULSE_SQLITE_PATH="/srv/aqa-pulse/aqa-pulse.sqlite"
+export AQA_PULSE_POSTGRES_URL="postgresql://postgres:postgres@127.0.0.1:5432/aqa_pulse"
+export AQA_PULSE_ADMIN_TOKEN="local-admin-token"
+export AQA_PULSE_JWT_SECRET="change-me-jwt-secret"
+export AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS="28800"
+export AQA_PULSE_ENABLE_DEV_BOOTSTRAP="false"
+export AQA_PULSE_REQUIRE_WORKSPACE_AUTH="true"
 
-node .\bin\aqa-pulse-server.js init
-node .\bin\aqa-pulse-server.js start
+node ./bin/aqa-pulse-server.js init
+node ./bin/aqa-pulse-server.js start
 ```
 
 ## PowerShell installer
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
-.\scripts\install-self-hosted.ps1 -DataRoot ".\data" -AdminToken "change-me-admin-token" -StorageDriver sqlite
+```bash
+cd /opt/aqa-pulse-server
+pwsh ./scripts/install-self-hosted.ps1 -DataRoot ./data -AdminToken "change-me-admin-token" -StorageDriver sqlite
 ```
 
 ## Docker Compose
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/aqa-pulse-server
+cp .env.example .env
 docker compose up --build
 ```
 
 `docker-compose.yml` использует:
 
-- build context = корень репозитория;
-- `aqa-pulse-server/Dockerfile`;
+- локальный build context текущего пакета;
+- `Dockerfile` из `aqa-pulse-server` bundle;
 - volume `./data:/data`;
-- настройки из `.env.example`.
+- настройки из `.env` (обычно создаётся копированием `.env.example`).
+
+## Что входит в аккуратную self-hosted поставку
+
+`aqa-pulse-server` можно везти как отдельный runtime bundle без соседней папки `aqa-pulse`, если пакет уже собран (`dist/**/*`).
+
+В bundle уже включены:
+
+- runtime `dist/**/*`;
+- CLI `bin/**/*`;
+- `Dockerfile`, `docker-compose.yml`, `.env.example`;
+- install/onboarding docs;
+- PowerShell installer;
+- GitLab CI template `templates/gitlab/aqa-pulse-upload.gitlab-ci.yml`.
+
+Соседний `aqa-pulse` нужен только на этапе локальной сборки `npm run build`, потому что `aqa-pulse-server` собирает runtime из `../aqa-pulse/dist-ts`.
 
 ## Команды CLI
 
 - `aqa-pulse-server start`
 - `aqa-pulse-server init`
+- `aqa-pulse-server bootstrap-workspace --name "<workspace name>" [--slug <slug>] [--base-url <url>] [--skip-user] [--json]`
 - `aqa-pulse-server bootstrap-demo`
 - `aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]`
 - `aqa-pulse-server sqlite-backup [backupDirectory]`
+
+## Быстрый bootstrap workspace под GitLab CI
+
+Если сервер уже поднят и storage инициализирован, можно не делать provisioning руками через admin UI/API, а сразу создать workspace и получить нужные секреты одной командой:
+
+```bash
+cd /opt/aqa-pulse-server
+npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com
+```
+
+Команда:
+
+- создаёт workspace;
+- создаёт ingestion `workspace API key`;
+- если `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`, создаёт ещё и `workspace user token` для login в dashboard;
+- печатает готовый блок переменных для GitLab CI/CD.
+
+Если сервер запущен в Docker Compose, можно сделать то же самое внутри контейнера:
+
+```bash
+cd /opt/aqa-pulse-server
+docker compose exec aqa-pulse-server npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com
+```
+
+Для автоматизации можно получить JSON:
+
+```bash
+npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com --json
+```
 
 ## Важные env
 
@@ -106,6 +153,28 @@ POST /auth/workspaces/:slug/users/login
 ```
 
 5. Использовать уже не raw provisioning token, а выданный JWT.
+
+## Сколько токенов реально нужно
+
+Практически схема такая:
+
+- **для GitLab CI upload** нужен ровно **один долгоживущий секрет** — `workspace API key`;
+- **admin token** в CI хранить не нужно: он нужен только для provisioning/admin-операций;
+- **ingestion JWT** в CI хранить не нужно: `Playwright/scripts/upload-aqa-pulse-report.js` получает его сам через exchange `workspace API key -> ingestion JWT` на каждый job run;
+- **workspace user token** нужен только если ты хочешь закрыть dashboard/read-routes (`AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`).
+
+То есть:
+
+- минимальный приватный setup для **CI ingestion без закрытого dashboard** = `admin token` для первоначальной настройки + `workspace API key` для GitLab;
+- минимальный приватный setup для **CI ingestion + закрытый dashboard** = `admin token` + `workspace API key` + `workspace user token`.
+
+Отдельные raw token'ы для ingestion и read-доступа здесь оправданы scope-разделением:
+
+- `workspace API key` даёт только `workspace:ingest`;
+- `workspace user token` даёт только `workspace:read`;
+- admin token даёт только `admin`.
+
+Объединить всё в один raw token теоретически можно только ценой отказа от разделения прав. Для production/self-hosted сценария это хуже по безопасности и сейчас в runtime-модели не требуется.
 
 ## Интеграция с Playwright CI
 

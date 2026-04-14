@@ -1,10 +1,10 @@
 services:
   aqa-pulse-server:
     build:
-      context: ..
-      dockerfile: aqa-pulse-server/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     env_file:
-      - .env.example
+      - .env
     ports:
       - "3000:3000"
     volumes:

@@ -6,9 +6,9 @@
 
 - Docker
 - Docker Compose
-- каталог `aqa-pulse-server`
+- собранный каталог `aqa-pulse-server`
 
-> Для быстрого старта это основной и рекомендуемый путь.
+> Для быстрого старта это основной и рекомендуемый путь. Если в каталоге уже есть `dist/**/*`, соседний `aqa-pulse` не нужен.
 
 ## Минимальная конфигурация
 
@@ -29,8 +29,9 @@ AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true
 
 ## Запуск
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/aqa-pulse-server
+cp .env.example .env
 docker compose up --build
 ```
 
@@ -44,75 +45,81 @@ http://127.0.0.1:3000
 
 ### 1. Получить admin JWT
 
-```powershell
-$adminLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/admin/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"change-me-admin-token"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+ADMIN_JWT=$(curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/auth/admin/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"change-me-admin-token"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 ```
 
 ### 2. Создать workspace
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"slug":"demo","name":"Demo Workspace","apiKeyLabel":"Primary ingestion key"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"demo","name":"Demo Workspace","apiKeyLabel":"Primary ingestion key"}'
 ```
 
 ### 3. Создать workspace user
 
 Этот токен нужен для чтения dashboard и workspace API.
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/users" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"label":"Dashboard viewer","role":"viewer"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/users" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"Dashboard viewer","role":"viewer"}'
 ```
 
 ### 4. Создать ingestion API key
 
 Этот токен нужен для загрузки новых прогонов.
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/api-keys" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"label":"Upload key"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/api-keys" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"Upload key"}'
 ```
 
 ### 5. Сделать exchange workspace API key → ingestion JWT
 
-```powershell
-$apiKeyLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"<workspace-api-key>"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+INGESTION_JWT=$(curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<workspace-api-key>"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 ```
 
 ## Первая загрузка отчёта
 
-```powershell
-$report = Get-Content ".\sample-llm-report.json" -Raw
+```bash
+node -e "
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync('./dist/fixtures/sample-llm-report.json', 'utf8'));
+const payload = {
+  report,
+  metadata: {
+    branch: 'main',
+    commit: 'manual-upload',
+    author: 'AQA Pulse'
+  },
+  sourceFile: 'manual://sample.json'
+};
+fs.writeFileSync('/tmp/aqa-pulse-ingestion.json', JSON.stringify(payload));
+"
 
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/ingestions" `
-  -Headers @{ Authorization = "Bearer $($apiKeyLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body (@{
-    report = ($report | ConvertFrom-Json)
-    metadata = @{
-      branch = 'main'
-      commit = 'manual-upload'
-      author = 'AQA Pulse'
-    }
-    sourceFile = 'manual://sample.json'
-  } | ConvertTo-Json -Depth 100)
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/ingestions" \
+  -H "Authorization: Bearer $INGESTION_JWT" \
+  -H "Content-Type: application/json" \
+  --data @/tmp/aqa-pulse-ingestion.json
 ```
 
 ## Как открыть dashboard

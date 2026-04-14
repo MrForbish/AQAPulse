@@ -42,12 +42,12 @@ https://<your-host>/api/workspaces/<slug>/ingestions
 
 Минимальный пример exchange:
 
-```powershell
-$apiKeyLogin = Invoke-WebRequest -Method Post -UseBasicParsing "https://<your-host>/auth/workspaces/<slug>/api-keys/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"<workspace-api-key>"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+INGESTION_JWT=$(curl --silent --show-error --fail \
+  -X POST "https://<your-host>/auth/workspaces/<slug>/api-keys/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<workspace-api-key>"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 ```
 
 ## Какой payload отправлять

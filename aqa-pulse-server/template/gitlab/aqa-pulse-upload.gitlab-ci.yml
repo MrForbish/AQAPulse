@@ -1,0 +1,42 @@
+# Готовый include/snippet для GitLab CI, если хочешь вынести upload в отдельный job.
+# Ожидается, что тестовая job уже сгенерировала Playwright dashboard report
+# и сохранила его как artifact по пути Playwright/test-results/dashboard/data.json.
+#
+# Обязательные GitLab CI/CD variables:
+# - AQA_PULSE_BASE_URL
+# - AQA_PULSE_WORKSPACE_SLUG
+# - AQA_PULSE_WORKSPACE_API_KEY
+#
+# Пример подключения:
+# include:
+#   - local: '/aqa-pulse-server/templates/gitlab/aqa-pulse-upload.gitlab-ci.yml'
+#
+# aqa pulse upload api:
+#   extends: .aqa_pulse_upload_job
+#   needs:
+#     - job: run api tests
+#       artifacts: true
+#
+# Если upload нужен прямо внутри тестовой job, используй только script-block ниже
+# как copy/paste reference и вызывай `npm run aqa-pulse:upload` после генерации report.
+
+.aqa_pulse_upload_job:
+  stage: Tests
+  image: mcr.microsoft.com/playwright:v1.58.2-jammy
+  variables:
+    PW_LLM_REPORT: "test-results/dashboard/data.json"
+  before_script:
+    - cd "${CI_PROJECT_DIR}/Playwright"
+    - npm install
+  script:
+    - |
+      if [ ! -f "$PW_LLM_REPORT" ]; then
+        echo "AQA Pulse upload skipped: не найден report $PW_LLM_REPORT" >&2
+        exit 1
+      fi
+    - npm run aqa-pulse:upload
+  artifacts:
+    when: always
+    paths:
+      - "${CI_PROJECT_DIR}/Playwright/test-results/dashboard"
+

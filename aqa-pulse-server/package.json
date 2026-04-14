@@ -28,15 +28,26 @@
   "files": [
     "dist/**/*",
     "bin/**/*",
-    "README.md"
+    "scripts/install-self-hosted.ps1",
+    "templates/**/*",
+    "README.md",
+    "SELF-HOSTED-QUICKSTART.md",
+    "SELF-HOSTED-INSTALL.md",
+    "CLIENT-QUICKSTART.md",
+    "CLIENT-ONBOARDING.md",
+    "GITLAB-CI-INTEGRATION.md",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".env.example"
   ],
   "scripts": {
     "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist')) fs.rmSync('dist',{recursive:true,force:true});\"",
     "build": "npm --prefix ../aqa-pulse run compile && node ./scripts/build-package.js",
-    "docker:up": "docker compose up --build",
+    "docker:up": "npm run build && docker compose up --build",
     "docker:down": "docker compose down",
     "start": "node ./bin/aqa-pulse-server.js start",
     "init": "node ./bin/aqa-pulse-server.js init",
+    "bootstrap:workspace": "node ./bin/aqa-pulse-server.js bootstrap-workspace",
     "bootstrap-demo": "node ./bin/aqa-pulse-server.js bootstrap-demo",
     "sqlite:migrate": "node ./bin/aqa-pulse-server.js sqlite-migrate",
     "sqlite:backup": "node ./bin/aqa-pulse-server.js sqlite-backup",

@@ -78,20 +78,22 @@ AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true
 
 Перейди в каталог `aqa-pulse-server` и запусти:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/aqa-pulse-server
+cp .env.example .env
 docker compose up --build
 ```
 
 Что использует compose:
 - `aqa-pulse-server/Dockerfile`
-- build context = корень репозитория
+- build context = текущий каталог `aqa-pulse-server`
 - volume `./data:/data`
-- переменные из `.env.example`
+- переменные из `.env`
 
 ### Что сделать перед запуском
 
 1. Скопировать `.env.example` в рабочий env-файл или отредактировать значения напрямую.
+   Например: `cp .env.example .env`
 2. Обязательно заменить `AQA_PULSE_ADMIN_TOKEN`.
 3. Выбрать storage:
    - `file` — если хочешь максимально простой запуск;
@@ -99,7 +101,7 @@ docker compose up --build
 
 ### Остановка
 
-```powershell
+```bash
 docker compose down
 ```
 
@@ -109,34 +111,36 @@ docker compose down
 
 ### Шаг 1. Установка зависимостей и сборка
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/aqa-pulse-server
 npm install
 npm run build
 ```
 
+Если `aqa-pulse-server` уже привезён как собранный bundle с заполненной папкой `dist`, этот шаг повторять не нужно: можно сразу переходить к настройке env и запуску.
+
 ### Шаг 2. Настройка переменных окружения
 
-Пример для Windows PowerShell:
+Пример для Linux/bash:
 
-```powershell
-$env:AQA_PULSE_DATA_ROOT = "C:\data\aqa-pulse"
-$env:AQA_PULSE_STORAGE_DRIVER = "sqlite"
-$env:AQA_PULSE_SQLITE_PATH = "C:\data\aqa-pulse\aqa-pulse.sqlite"
-$env:AQA_PULSE_ADMIN_TOKEN = "change-me-admin-token"
-$env:AQA_PULSE_ENABLE_DEV_BOOTSTRAP = "false"
-$env:AQA_PULSE_REQUIRE_WORKSPACE_AUTH = "true"
+```bash
+export AQA_PULSE_DATA_ROOT="/srv/aqa-pulse"
+export AQA_PULSE_STORAGE_DRIVER="sqlite"
+export AQA_PULSE_SQLITE_PATH="/srv/aqa-pulse/aqa-pulse.sqlite"
+export AQA_PULSE_ADMIN_TOKEN="change-me-admin-token"
+export AQA_PULSE_ENABLE_DEV_BOOTSTRAP="false"
+export AQA_PULSE_REQUIRE_WORKSPACE_AUTH="true"
 ```
 
 ### Шаг 3. Инициализация storage
 
-```powershell
+```bash
 npm run init
 ```
 
 ### Шаг 4. Запуск сервера
 
-```powershell
+```bash
 npm run start
 ```
 
@@ -146,14 +150,14 @@ npm run start
 
 Для Windows-сервера можно использовать готовый installer:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
-.\scripts\install-self-hosted.ps1 -DataRoot ".\data" -AdminToken "change-me-admin-token" -StorageDriver sqlite
+```bash
+cd /opt/aqa-pulse-server
+pwsh ./scripts/install-self-hosted.ps1 -DataRoot ./data -AdminToken "change-me-admin-token" -StorageDriver sqlite
 ```
 
 После этого в том же терминале:
 
-```powershell
+```bash
 npm run start
 ```
 
@@ -206,71 +210,77 @@ POST /auth/workspaces/:slug/users/login
 
 ### 1. Получить admin JWT
 
-```powershell
-$adminLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/admin/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"change-me-admin-token"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+ADMIN_JWT=$(curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/auth/admin/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"change-me-admin-token"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 ```
 
 ### 2. Создать workspace
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"slug":"demo","name":"Demo Workspace","apiKeyLabel":"Primary ingestion key"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"demo","name":"Demo Workspace","apiKeyLabel":"Primary ingestion key"}'
 ```
 
 ### 3. Создать workspace user
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/users" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"label":"Dashboard viewer","role":"viewer"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/users" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"Dashboard viewer","role":"viewer"}'
 ```
 
 ### 4. Создать ingestion API key
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/api-keys" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body '{"label":"Upload key"}' |
-  Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/api-keys" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"Upload key"}'
 ```
 
 ### 5. Сделать exchange workspace API key → ingestion JWT
 
-```powershell
-$apiKeyLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"<workspace-api-key>"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+INGESTION_JWT=$(curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<workspace-api-key>"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 ```
 
 ### 6. Загрузить Playwright report
 
-```powershell
-$report = Get-Content ".\sample-llm-report.json" -Raw
+```bash
+node -e "
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync('./dist/fixtures/sample-llm-report.json', 'utf8'));
+const payload = {
+  report,
+  metadata: {
+    branch: 'main',
+    commit: 'manual-upload',
+    author: 'AQA Pulse'
+  },
+  sourceFile: 'manual://sample.json'
+};
+fs.writeFileSync('/tmp/aqa-pulse-ingestion.json', JSON.stringify(payload));
+"
 
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/ingestions" `
-  -Headers @{ Authorization = "Bearer $($apiKeyLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body (@{
-    report = ($report | ConvertFrom-Json)
-    metadata = @{
-      branch = 'main'
-      commit = 'manual-upload'
-      author = 'AQA Pulse'
-    }
-    sourceFile = 'manual://sample.json'
-  } | ConvertTo-Json -Depth 100)
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/ingestions" \
+  -H "Authorization: Bearer $INGESTION_JWT" \
+  -H "Content-Type: application/json" \
+  --data @/tmp/aqa-pulse-ingestion.json
 ```
 
 ### 5. Открыть dashboard

@@ -7,6 +7,7 @@ const [, , command = 'start', ...restArgs] = process.argv
 const commandMap = {
     start: '../dist/server.js',
     init: '../dist/backend/init-self-hosted.js',
+    'bootstrap-workspace': '../dist/backend/bootstrap-workspace.js',
     'bootstrap-demo': '../dist/backend/bootstrap-demo.js',
     'sqlite-migrate': '../dist/backend/sqlite-migrate.js',
     'sqlite-backup': '../dist/backend/sqlite-backup.js',
@@ -27,11 +28,12 @@ if (command === '--help' || command === '-h') {
 }
 
 function printHelp() {
-    console.log('Использование: aqa-pulse-server [start, init, bootstrap-demo, sqlite-migrate, sqlite-backup]')
+    console.log('Использование: aqa-pulse-server [start, init, bootstrap-workspace, bootstrap-demo, sqlite-migrate, sqlite-backup]')
     console.log('')
     console.log('Команды:')
     console.log('  aqa-pulse-server start')
     console.log('  aqa-pulse-server init')
+    console.log('  aqa-pulse-server bootstrap-workspace --name "<workspace name>" [--slug <slug>] [--base-url <url>] [--skip-user] [--json]')
     console.log('  aqa-pulse-server bootstrap-demo')
     console.log('  aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]')
     console.log('  aqa-pulse-server sqlite-backup [backupDirectory]')
@@ -55,6 +57,12 @@ function printCommandHelp(commandName) {
     if (commandName === 'bootstrap-demo') {
         console.log('aqa-pulse-server bootstrap-demo')
         console.log('Создаёт demo workspace и ingest sample report в текущий data root.')
+        return
+    }
+
+    if (commandName === 'bootstrap-workspace') {
+        console.log('aqa-pulse-server bootstrap-workspace --name "<workspace name>" [--slug <slug>] [--base-url <url>] [--skip-user] [--json]')
+        console.log('Создаёт workspace, ingestion key и при необходимости viewer token, а затем печатает готовые переменные для GitLab CI.')
         return
     }
 

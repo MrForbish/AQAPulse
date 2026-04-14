@@ -88,7 +88,7 @@ aqa-pulse/
 
 Все команды ниже, если не указано иное, выполняются из каталога `aqa-pulse/`.
 
-```powershell
+```bash
 npm install
 npm run generate:history-demo
 npm run typecheck
@@ -125,7 +125,7 @@ aqa-pulse/dev-data/
 
 ### Быстрый demo-flow для SaaS слоя
 
-```powershell
+```bash
 # 1. Подготовить demo workspace и ingest sample report
 npm run saas:demo
 
@@ -142,36 +142,46 @@ http://127.0.0.1:3000/api/workspaces/demo/summary
 
 ### Bootstrap workspace через HTTP
 
-```powershell
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/dev/bootstrap" -ContentType "application/json" -Body '{"slug":"demo","name":"Demo Workspace"}' | Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/dev/bootstrap" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"demo","name":"Demo Workspace"}'
 ```
 
 Ответ вернёт `workspace` и plaintext `apiKey` — сохрани его, он нужен для ingestion.
 
 ### Загрузка Playwright JSON-репорта в workspace
 
-```powershell
-$apiKey = "<workspace-api-key>"
-$report = Get-Content ".\fixtures\sample-llm-report.json" -Raw
+```bash
+API_KEY="<workspace-api-key>"
 
-$apiKeyLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" `
-  -ContentType "application/json" `
-  -Body (@{ token = $apiKey } | ConvertTo-Json) |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+INGESTION_JWT=$(curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"token\":\"$API_KEY\"}" \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 
-Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/ingestions" `
-  -Headers @{ Authorization = "Bearer $($apiKeyLogin.accessToken)" } `
-  -ContentType "application/json" `
-  -Body (@{
-    report = ($report | ConvertFrom-Json)
-    metadata = @{
-      branch = 'main'
-      commit = 'manual-upload'
-      author = 'AQA Pulse SaaS MVP'
-    }
-    sourceFile = 'manual://sample-llm-report.json'
-  } | ConvertTo-Json -Depth 100)
+node -e "
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync('./fixtures/sample-llm-report.json', 'utf8'));
+const payload = {
+  report,
+  metadata: {
+    branch: 'main',
+    commit: 'manual-upload',
+    author: 'AQA Pulse SaaS MVP'
+  },
+  sourceFile: 'manual://sample-llm-report.json'
+};
+fs.writeFileSync('/tmp/aqa-pulse-ingestion.json', JSON.stringify(payload));
+"
+
+curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/api/workspaces/demo/ingestions" \
+  -H "Authorization: Bearer $INGESTION_JWT" \
+  -H "Content-Type: application/json" \
+  --data @/tmp/aqa-pulse-ingestion.json
 ```
 
 ### Workspace-scoped API
@@ -196,12 +206,12 @@ Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/works
 
 Сервер теперь поддерживает явную конфигурацию путей и защиту admin routes:
 
-```powershell
-$env:AQA_PULSE_DATA_ROOT = "C:\data\aqa-pulse"
-$env:AQA_PULSE_DIST_PATH = "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse\dist"
-$env:AQA_PULSE_ARCHIVE_PATH = "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse\history"
-$env:AQA_PULSE_ADMIN_TOKEN = "local-admin-token"
-$env:AQA_PULSE_ENABLE_DEV_BOOTSTRAP = "false"
+```bash
+export AQA_PULSE_DATA_ROOT="/srv/aqa-pulse"
+export AQA_PULSE_DIST_PATH="/opt/autotests/aqa-pulse/dist"
+export AQA_PULSE_ARCHIVE_PATH="/opt/autotests/aqa-pulse/history"
+export AQA_PULSE_ADMIN_TOKEN="local-admin-token"
+export AQA_PULSE_ENABLE_DEV_BOOTSTRAP="false"
 npm run api
 ```
 
@@ -231,21 +241,21 @@ npm run api
 
 Пример admin-запроса через JWT exchange:
 
-```powershell
-$adminLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/admin/login" `
-  -ContentType "application/json" `
-  -Body '{"token":"local-admin-token"}' |
-  Select-Object -ExpandProperty Content |
-  ConvertFrom-Json
+```bash
+ADMIN_JWT=$(curl --silent --show-error --fail \
+  -X POST "http://127.0.0.1:3000/auth/admin/login" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"local-admin-token"}' \
+  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
 
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/workspaces" `
-  -Headers @{ Authorization = "Bearer $($adminLogin.accessToken)" } |
-  Select-Object -ExpandProperty Content
+curl --silent --show-error --fail \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  "http://127.0.0.1:3000/api/workspaces"
 ```
 
 ### Короткие команды запуска
 
-```powershell
+```bash
 # демо-данные + HTML
 npm run generate:history-demo
 
@@ -256,8 +266,8 @@ npm run api:demo
 npm run self-hosted:init
 
 # реальный Playwright JSON-репорт
-npm run parse -- "..\Playwright\test-results\dashboard\data.json" ".\dist\dashboard-data.json" ".\dist\history.json" --branch main --commit 12345678abcdef --author "M. Pecherskiy"
-npm run build -- ".\dist\dashboard-data.json" ".\dist\index.html"
+npm run parse -- "../Playwright/test-results/dashboard/data.json" "./dist/dashboard-data.json" "./dist/history.json" --branch main --commit 12345678abcdef --author "M. Pecherskiy"
+npm run build -- "./dist/dashboard-data.json" "./dist/index.html"
 ```
 
 ## npm / CLI packaging
@@ -268,7 +278,7 @@ npm run build -- ".\dist\dashboard-data.json" ".\dist\index.html"
 
 Проверка упаковки:
 
-```powershell
+```bash
 npm run compile
 npm run pack:check
 npm run publish:check
@@ -295,17 +305,17 @@ npm run server:pack:check
 
 Быстрый сценарий:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/autotests/aqa-pulse-server
 npm install
 npm run build
 
-$env:AQA_PULSE_DATA_ROOT = "C:\data\aqa-pulse"
-$env:AQA_PULSE_STORAGE_DRIVER = "sqlite"
-$env:AQA_PULSE_SQLITE_PATH = "C:\data\aqa-pulse\aqa-pulse.sqlite"
-$env:AQA_PULSE_ADMIN_TOKEN = "local-admin-token"
-$env:AQA_PULSE_ENABLE_DEV_BOOTSTRAP = "false"
-$env:AQA_PULSE_REQUIRE_WORKSPACE_AUTH = "true"
+export AQA_PULSE_DATA_ROOT="/srv/aqa-pulse"
+export AQA_PULSE_STORAGE_DRIVER="sqlite"
+export AQA_PULSE_SQLITE_PATH="/srv/aqa-pulse/aqa-pulse.sqlite"
+export AQA_PULSE_ADMIN_TOKEN="local-admin-token"
+export AQA_PULSE_ENABLE_DEV_BOOTSTRAP="false"
+export AQA_PULSE_REQUIRE_WORKSPACE_AUTH="true"
 
 npm run init
 npm run start
@@ -313,22 +323,22 @@ npm run start
 
 PowerShell installer:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
-.\scripts\install-self-hosted.ps1 -DataRoot ".\data" -AdminToken "change-me-admin-token" -StorageDriver sqlite
+```bash
+cd /opt/autotests/aqa-pulse-server
+pwsh ./scripts/install-self-hosted.ps1 -DataRoot ./data -AdminToken "change-me-admin-token" -StorageDriver sqlite
 ```
 
 Docker Compose:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/autotests/aqa-pulse-server
 docker compose up --build
 ```
 
 Проверка упаковки server-пакета:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\aqa-pulse-server"
+```bash
+cd /opt/autotests/aqa-pulse-server
 npm run pack:check
 ```
 
@@ -348,7 +358,7 @@ Workspace access model в self-hosted режиме:
 
 ### Smoke-команды для актуального auth/storage flow
 
-```powershell
+```bash
 # полный self-hosted auth/UI/JWT smoke на file storage
 npm run self-hosted:smoke:auth
 
@@ -368,12 +378,12 @@ npm run self-hosted:smoke:postgres
 
 Локальная установка tarball и запуск CLI:
 
-```powershell
+```bash
 npm pack
-npm install -g .\aqa-pulse-0.1.0.tgz
+npm install -g ./aqa-pulse-0.1.0.tgz
 
-aqa-pulse parse .\fixtures\sample-llm-report.json .\dist\dashboard-data.json .\dist\history.json --branch main --commit 12345678 --author "QA Bot"
-aqa-pulse build .\dist\dashboard-data.json .\dist\index.html
+aqa-pulse parse ./fixtures/sample-llm-report.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit 12345678 --author "QA Bot"
+aqa-pulse build ./dist/dashboard-data.json ./dist/index.html
 aqa-pulse api
 ```
 
@@ -385,7 +395,7 @@ CLI subcommands:
 
 CLI help:
 
-```powershell
+```bash
 aqa-pulse --help
 aqa-pulse parse --help
 aqa-pulse build --help
@@ -455,7 +465,7 @@ aqa-pulse/history/
 
 Быстрый локальный запуск API на демо-данных:
 
-```powershell
+```bash
 npm run api:demo
 ```
 
@@ -513,54 +523,54 @@ http://127.0.0.1:3000/test/Checkout%20%3E%20retries%20after%20payment%20gateway%
 
 ## Использование с реальным JSON-репортом
 
-Если у тебя уже есть файл отчёта, самый надёжный способ для PowerShell — передавать метаданные через переменные окружения:
+Если у тебя уже есть файл отчёта, самый простой способ для bash — передавать метаданные через переменные окружения:
 
-```powershell
-$env:AQA_PULSE_BRANCH = "main"
-$env:AQA_PULSE_COMMIT = "12345678abcdef"
-$env:AQA_PULSE_AUTHOR = "M. Pecherskiy"
-npm run parse -- "..\Playwright\test-results\dashboard\data.json" ".\dist\dashboard-data.json" ".\dist\history.json"
-npm run build -- ".\dist\dashboard-data.json" ".\dist\index.html"
+```bash
+export AQA_PULSE_BRANCH="main"
+export AQA_PULSE_COMMIT="12345678abcdef"
+export AQA_PULSE_AUTHOR="M. Pecherskiy"
+npm run parse -- "../Playwright/test-results/dashboard/data.json" "./dist/dashboard-data.json" "./dist/history.json"
+npm run build -- "./dist/dashboard-data.json" "./dist/index.html"
 ```
 
 Альтернативно можно передать всё вручную аргументами:
 
-```powershell
-npm run parse -- "..\Playwright\test-results\dashboard\data.json" ".\dist\dashboard-data.json" ".\dist\history.json" --branch main --commit 12345678abcdef --author "M. Pecherskiy"
-npm run build -- ".\dist\dashboard-data.json" ".\dist\index.html"
+```bash
+npm run parse -- "../Playwright/test-results/dashboard/data.json" "./dist/dashboard-data.json" "./dist/history.json" --branch main --commit 12345678abcdef --author "M. Pecherskiy"
+npm run build -- "./dist/dashboard-data.json" "./dist/index.html"
 ```
 
 ## Быстрая smoke-проверка
 
-```powershell
+```bash
 npm run smoke
 ```
 
 Примеры ручной проверки API:
 
-```powershell
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/health" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/summary" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/runs" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/flaky" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/errors/clusters" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/metrics/cost" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/test/Checkout%20%3E%20retries%20after%20payment%20gateway%20timeout" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/summary?project=api" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/runs?branch=main&file=tests%2FUI%2Fcheckout%2Fpayment.spec.ts" | Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/health"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/summary"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/runs"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/flaky"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/errors/clusters"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/metrics/cost"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/test/Checkout%20%3E%20retries%20after%20payment%20gateway%20timeout"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/summary?project=api"
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/runs?branch=main&file=tests%2FUI%2Fcheckout%2Fpayment.spec.ts"
 ```
 
 Примеры ручной проверки HTML drill-down страницы:
 
-```powershell
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/" | Select-Object -ExpandProperty Content
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/test/Checkout%20%3E%20retries%20after%20payment%20gateway%20timeout?project=ui&file=tests%2FUI%2Fcheckout%2Fpayment.spec.ts&branch=main" | Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail "http://127.0.0.1:3000/"
+curl --silent --show-error --fail "http://127.0.0.1:3000/test/Checkout%20%3E%20retries%20after%20payment%20gateway%20timeout?project=ui&file=tests%2FUI%2Fcheckout%2Fpayment.spec.ts&branch=main"
 ```
 
 Если `title` не уникален между разными файлами/проектами, можно уточнить поиск:
 
-```powershell
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/test/Catalog%20%3E%20filters%20by%20category%20and%20size?project=ui&file=tests%2FUI%2Fcatalog%2Ffilters.spec.ts" | Select-Object -ExpandProperty Content
+```bash
+curl --silent --show-error --fail "http://127.0.0.1:3000/api/test/Catalog%20%3E%20filters%20by%20category%20and%20size?project=ui&file=tests%2FUI%2Fcatalog%2Ffilters.spec.ts"
 ```
 
 ## Proxy business metrics
@@ -573,10 +583,10 @@ Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:3000/api/test/Catalog%20%3E
 
 Чтобы включить денежную оценку, можно задать env-переменные:
 
-```powershell
-$env:AQA_PULSE_CI_MINUTE_COST = "2.5"
-$env:AQA_PULSE_DEV_HOURLY_COST = "2500"
-$env:AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE = "10"
+```bash
+export AQA_PULSE_CI_MINUTE_COST="2.5"
+export AQA_PULSE_DEV_HOURLY_COST="2500"
+export AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE="10"
 ```
 
 Если assumptions не заданы, dashboard и API всё равно показывают retry time / unstable runs / friction, а денежные поля остаются `null` / `—`.
@@ -609,9 +619,9 @@ $env:AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE = "10"
 
 ### Безопасный способ получить `data.json` из Playwright
 
-В репозитории добавлен отдельный конфиг `Playwright/playwright.dashboard.config.ts`.
+Отдельный Playwright dashboard config больше не обязателен.
 
-Он нужен только для локальной генерации `data.json` и **не меняет** основной `Playwright/playwright.config.ts` и CI-скрипты.
+Теперь `data.json` можно генерировать через основной `Playwright/playwright.config.ts`: reporter `@clipboard-health/playwright-reporter-llm` подключается автоматически, если задан `PW_LLM_REPORT`.
 
 Что нужно, чтобы этот запуск реально сработал:
 
@@ -622,8 +632,8 @@ $env:AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE = "10"
 
 Пример для UI-тестов:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\Playwright"
+```bash
+cd /opt/autotests/Playwright
 npm install
 npm run pw:test:ui:dashboard
 ```
@@ -636,26 +646,27 @@ Playwright/test-results/dashboard/data.json
 
 Практически это выглядит так:
 
-```powershell
+```bash
 # 1. Сгенерировать совместимый data.json из Playwright
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\Playwright"
+cd /opt/autotests/Playwright
 npm run pw:test:ui:dashboard
 
 # 2. Сгенерировать dashboard-data.json + history.json
-npm run parse -- "..\Playwright\test-results\dashboard\data.json" ".\dist\dashboard-data.json" ".\dist\history.json" --branch main --commit 12345678abcdef --author "M. Pecherskiy"
+cd /opt/autotests/aqa-pulse
+npm run parse -- "../Playwright/test-results/dashboard/data.json" "./dist/dashboard-data.json" "./dist/history.json" --branch main --commit 12345678abcdef --author "M. Pecherskiy"
 
 # 3. Собрать HTML
-npm run build -- ".\dist\dashboard-data.json" ".\dist\index.html"
+npm run build -- "./dist/dashboard-data.json" "./dist/index.html"
 ```
 
 Если нужен API-репорт вместо UI, используй:
 
-```powershell
-Set-Location "C:\Users\mpecherskiy\WebstormProjects\autotests\Playwright"
+```bash
+cd /opt/autotests/Playwright
 npm run pw:test:api:dashboard
 ```
 
-> Сейчас модуль специально **не меняет** `Playwright/playwright.config.ts`. Источник `data.json` ожидается как внешний входной файл.
+> Reporter `@clipboard-health/playwright-reporter-llm` теперь включается прямо в `Playwright/playwright.config.ts`, если задан `PW_LLM_REPORT`. Источник `data.json` по-прежнему используется как внешний входной файл для `aqa-pulse`.
 
 ## Следующий шаг по плану
 
@@ -667,7 +678,7 @@ npm run pw:test:api:dashboard
 
 Минимальный сценарий локальной проверки после изменений:
 
-```powershell
+```bash
 npm install
 npm run generate:history-demo
 npm run typecheck

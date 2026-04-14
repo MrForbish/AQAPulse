@@ -178,7 +178,7 @@ POST /auth/workspaces/:slug/users/login
 
 ## Интеграция с Playwright CI
 
-В текущем репозитории совместимый отчёт генерируется через `Playwright/playwright.dashboard.config.ts` и reporter `@clipboard-health/playwright-reporter-llm`.
+В текущем репозитории совместимый отчёт генерируется основным `Playwright/playwright.config.ts`: reporter `@clipboard-health/playwright-reporter-llm` подключается автоматически, если задан `PW_LLM_REPORT`.
 
 Ожидаемый файл:
 

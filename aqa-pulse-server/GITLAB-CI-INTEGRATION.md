@@ -12,7 +12,7 @@
 ```text
 GitLab CI (Playwright jobs)
     ↓
-генерация data.json через playwright.dashboard.config.ts
+генерация data.json через основной playwright.config.ts + PW_LLM_REPORT
     ↓
 POST /auth/workspaces/:slug/api-keys/login
     ↓
@@ -223,7 +223,7 @@ curl --silent --show-error --fail \
 
 В репозитории уже есть:
 
-- `Playwright/playwright.dashboard.config.ts`
+- `Playwright/playwright.config.ts`
 - reporter `@clipboard-health/playwright-reporter-llm`
 
 Ожидаемый выходной файл:
@@ -236,7 +236,7 @@ Playwright/test-results/dashboard/data.json
 
 ### Рекомендуемый вариант
 
-Не ломать текущие test jobs, а сделать для тех job, которые хочешь грузить в AQA Pulse, отдельный запуск Playwright с dashboard config.
+Не ломать текущие test jobs, а сделать для тех job, которые хочешь грузить в AQA Pulse, отдельный запуск Playwright с `PW_LLM_REPORT`.
 
 Если хочешь начать с малого, подключи сначала только один сценарий:
 
@@ -266,7 +266,7 @@ Playwright/test-results/dashboard/data.json
 cd "$CI_PROJECT_DIR/Playwright"
 
 export PW_LLM_REPORT="test-results/dashboard/data.json"
-npx playwright test --config=playwright.dashboard.config.ts --project=api
+npx playwright test --project=api
 
 INGESTION_JWT=$(curl --silent --show-error --fail \
   -X POST "$AQA_PULSE_BASE_URL/auth/workspaces/$AQA_PULSE_WORKSPACE_SLUG/api-keys/login" \

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "timestamp": "2026-04-13T09:10:00.000Z",
+  "durationMs": 601000,
+  "summary": {
+    "total": 7,
+    "passed": 3,
+    "failed": 3,
+    "flaky": 1,
+    "skipped": 1,
+    "timedOut": 0,
+    "interrupted": 0
+  },
+  "environment": {
+    "playwrightVersion": "1.58.2",
+    "nodeVersion": "v24.13.1",
+    "os": "windows",
+    "workers": 3,
+    "retries": 1,
+    "projects": ["ui", "api"]
+  },
+  "tests": [
+    {
+      "id": "P-1",
+      "title": "Checkout > completes order with saved card",
+      "status": "passed",
+      "flaky": false,
+      "durationMs": 12800,
+      "location": { "file": "tests/UI/checkout/checkout.spec.ts", "line": 18, "column": 5 },
+      "project": "ui",
+      "retries": 0,
+      "errors": [],
+      "attempts": [{ "attempt": 1, "status": "passed", "durationMs": 12800, "startTime": "2026-04-13T09:10:00.000Z" }]
+    },
+    {
+      "id": "P-2",
+      "title": "Checkout > retries after payment gateway timeout",
+      "status": "passed",
+      "flaky": true,
+      "durationMs": 34100,
+      "location": { "file": "tests/UI/checkout/payment.spec.ts", "line": 44, "column": 5 },
+      "project": "ui",
+      "retries": 1,
+      "errors": [],
+      "attempts": [
+        { "attempt": 1, "status": "failed", "durationMs": 17600, "startTime": "2026-04-13T09:10:30.000Z", "error": { "message": "Timeout 30000ms while waiting for payment gateway response" } },
+        { "attempt": 2, "status": "passed", "durationMs": 16500, "startTime": "2026-04-13T09:10:48.000Z" }
+      ]
+    },
+    {
+      "id": "P-3",
+      "title": "Catalog > filters by category and size",
+      "status": "failed",
+      "flaky": false,
+      "durationMs": 24700,
+      "location": { "file": "tests/UI/catalog/filters.spec.ts", "line": 27, "column": 5 },
+      "project": "ui",
+      "retries": 1,
+      "errors": [{ "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" }],
+      "attempts": [
+        { "attempt": 1, "status": "failed", "durationMs": 11900, "startTime": "2026-04-13T09:11:00.000Z", "error": { "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" } },
+        { "attempt": 2, "status": "failed", "durationMs": 12800, "startTime": "2026-04-13T09:11:12.000Z", "error": { "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" } }
+      ]
+    },
+    {
+      "id": "P-4",
+      "title": "Auth > persists session after refresh",
+      "status": "failed",
+      "flaky": false,
+      "durationMs": 22300,
+      "location": { "file": "tests/UI/auth/session.spec.ts", "line": 35, "column": 5 },
+      "project": "ui",
+      "retries": 0,
+      "errors": [{ "message": "net::ERR_CONNECTION_RESET while fetching /session" }],
+      "attempts": [
+        { "attempt": 1, "status": "failed", "durationMs": 22300, "startTime": "2026-04-13T09:11:30.000Z", "error": { "message": "net::ERR_CONNECTION_RESET while fetching /session" } }
+      ]
+    },
+    {
+      "id": "P-5",
+      "title": "Orders > creates delivery order",
+      "status": "failed",
+      "flaky": false,
+      "durationMs": 36100,
+      "location": { "file": "tests/UI/orders/create-order.spec.ts", "line": 14, "column": 5 },
+      "project": "ui",
+      "retries": 0,
+      "errors": [{ "message": "expect(received).toBeVisible() failed" }],
+      "attempts": [
+        { "attempt": 1, "status": "failed", "durationMs": 36100, "startTime": "2026-04-13T09:12:00.000Z", "error": { "message": "expect(received).toBeVisible() failed" } }
+      ]
+    },
+    {
+      "id": "P-6",
+      "title": "Profile > uploads avatar",
+      "status": "skipped",
+      "flaky": false,
+      "durationMs": 0,
+      "location": { "file": "tests/UI/profile/avatar.spec.ts", "line": 11, "column": 5 },
+      "project": "ui",
+      "retries": 0,
+      "errors": [],
+      "attempts": [{ "attempt": 1, "status": "skipped", "durationMs": 0, "startTime": "2026-04-13T09:12:30.000Z" }]
+    },
+    {
+      "id": "P-7",
+      "title": "API > updates employee profile",
+      "status": "passed",
+      "flaky": false,
+      "durationMs": 6100,
+      "location": { "file": "tests/API/employees/update-profile.spec.ts", "line": 52, "column": 5 },
+      "project": "api",
+      "retries": 0,
+      "errors": [],
+      "attempts": [{ "attempt": 1, "status": "passed", "durationMs": 6100, "startTime": "2026-04-13T09:12:40.000Z" }]
+    }
+  ]
+}
+

@@ -1,0 +1,78 @@
+{
+  "name": "aqa-pulse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Изолированный дашборд AQA Pulse для аналитики прогонов Playwright",
+  "license": "UNLICENSED",
+  "keywords": [
+    "playwright",
+    "dashboard",
+    "observability",
+    "analytics",
+    "qa"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist-ts/index.js",
+  "types": "./dist-ts/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-ts/index.d.ts",
+      "default": "./dist-ts/index.js"
+    },
+    "./core": {
+      "types": "./dist-ts/core/index.d.ts",
+      "default": "./dist-ts/core/index.js"
+    },
+    "./client": {
+      "types": "./dist-ts/client/index.d.ts",
+      "default": "./dist-ts/client/index.js"
+    },
+    "./backend": {
+      "types": "./dist-ts/backend/index.d.ts",
+      "default": "./dist-ts/backend/index.js"
+    }
+  },
+  "bin": {
+    "aqa-pulse": "./bin/aqa-pulse.js"
+  },
+  "files": [
+    "dist-ts/**/*",
+    "bin/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "parse": "ts-node src/parser.ts",
+    "build": "ts-node src/build-dashboard.ts",
+    "api": "ts-node src/server.ts",
+    "api:demo": "npm run generate:history-demo && npm run api",
+    "saas:demo": "ts-node src/backend/bootstrap-demo.ts",
+    "self-hosted:init": "ts-node src/backend/init-self-hosted.ts",
+    "self-hosted:sqlite:migrate": "ts-node src/backend/sqlite-migrate.ts",
+    "self-hosted:sqlite:backup": "ts-node src/backend/sqlite-backup.ts",
+    "self-hosted:smoke:auth": "ts-node src/backend/auth-flow-smoke.ts",
+    "self-hosted:smoke:postgres": "ts-node src/backend/postgres-smoke.ts",
+    "generate": "npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
+    "generate:history-demo": "npm run parse -- ./fixtures/sample-llm-report-previous.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit abcdef123456 --author \"QA Bot\" && npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit fedcba654321 --author \"QA Bot\" && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
+    "clean:package": "node -e \"const fs=require('fs'); if(fs.existsSync('dist-ts')) fs.rmSync('dist-ts',{recursive:true,force:true});\"",
+    "compile": "npm run clean:package && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node -e \"const fs=require('fs'); ['dist','history'].forEach((dir)=>{ if(fs.existsSync(dir)) fs.rmSync(dir,{recursive:true,force:true}); });\" && npm run generate:history-demo && npm run typecheck",
+    "prepack": "npm run compile",
+    "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse является внутренним и не предназначен для публикации. Публикуй только aqa-pulse-client.'); process.exit(1)\"",
+    "pack:check": "npm pack --dry-run",
+    "publish:check": "npm publish --dry-run",
+    "server:pack:check": "npm --prefix ../aqa-pulse-server run pack:check"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "express": "^5.2.1"
+  }
+}

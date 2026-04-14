@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-04-14T10:24:35.735Z",
+  "workspaces": [
+    {
+      "slug": "demo",
+      "name": "Demo Workspace",
+      "createdAt": "2026-04-14T10:24:35.735Z",
+      "updatedAt": "2026-04-14T10:24:35.735Z",
+      "apiKeys": [
+        {
+          "id": "a3702c2994d28521",
+          "label": "Demo bootstrap key",
+          "tokenPreview": "aqp_740b3c…",
+          "tokenHash": "16f31c8529b179ea7eaf4a7b66af9dd128a9b6fce5a3855a6d24ab81abf54ecf",
+          "createdAt": "2026-04-14T10:24:35.735Z",
+          "lastUsedAt": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+runtime-data/
+sqlite-runtime-data/
+history/
+data/
+*.tgz
+*.pid
+*.log
+.env
+

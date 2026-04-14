@@ -1,0 +1,50 @@
+{
+  "name": "aqa-pulse-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Внутренний self-hosted server package для AQA Pulse",
+  "license": "UNLICENSED",
+  "keywords": [
+    "playwright",
+    "dashboard",
+    "observability",
+    "analytics",
+    "qa"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/backend/index.js",
+  "types": "./dist/backend/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/backend/index.d.ts",
+      "default": "./dist/backend/index.js"
+    }
+  },
+  "bin": {
+    "aqa-pulse-server": "./bin/aqa-pulse-server.js"
+  },
+  "files": [
+    "dist/**/*",
+    "bin/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist')) fs.rmSync('dist',{recursive:true,force:true});\"",
+    "build": "npm --prefix ../aqa-pulse run compile && node ./scripts/build-package.js",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "start": "node ./bin/aqa-pulse-server.js start",
+    "init": "node ./bin/aqa-pulse-server.js init",
+    "bootstrap-demo": "node ./bin/aqa-pulse-server.js bootstrap-demo",
+    "sqlite:migrate": "node ./bin/aqa-pulse-server.js sqlite-migrate",
+    "sqlite:backup": "node ./bin/aqa-pulse-server.js sqlite-backup",
+    "pack:check": "npm run build && npm pack --dry-run",
+    "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse-server является внутренним и не предназначен для публикации.'); process.exit(1)\""
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
+

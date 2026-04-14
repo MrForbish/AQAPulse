@@ -1,0 +1,1687 @@
+﻿import type {
+    DashboardFlakyTestMetric,
+    DashboardProblematicTest,
+    DashboardSlowTest,
+    DashboardSummary,
+} from './dashboard-utils'
+import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
+import { formatDate, formatDuration, formatPercent } from './shared/formatting'
+import { ru } from './shared/i18n/ru'
+
+const DASHBOARD_TEXT = ru.dashboard
+const METRIC_DESCRIPTIONS = DASHBOARD_TEXT.tooltips
+
+export function renderDashboardHtml(summary: DashboardSummary): string {
+    const previousRunLabel = formatRunLabel(summary.comparison.previousRun)
+    const notesMarkup = summary.notes.length > 0
+        ? summary.notes.map((note) => `<div class="list-item">${escapeHtml(note)}</div>`).join('')
+        : `<div class="list-item">${escapeHtml(DASHBOARD_TEXT.states.notesEmpty)}</div>`
+
+    const availableFiltersData = serializeForInlineScript(summary.availableFilters)
+    const passRateTrendData = serializeForInlineScript(summary.charts.passRateTrend)
+    const durationTrendData = serializeForInlineScript(summary.charts.durationTrend)
+    const flakyTrendData = serializeForInlineScript(summary.charts.flakyTrend)
+    const statusChartData = serializeForInlineScript(summary.charts.statusDistribution)
+    const errorChartData = serializeForInlineScript(summary.charts.errorClusters)
+    const slowestChartData = serializeForInlineScript(summary.charts.slowestTests)
+    const dashboardTextData = serializeForInlineScript({
+        filters: DASHBOARD_TEXT.filters,
+        charts: DASHBOARD_TEXT.charts,
+        statusLabels: DASHBOARD_TEXT.statusLabels,
+        business: DASHBOARD_TEXT.business,
+        states: DASHBOARD_TEXT.states,
+    })
+    const businessCostConfigData = serializeForInlineScript({
+        assumptions: summary.businessMetrics.costOfFlakiness.assumptions,
+        baseMetrics: {
+            extraRetryMinutes: summary.businessMetrics.costOfFlakiness.extraRetryMinutes,
+            unstableRuns: summary.businessMetrics.costOfFlakiness.unstableRuns,
+            activeDays: summary.businessMetrics.costOfFlakiness.activeDays,
+        },
+    })
+
+    return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(DASHBOARD_TEXT.title)}</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%232f81f7'/%3E%3C/svg%3E">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="./assets/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 24px;
+        }
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        h1 {
+            font-weight: 600;
+            font-size: 28px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+        .subtle {
+            color: #8b949e;
+            font-size: 13px;
+        }
+        .notice {
+            background: rgba(47, 129, 247, 0.12);
+            border: 1px solid rgba(47, 129, 247, 0.35);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+            color: #c9d1d9;
+        }
+        .filters-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .filters-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+        .filters-form {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-label {
+            color: #8b949e;
+            font-size: 12px;
+        }
+        .filter-select {
+            width: 100%;
+            min-height: 40px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 0 12px;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .action-button,
+        .action-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 0 16px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            font-size: 13px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .action-button {
+            background: #2f81f7;
+            color: #ffffff;
+        }
+        .action-link {
+            background: #21262d;
+            color: #c9d1d9;
+        }
+        .tabs-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .tab-button {
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            background: #161b22;
+            color: #c9d1d9;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .tab-button.is-active {
+            background: #2f81f7;
+            border-color: #2f81f7;
+            color: #ffffff;
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.is-active {
+            display: block;
+        }
+        .placeholder-card {
+            background: #161b22;
+            border: 1px dashed #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .placeholder-title {
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+        .placeholder-list {
+            margin-top: 12px;
+            padding-left: 18px;
+            color: #8b949e;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .business-kpi-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .kpi-card,
+        .chart-card,
+        .table-container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+        }
+        .kpi-card {
+            padding: 16px;
+        }
+        .kpi-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .trend-neutral {
+            color: #8b949e;
+            font-size: 12px;
+        }
+        .trend-up {
+            color: #3fb950;
+            font-size: 12px;
+        }
+        .trend-down {
+            color: #f85149;
+            font-size: 12px;
+        }
+        ${METRIC_INFO_STYLES}
+        .charts-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            padding: 20px;
+        }
+        .chart-title {
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: #ffffff;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .comparison-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .comparison-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 6px;
+        }
+        .comparison-value {
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+        .meta-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #21262d;
+            color: #c9d1d9;
+            font-size: 12px;
+            margin-right: 8px;
+            margin-top: 6px;
+        }
+        .table-title {
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #ffffff;
+            font-size: 18px;
+        }
+        .table-container {
+            padding: 8px;
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-weight: 500;
+            color: #8b949e;
+            border-bottom: 1px solid #30363d;
+            font-size: 13px;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #21262d;
+            font-size: 13px;
+            vertical-align: top;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-failed { background: #da3633; color: #fff; }
+        .status-flaky { background: #d29922; color: #000; }
+        .status-passed { background: #1a7f37; color: #fff; }
+        .status-skipped { background: #6e7681; color: #fff; }
+        .status-unknown { background: #21262d; color: #fff; }
+        .mono {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #ff7b72;
+            word-break: break-word;
+        }
+        .list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .list-item {
+            padding: 10px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+        }
+        .list-item-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #ffffff;
+        }
+        .muted {
+            color: #8b949e;
+            font-size: 12px;
+        }
+        .test-link {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        .test-link:hover {
+            text-decoration: underline;
+        }
+        .assumptions-editor {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #30363d;
+        }
+        .assumptions-editor-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+        .assumptions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .assumption-input {
+            width: 100%;
+            min-height: 40px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 0 12px;
+        }
+        .assumption-input::-webkit-outer-spin-button,
+        .assumption-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .assumption-input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .assumptions-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        canvas {
+            max-height: 280px;
+        }
+        @media (max-width: 1200px) {
+            .filters-form {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .business-kpi-grid,
+            .comparison-grid,
+            .assumptions-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 900px) {
+            .filters-form,
+            .kpi-grid,
+            .business-kpi-grid,
+            .charts-grid-2,
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <div>
+                <h1>
+                    <span style="color: #2f81f7;">◉</span>
+                    AQA Pulse
+                    <span class="badge">${escapeHtml(DASHBOARD_TEXT.badge)}</span>
+                </h1>
+                <div class="subtle" style="margin-top: 10px;">
+                    ${escapeHtml(DASHBOARD_TEXT.sourceHint)} ${escapeHtml(summary.sourceFile)}
+                </div>
+            </div>
+            <div class="subtle">
+                <div>${escapeHtml(DASHBOARD_TEXT.generatedAt)}: ${escapeHtml(formatDate(summary.generatedAt))}</div>
+                <div>${escapeHtml(DASHBOARD_TEXT.runTime)}: ${escapeHtml(formatDuration(summary.kpis.totalDurationMs))}</div>
+                <div>${escapeHtml(DASHBOARD_TEXT.projects)}: ${escapeHtml(summary.environment.projects.join(', ') || '—')}</div>
+                <div>
+                    <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.branchMeta)}: ${escapeHtml(summary.runMetadata.branch ?? '—')}</span>
+                    <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.commitMeta)}: ${escapeHtml(formatCommit(summary.runMetadata.commit))}</span>
+                    <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.authorMeta)}: ${escapeHtml(summary.runMetadata.author ?? '—')}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="notice">
+            <strong>${escapeHtml(DASHBOARD_TEXT.notice.doneTitle)}</strong> ${escapeHtml(DASHBOARD_TEXT.notice.doneText)}
+            <br>
+            <strong>${escapeHtml(DASHBOARD_TEXT.notice.nextTitle)}</strong> ${escapeHtml(DASHBOARD_TEXT.notice.nextText)}
+        </div>
+
+        <div class="filters-card">
+            <div class="filters-header">
+                <div>
+                    <div class="filters-title">${escapeHtml(DASHBOARD_TEXT.filters.title)}</div>
+                    <div class="subtle">${escapeHtml(DASHBOARD_TEXT.filters.description)}</div>
+                </div>
+                <div class="subtle">
+                    <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.branchMeta)}: ${escapeHtml(summary.filters.branch ?? DASHBOARD_TEXT.filters.all)}</span>
+                    <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.filters.project.toLowerCase())}: ${escapeHtml(summary.filters.project ?? DASHBOARD_TEXT.filters.all)}</span>
+                    <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.filters.file.toLowerCase())}: ${escapeHtml(summary.filters.file ?? DASHBOARD_TEXT.filters.all)}</span>
+                </div>
+            </div>
+            <form class="filters-form" method="get" action="/">
+                ${renderFilterSelect('branch', DASHBOARD_TEXT.filters.branch, summary.availableFilters.branches, summary.filters.branch)}
+                ${renderFilterSelect('project', DASHBOARD_TEXT.filters.project, summary.availableFilters.projects, summary.filters.project)}
+                ${renderFilterSelect('file', DASHBOARD_TEXT.filters.file, summary.availableFilters.files, summary.filters.file)}
+                <div class="filter-actions">
+                    <button class="action-button" type="submit">${escapeHtml(DASHBOARD_TEXT.filters.apply)}</button>
+                    <a class="action-link" href="/">${escapeHtml(DASHBOARD_TEXT.filters.reset)}</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRate, METRIC_DESCRIPTIONS.passRate)}</div>
+                <div class="kpi-value">${escapeHtml(formatPercent(summary.kpis.passRate))}</div>
+                <div class="trend-neutral">${summary.kpis.passedTests} / ${summary.kpis.totalTests} тестов прошли</div>
+                <div class="${getTrendClass(summary.trend.passRateDelta, false)}">${escapeHtml(formatPassRateDelta(summary.trend.passRateDelta))}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.failedTests, METRIC_DESCRIPTIONS.failedTests)}</div>
+                <div class="kpi-value">${summary.kpis.failedTests}</div>
+                <div class="trend-neutral">Таймауты: ${summary.kpis.timedOutTests} • Прерванные: ${summary.kpis.interruptedTests}</div>
+                <div class="${getTrendClass(summary.trend.failedTestsDelta, true)}">${escapeHtml(formatCountDelta('к прошлому прогону', summary.trend.failedTestsDelta))}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.flakyTests, METRIC_DESCRIPTIONS.flakyTests)}</div>
+                <div class="kpi-value">${summary.kpis.flakyTests}</div>
+                <div class="trend-neutral">${escapeHtml(formatPercent(summary.kpis.flakyRatio))} от общего количества</div>
+                <div class="${getTrendClass(summary.trend.flakyTestsDelta, true)}">${escapeHtml(formatCountDelta('к прошлому прогону', summary.trend.flakyTestsDelta))}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.runDuration, `${METRIC_DESCRIPTIONS.runDuration} ${METRIC_DESCRIPTIONS.medianDuration}`)}</div>
+                <div class="kpi-value">${escapeHtml(formatDuration(summary.kpis.totalDurationMs))}</div>
+                <div class="trend-neutral">Медиана: ${escapeHtml(formatDuration(summary.kpis.medianDurationMs))}</div>
+                <div class="${getTrendClass(summary.trend.durationMsDelta, true)}">${escapeHtml(formatDurationDelta(summary.trend.durationMsDelta))}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.errorClusters, METRIC_DESCRIPTIONS.errorClusters)}</div>
+                <div class="kpi-value">${summary.kpis.errorClusterCount}</div>
+                <div class="trend-neutral">Уникальные группы падений</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.environment, METRIC_DESCRIPTIONS.environment)}</div>
+                <div class="kpi-value">${escapeHtml(summary.environment.os)}</div>
+                <div class="trend-neutral">PW ${escapeHtml(summary.environment.playwrightVersion)} • Node ${escapeHtml(summary.environment.nodeVersion)}</div>
+            </div>
+        </div>
+
+        <div class="tabs-nav" role="tablist" aria-label="${escapeHtml(DASHBOARD_TEXT.tabs.ariaLabel)}">
+            ${renderTabButton('overview', DASHBOARD_TEXT.tabs.overview, true)}
+            ${renderTabButton('performance', DASHBOARD_TEXT.tabs.performance)}
+            ${renderTabButton('flaky', DASHBOARD_TEXT.tabs.flaky)}
+            ${renderTabButton('code-quality', DASHBOARD_TEXT.tabs.codeQuality)}
+            ${renderTabButton('business', DASHBOARD_TEXT.tabs.business)}
+            ${renderTabButton('team', DASHBOARD_TEXT.tabs.team)}
+            ${renderTabButton('ai', DASHBOARD_TEXT.tabs.ai)}
+        </div>
+
+        <section class="tab-panel is-active" data-tab-panel="overview">
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.latestVsPrevious, METRIC_DESCRIPTIONS.latestVsPrevious)}</div>
+                    <div class="comparison-grid">
+                        <div class="comparison-item">
+                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRate, METRIC_DESCRIPTIONS.passRate)}</div>
+                            <div class="comparison-value">${escapeHtml(formatPercent(summary.kpis.passRate))}</div>
+                            <div class="${getTrendClass(summary.trend.passRateDelta, false)}">${escapeHtml(formatMetricDelta(summary.trend.passRateDelta, 'pp', false))}</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.failures, METRIC_DESCRIPTIONS.failedTests)}</div>
+                            <div class="comparison-value">${summary.kpis.failedTests}</div>
+                            <div class="${getTrendClass(summary.trend.failedTestsDelta, true)}">${escapeHtml(formatMetricDelta(summary.trend.failedTestsDelta, 'count', true))}</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.flakyShort, METRIC_DESCRIPTIONS.flakyTests)}</div>
+                            <div class="comparison-value">${summary.kpis.flakyTests}</div>
+                            <div class="${getTrendClass(summary.trend.flakyTestsDelta, true)}">${escapeHtml(formatMetricDelta(summary.trend.flakyTestsDelta, 'count', true))}</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.duration, METRIC_DESCRIPTIONS.runDuration)}</div>
+                            <div class="comparison-value">${escapeHtml(formatDuration(summary.kpis.totalDurationMs))}</div>
+                            <div class="${getTrendClass(summary.trend.durationMsDelta, true)}">${escapeHtml(formatMetricDelta(summary.trend.durationMsDelta, 'duration', true))}</div>
+                        </div>
+                    </div>
+                    <div class="muted" style="margin-top: 16px;">
+                        Текущий: ${escapeHtml(formatRunLabel(summary.comparison.currentRun))} • Предыдущий: ${escapeHtml(formatRunLabel(summary.comparison.previousRun))}
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRateTrend, METRIC_DESCRIPTIONS.passRateTrend)}</div>
+                    <canvas id="passRateTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.recentRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
+                    <div class="list">
+                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.totalRuns)}: ${summary.history.totalRuns}</div>
+                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.previousRun)}: ${escapeHtml(previousRunLabel)}</div>
+                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.latestSource)}: ${escapeHtml(summary.sourceFile)}</div>
+                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.currentBranch)}: ${escapeHtml(summary.runMetadata.branch ?? '—')} • ${escapeHtml(DASHBOARD_TEXT.commitMeta)}: ${escapeHtml(formatCommit(summary.runMetadata.commit))}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.notes, METRIC_DESCRIPTIONS.notes)}</div>
+                    <div class="list">
+                        ${notesMarkup}
+                    </div>
+                    <div class="muted" style="margin-top: 16px;">
+                        ${escapeHtml(DASHBOARD_TEXT.history.schemaVersion)}: v${summary.schemaVersion ?? '—'} • ${escapeHtml(DASHBOARD_TEXT.runTime)}: ${escapeHtml(formatDate(summary.reportTimestamp))}
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.latestRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.time)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.metrics.passRate)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.metrics.failures)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.metrics.flakyShort)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.duration)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.branch)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.commit)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.author)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.source)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summary.history.recentRuns.length > 0
+                            ? summary.history.recentRuns.map(renderHistoryRow).join('')
+                            : `<tr><td colspan="9">${escapeHtml(DASHBOARD_TEXT.states.historyEmpty)}</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="performance">
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationTrend, METRIC_DESCRIPTIONS.durationTrend)}</div>
+                    <canvas id="durationTrendChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topSlowestTests, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
+                    <canvas id="slowestChart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topSlowestTestsP1, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.test)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.file)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.status)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.flaky)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.duration)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.lastError)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summary.performance.slowestTests.length > 0
+                            ? summary.performance.slowestTests.map((test) => renderSlowTestRow(test, summary.filters)).join('')
+                            : `<tr><td colspan="6">${escapeHtml(DASHBOARD_TEXT.states.slowTestsEmpty)}</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="flaky">
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.flakyTrend, METRIC_DESCRIPTIONS.flakyTrend)}</div>
+                    <canvas id="flakyTrendChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.clusterDistribution, METRIC_DESCRIPTIONS.clusterList)}</div>
+                    <canvas id="clusterChart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.problematicTests, METRIC_DESCRIPTIONS.problematicTests)}</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.test)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.file)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.status)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.flaky)}</th>
+                            <th>${renderMetricHeading('Доля падений', METRIC_DESCRIPTIONS.failureRate)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.duration)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.reason)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summary.topProblematicTests.length > 0
+                            ? summary.topProblematicTests.map((test) => renderProblematicTestRow(test, summary.filters)).join('')
+                            : `<tr><td colspan="7">${escapeHtml(DASHBOARD_TEXT.states.problematicTestsEmpty)}</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topFlakyTests, METRIC_DESCRIPTIONS.topFlakyTests)}</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.test)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.file)}</th>
+                            <th>${renderMetricHeading(DASHBOARD_TEXT.metrics.flakyScore, METRIC_DESCRIPTIONS.flakyScore)}</th>
+                            <th>${renderMetricHeading('Доля падений', METRIC_DESCRIPTIONS.failureRate)}</th>
+                            <th>${renderMetricHeading('MTBF', METRIC_DESCRIPTIONS.mtbf)}</th>
+                            <th>${renderMetricHeading(DASHBOARD_TEXT.metrics.unstableRuns, METRIC_DESCRIPTIONS.unstableRuns)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.metrics.lastStatus)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summary.flakyAnalytics.topFlakyTests.length > 0
+                            ? summary.flakyAnalytics.topFlakyTests.map((test) => renderFlakyTestRow(test, summary.filters)).join('')
+                            : `<tr><td colspan="7">${escapeHtml(DASHBOARD_TEXT.states.flakyTestsEmpty)}</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.errorClusters, METRIC_DESCRIPTIONS.clusterList)}</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.error)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.count)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.testExamples)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summary.errorClusters.length > 0
+                            ? summary.errorClusters.map((cluster) => `
+                                <tr>
+                                    <td class="mono">${escapeHtml(cluster.message)}</td>
+                                    <td>${cluster.count}</td>
+                                    <td>${escapeHtml(cluster.tests.join(' • '))}</td>
+                                </tr>
+                            `).join('')
+                            : `<tr><td colspan="3">${escapeHtml(DASHBOARD_TEXT.states.failuresEmpty)}</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="code-quality">
+            ${renderPlaceholderPanel(DASHBOARD_TEXT.metrics.codeQuality, METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
+        </section>
+
+        <section class="tab-panel" data-tab-panel="business">
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costSection, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+            <div class="kpi-grid business-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.costOfFlakiness, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+                    <div class="kpi-value" data-cost-total>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.totalRub))}</div>
+                    <div class="trend-neutral" data-cost-breakdown>${escapeHtml(DASHBOARD_TEXT.business.ciBreakdown)}: ${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.ciCostRub))} • ${escapeHtml(DASHBOARD_TEXT.business.developerBreakdown)}: ${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.developerCostRub))}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.extraRetryTime)}: ${escapeHtml(formatMinutes(summary.businessMetrics.costOfFlakiness.extraRetryMinutes))} • ${escapeHtml(DASHBOARD_TEXT.business.unstableRuns)}: ${summary.businessMetrics.costOfFlakiness.unstableRuns}</div>
+                    <div class="trend-neutral" data-cost-assumptions-summary>${escapeHtml(formatCostAssumptions(summary))}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.developerFriction, METRIC_DESCRIPTIONS.developerFriction)}</div>
+                    <div class="kpi-value">${escapeHtml(formatDailyRatio(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay))}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.extraRetries)}: ${summary.businessMetrics.developerFriction.extraRetries} • ${escapeHtml(DASHBOARD_TEXT.business.unstableRuns)}: ${summary.businessMetrics.developerFriction.unstableRuns}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.activeDays)}: ${summary.businessMetrics.developerFriction.activeDays}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.releaseConfidenceScore, METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
+                    <div class="kpi-value">${escapeHtml(formatScore(summary.businessMetrics.releaseConfidenceScore))}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceDetails)}</div>
+                    <div class="trend-neutral">${escapeHtml(DASHBOARD_TEXT.business.releaseConfidenceHint)}</div>
+                </div>
+            </div>
+
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.costStructure, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+                    <div class="list">
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.overallCost)}</span><span data-cost-total-breakdown>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.totalRub))}</span></div>
+                            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.totalCostHint)}</div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.ciCost)}</span><span data-cost-ci>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.ciCostRub))}</span></div>
+                            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.ciCostHintPrefix)}: ${escapeHtml(formatMinutes(summary.businessMetrics.costOfFlakiness.extraRetryMinutes))}</div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.developmentCost)}</span><span data-cost-developer>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.developerCostRub))}</span></div>
+                            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.developmentCostHintPrefix)}: ${summary.businessMetrics.costOfFlakiness.unstableRuns} • ${escapeHtml(DASHBOARD_TEXT.business.activeDaysHintPrefix)}: ${summary.businessMetrics.costOfFlakiness.activeDays}</div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDay)}</span><span data-cost-per-day>${escapeHtml(formatCurrency(summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}</span></div>
+                            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.costPerActiveDayHint)}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.configAssumptions, METRIC_DESCRIPTIONS.configAssumptions)}</div>
+                    <div class="list">
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.ciMinuteCost)}</span><span data-assumption-ci-label>${escapeHtml(formatAssumptionValue(summary.businessMetrics.costOfFlakiness.assumptions.ciMinuteCostRub, '₽/мин'))}</span></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.devHourCost)}</span><span data-assumption-dev-label>${escapeHtml(formatAssumptionValue(summary.businessMetrics.costOfFlakiness.assumptions.developerHourlyCostRub, '₽/час'))}</span></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-title"><span>${escapeHtml(DASHBOARD_TEXT.business.analysisMinutes)}</span><span data-assumption-analysis-label>${escapeHtml(formatAssumptionValue(summary.businessMetrics.costOfFlakiness.assumptions.analysisMinutesPerUnstable, 'мин/инцидент'))}</span></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.assumptionsMissing)}</div>
+                        </div>
+                    </div>
+                    <div class="assumptions-editor">
+                        <div class="assumptions-editor-title">${escapeHtml(DASHBOARD_TEXT.business.scenarioRecalculation)}</div>
+                        <div class="assumptions-grid">
+                            <label class="filter-field">
+                                <span class="filter-label">${escapeHtml(DASHBOARD_TEXT.business.ciMinuteCost)}, ₽</span>
+                                <input class="assumption-input" type="number" step="0.01" min="0" inputmode="decimal" data-assumption-input="ciMinuteCost">
+                            </label>
+                            <label class="filter-field">
+                                <span class="filter-label">${escapeHtml(DASHBOARD_TEXT.business.devHourCost)}, ₽</span>
+                                <input class="assumption-input" type="number" step="0.01" min="0" inputmode="decimal" data-assumption-input="developerHourlyCost">
+                            </label>
+                            <label class="filter-field">
+                                <span class="filter-label">${escapeHtml(DASHBOARD_TEXT.business.analysisMinutes)}</span>
+                                <input class="assumption-input" type="number" step="0.01" min="0" inputmode="decimal" data-assumption-input="analysisMinutesPerIncident">
+                            </label>
+                        </div>
+                        <div class="assumptions-actions">
+                            <button class="action-button" type="button" data-assumption-reset>${escapeHtml(DASHBOARD_TEXT.business.resetAssumptions)}</button>
+                            <div class="muted">${escapeHtml(DASHBOARD_TEXT.business.recalcHint)}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="team">
+            ${renderPlaceholderPanel(DASHBOARD_TEXT.metrics.team, METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
+        </section>
+
+        <section class="tab-panel" data-tab-panel="ai">
+            ${renderPlaceholderPanel(DASHBOARD_TEXT.metrics.ai, METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
+        </section>
+    </div>
+
+    <script>
+        const dashboardText = ${dashboardTextData};
+        const availableFilters = ${availableFiltersData};
+        const passRateTrendDataset = ${passRateTrendData};
+        const durationTrendDataset = ${durationTrendData};
+        const flakyTrendDataset = ${flakyTrendData};
+        const statusDataset = ${statusChartData};
+        const errorDataset = ${errorChartData};
+        const slowestDataset = ${slowestChartData};
+        const businessCostConfig = ${businessCostConfigData};
+
+        const filtersForm = document.querySelector('.filters-form');
+        const branchSelect = filtersForm ? filtersForm.querySelector('select[name="branch"]') : null;
+        const projectSelect = filtersForm ? filtersForm.querySelector('select[name="project"]') : null;
+        const fileSelect = filtersForm ? filtersForm.querySelector('select[name="file"]') : null;
+
+        if (branchSelect instanceof HTMLSelectElement && projectSelect instanceof HTMLSelectElement && fileSelect instanceof HTMLSelectElement) {
+            const setSelectOptions = function (selectElement, options, selectedValue) {
+                const normalizedSelectedValue = typeof selectedValue === 'string' ? selectedValue : '';
+                selectElement.innerHTML = '';
+
+                const emptyOption = new Option(dashboardText.filters.all, '');
+                selectElement.appendChild(emptyOption);
+
+                options.forEach(function (option) {
+                    const nextOption = new Option(option, option, option === normalizedSelectedValue, option === normalizedSelectedValue);
+                    selectElement.appendChild(nextOption);
+                });
+
+                if (!options.includes(normalizedSelectedValue)) {
+                    selectElement.value = '';
+                }
+            };
+
+            const getProjectOptions = function (branch) {
+                if (!branch) {
+                    return availableFilters.projects || [];
+                }
+
+                return (availableFilters.projectsByBranch && availableFilters.projectsByBranch[branch]) || [];
+            };
+
+            const getFileOptions = function (branch, project) {
+                if (branch && project) {
+                    return (((availableFilters.filesByBranchProject || {})[branch] || {})[project]) || [];
+                }
+
+                if (project) {
+                    return ((availableFilters.filesByProject || {})[project]) || [];
+                }
+
+                if (branch) {
+                    return ((availableFilters.filesByBranch || {})[branch]) || [];
+                }
+
+                return availableFilters.files || [];
+            };
+
+            const syncProjectOptions = function () {
+                const nextProjectOptions = getProjectOptions(branchSelect.value);
+                const selectedProjectValue = projectSelect.value;
+                setSelectOptions(projectSelect, nextProjectOptions, selectedProjectValue);
+                syncFileOptions();
+            };
+
+            const syncFileOptions = function () {
+                const nextFileOptions = getFileOptions(branchSelect.value, projectSelect.value);
+                const selectedFileValue = fileSelect.value;
+                setSelectOptions(fileSelect, nextFileOptions, selectedFileValue);
+            };
+
+            branchSelect.addEventListener('change', syncProjectOptions);
+            projectSelect.addEventListener('change', syncFileOptions);
+            syncProjectOptions();
+        }
+
+        const localizedStatusDataset = {
+            labels: (statusDataset.labels || []).map(localizeStatusLabel),
+            values: statusDataset.values || [],
+        };
+
+        const tabButtons = Array.from(document.querySelectorAll('[data-tab-button]'));
+        const tabPanels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+        const chartInstances = {};
+        const chartTabs = {
+            overview: ['passRateTrendChart', 'statusChart'],
+            performance: ['durationTrendChart', 'slowestChart'],
+            flaky: ['flakyTrendChart', 'clusterChart'],
+            'code-quality': [],
+            business: [],
+            team: [],
+            ai: [],
+        };
+
+        const createChartById = function (chartId) {
+            const chartElement = document.getElementById(chartId);
+            if (!chartElement || typeof Chart === 'undefined') {
+                return null;
+            }
+
+            if (chartId === 'passRateTrendChart') {
+                return new Chart(chartElement, {
+                    type: 'line',
+                    data: {
+                        labels: passRateTrendDataset.labels,
+                        datasets: [{
+                            label: dashboardText.charts.passRateDataset,
+                            data: passRateTrendDataset.values,
+                            borderColor: '#3fb950',
+                            backgroundColor: 'rgba(63, 185, 80, 0.15)',
+                            fill: true,
+                            tension: 0.2,
+                        }],
+                    },
+                    options: buildLineChartOptions(0, 100),
+                });
+            }
+
+            if (chartId === 'durationTrendChart') {
+                return new Chart(chartElement, {
+                    type: 'line',
+                    data: {
+                        labels: durationTrendDataset.labels,
+                        datasets: [{
+                            label: dashboardText.charts.durationDataset,
+                            data: durationTrendDataset.values,
+                            borderColor: '#f0883e',
+                            backgroundColor: 'rgba(240, 136, 62, 0.15)',
+                            fill: true,
+                            tension: 0.2,
+                        }],
+                    },
+                    options: buildLineChartOptions(),
+                });
+            }
+
+            if (chartId === 'flakyTrendChart') {
+                return new Chart(chartElement, {
+                    type: 'line',
+                    data: {
+                        labels: flakyTrendDataset.labels,
+                        datasets: [{
+                            label: dashboardText.charts.flakyDataset,
+                            data: flakyTrendDataset.values,
+                            borderColor: '#d29922',
+                            backgroundColor: 'rgba(210, 153, 34, 0.15)',
+                            fill: true,
+                            tension: 0.2,
+                        }],
+                    },
+                    options: buildLineChartOptions(),
+                });
+            }
+
+            if (chartId === 'statusChart') {
+                return new Chart(chartElement, {
+                    type: 'doughnut',
+                    data: {
+                        labels: localizedStatusDataset.labels,
+                        datasets: [{
+                            data: localizedStatusDataset.values,
+                            backgroundColor: ['#3fb950', '#f85149', '#d29922', '#8b949e', '#a371f7', '#2f81f7'],
+                            borderColor: '#161b22',
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: buildDoughnutChartOptions(),
+                });
+            }
+
+            if (chartId === 'clusterChart') {
+                return new Chart(chartElement, {
+                    type: 'doughnut',
+                    data: {
+                        labels: errorDataset.labels,
+                        datasets: [{
+                            data: errorDataset.values,
+                            backgroundColor: ['#f0883e', '#f85149', '#a371f7', '#2f81f7', '#3fb950', '#8b949e'],
+                            borderColor: '#161b22',
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: buildDoughnutChartOptions(),
+                });
+            }
+
+            if (chartId === 'slowestChart') {
+                return new Chart(chartElement, {
+                    type: 'bar',
+                    data: {
+                        labels: slowestDataset.labels,
+                        datasets: [{
+                            label: dashboardText.charts.slowestDataset,
+                            data: slowestDataset.values,
+                            backgroundColor: '#2f81f7',
+                            borderRadius: 6,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#c9d1d9' },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#8b949e' },
+                                grid: { color: '#21262d' },
+                            },
+                            y: {
+                                ticks: { color: '#8b949e' },
+                                grid: { color: '#21262d' },
+                            },
+                        },
+                    },
+                });
+            }
+
+            return null;
+        };
+
+        const ensureChartsForTab = function (tabId) {
+            (chartTabs[tabId] || []).forEach(function (chartId) {
+                if (chartInstances[chartId]) {
+                    chartInstances[chartId].resize();
+                    return;
+                }
+
+                const instance = createChartById(chartId);
+                if (instance) {
+                    chartInstances[chartId] = instance;
+                }
+            });
+        };
+
+        const activateTab = function (tabId) {
+            tabButtons.forEach(function (button) {
+                const isActive = button.dataset.tabButton === tabId;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+            });
+
+            tabPanels.forEach(function (panel) {
+                panel.classList.toggle('is-active', panel.dataset.tabPanel === tabId);
+            });
+
+            ensureChartsForTab(tabId);
+            const nextHash = '#' + tabId;
+            if (window.location.hash !== nextHash) {
+                history.replaceState(null, '', nextHash);
+            }
+        };
+
+        tabButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                activateTab(button.dataset.tabButton || 'overview');
+            });
+        });
+
+        const initialHash = window.location.hash.replace('#', '');
+        const initialTab = Object.prototype.hasOwnProperty.call(chartTabs, initialHash) ? initialHash : 'overview';
+        activateTab(initialTab);
+
+        const businessCostStorageKey = 'aqa-pulse.cost-assumptions.v1';
+        const assumptionInputs = {
+            ciMinuteCost: document.querySelector('[data-assumption-input="ciMinuteCost"]'),
+            developerHourlyCost: document.querySelector('[data-assumption-input="developerHourlyCost"]'),
+            analysisMinutesPerIncident: document.querySelector('[data-assumption-input="analysisMinutesPerIncident"]'),
+        };
+        const assumptionResetButton = document.querySelector('[data-assumption-reset]');
+        const businessCostTargets = {
+            total: document.querySelector('[data-cost-total]'),
+            breakdown: document.querySelector('[data-cost-breakdown]'),
+            summary: document.querySelector('[data-cost-assumptions-summary]'),
+            totalBreakdown: document.querySelector('[data-cost-total-breakdown]'),
+            ci: document.querySelector('[data-cost-ci]'),
+            developer: document.querySelector('[data-cost-developer]'),
+            perDay: document.querySelector('[data-cost-per-day]'),
+            assumptionCi: document.querySelector('[data-assumption-ci-label]'),
+            assumptionDev: document.querySelector('[data-assumption-dev-label]'),
+            assumptionAnalysis: document.querySelector('[data-assumption-analysis-label]'),
+        };
+
+        if (
+            assumptionInputs.ciMinuteCost instanceof HTMLInputElement
+            && assumptionInputs.developerHourlyCost instanceof HTMLInputElement
+            && assumptionInputs.analysisMinutesPerIncident instanceof HTMLInputElement
+        ) {
+            const defaultAssumptions = {
+                ciMinuteCost: normalizeOptionalNumber(businessCostConfig.assumptions && businessCostConfig.assumptions.ciMinuteCostRub),
+                developerHourlyCost: normalizeOptionalNumber(businessCostConfig.assumptions && businessCostConfig.assumptions.developerHourlyCostRub),
+                analysisMinutesPerIncident: normalizeOptionalNumber(businessCostConfig.assumptions && businessCostConfig.assumptions.analysisMinutesPerUnstable),
+            };
+
+            const storedAssumptions = readStoredBusinessAssumptions();
+            const initialAssumptions = storedAssumptions || defaultAssumptions;
+
+            setAssumptionInputs(initialAssumptions);
+            renderBusinessCostMetrics(initialAssumptions);
+
+            Object.values(assumptionInputs).forEach(function (input) {
+                input.addEventListener('input', function () {
+                    const assumptions = readAssumptionsFromInputs();
+                    saveStoredBusinessAssumptions(assumptions);
+                    renderBusinessCostMetrics(assumptions);
+                });
+            });
+
+            if (assumptionResetButton) {
+                assumptionResetButton.addEventListener('click', function () {
+                    clearStoredBusinessAssumptions();
+                    setAssumptionInputs(defaultAssumptions);
+                    renderBusinessCostMetrics(defaultAssumptions);
+                });
+            }
+        }
+
+        function buildLineChartOptions(min, max) {
+            return {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#c9d1d9' },
+                    },
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' },
+                    },
+                    y: {
+                        ...(typeof min === 'number' ? { min: min } : {}),
+                        ...(typeof max === 'number' ? { max: max } : {}),
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' },
+                    },
+                },
+            };
+        }
+
+        function buildDoughnutChartOptions() {
+            return {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#c9d1d9' },
+                    },
+                },
+            };
+        }
+
+        function localizeStatusLabel(label) {
+            return dashboardText.statusLabels[label] || label;
+        }
+
+        function normalizeOptionalNumber(value) {
+            return typeof value === 'number' && Number.isFinite(value) ? value : null;
+        }
+
+        function parseOptionalInputNumber(value) {
+            if (typeof value !== 'string') {
+                return null;
+            }
+
+            const normalized = value.replace(',', '.').trim();
+            if (!normalized) {
+                return null;
+            }
+
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+        }
+
+        function roundToTwoDigits(value) {
+            return Math.round(value * 100) / 100;
+        }
+
+        function formatCurrencyValue(value) {
+            return value === null ? '—' : value.toFixed(2) + ' ₽';
+        }
+
+        function formatAssumptionDisplay(value, unit) {
+            return value === null ? dashboardText.states.notSet : value + ' ' + unit;
+        }
+
+        function formatAssumptionsSummary(assumptions) {
+            if (assumptions.ciMinuteCost === null && assumptions.developerHourlyCost === null) {
+                return dashboardText.business.assumptionsEmpty;
+            }
+
+            return dashboardText.business.ciMinuteCost + ' ' + (assumptions.ciMinuteCost === null ? 0 : assumptions.ciMinuteCost)
+                + ' ₽/мин • ' + dashboardText.business.devHourCost + ' ' + (assumptions.developerHourlyCost === null ? 0 : assumptions.developerHourlyCost)
+                + ' ₽/час • ' + dashboardText.business.analysisMinutes + ' ' + (assumptions.analysisMinutesPerIncident === null ? 0 : assumptions.analysisMinutesPerIncident)
+                + ' мин/инцидент';
+        }
+
+        function setAssumptionInputs(assumptions) {
+            assumptionInputs.ciMinuteCost.value = assumptions.ciMinuteCost === null ? '' : String(assumptions.ciMinuteCost);
+            assumptionInputs.developerHourlyCost.value = assumptions.developerHourlyCost === null ? '' : String(assumptions.developerHourlyCost);
+            assumptionInputs.analysisMinutesPerIncident.value = assumptions.analysisMinutesPerIncident === null ? '' : String(assumptions.analysisMinutesPerIncident);
+        }
+
+        function readAssumptionsFromInputs() {
+            return {
+                ciMinuteCost: parseOptionalInputNumber(assumptionInputs.ciMinuteCost.value),
+                developerHourlyCost: parseOptionalInputNumber(assumptionInputs.developerHourlyCost.value),
+                analysisMinutesPerIncident: parseOptionalInputNumber(assumptionInputs.analysisMinutesPerIncident.value),
+            };
+        }
+
+        function renderBusinessCostMetrics(assumptions) {
+            const extraRetryMinutes = normalizeOptionalNumber(businessCostConfig.baseMetrics && businessCostConfig.baseMetrics.extraRetryMinutes) || 0;
+            const unstableRuns = normalizeOptionalNumber(businessCostConfig.baseMetrics && businessCostConfig.baseMetrics.unstableRuns) || 0;
+            const activeDays = normalizeOptionalNumber(businessCostConfig.baseMetrics && businessCostConfig.baseMetrics.activeDays) || 0;
+            const ciCost = assumptions.ciMinuteCost === null ? null : roundToTwoDigits(extraRetryMinutes * assumptions.ciMinuteCost);
+            const developerCost = assumptions.developerHourlyCost === null || assumptions.analysisMinutesPerIncident === null
+                ? null
+                : roundToTwoDigits(unstableRuns * (assumptions.analysisMinutesPerIncident / 60) * assumptions.developerHourlyCost);
+            const totalCost = ciCost === null && developerCost === null
+                ? null
+                : roundToTwoDigits((ciCost || 0) + (developerCost || 0));
+            const costPerDay = totalCost === null || activeDays === 0 ? null : roundToTwoDigits(totalCost / activeDays);
+
+            if (businessCostTargets.total) {
+                businessCostTargets.total.textContent = formatCurrencyValue(totalCost);
+            }
+            if (businessCostTargets.breakdown) {
+                businessCostTargets.breakdown.textContent = dashboardText.business.ciBreakdown + ': ' + formatCurrencyValue(ciCost) + ' • ' + dashboardText.business.developerBreakdown + ': ' + formatCurrencyValue(developerCost);
+            }
+            if (businessCostTargets.summary) {
+                businessCostTargets.summary.textContent = formatAssumptionsSummary(assumptions);
+            }
+            if (businessCostTargets.totalBreakdown) {
+                businessCostTargets.totalBreakdown.textContent = formatCurrencyValue(totalCost);
+            }
+            if (businessCostTargets.ci) {
+                businessCostTargets.ci.textContent = formatCurrencyValue(ciCost);
+            }
+            if (businessCostTargets.developer) {
+                businessCostTargets.developer.textContent = formatCurrencyValue(developerCost);
+            }
+            if (businessCostTargets.perDay) {
+                businessCostTargets.perDay.textContent = formatCurrencyValue(costPerDay);
+            }
+            if (businessCostTargets.assumptionCi) {
+                businessCostTargets.assumptionCi.textContent = formatAssumptionDisplay(assumptions.ciMinuteCost, '₽/мин');
+            }
+            if (businessCostTargets.assumptionDev) {
+                businessCostTargets.assumptionDev.textContent = formatAssumptionDisplay(assumptions.developerHourlyCost, '₽/час');
+            }
+            if (businessCostTargets.assumptionAnalysis) {
+                businessCostTargets.assumptionAnalysis.textContent = formatAssumptionDisplay(assumptions.analysisMinutesPerIncident, 'мин/инцидент');
+            }
+        }
+
+        function readStoredBusinessAssumptions() {
+            try {
+                const rawValue = window.localStorage.getItem(businessCostStorageKey);
+                if (!rawValue) {
+                    return null;
+                }
+
+                const parsed = JSON.parse(rawValue);
+                return {
+                    ciMinuteCost: normalizeOptionalNumber(parsed && parsed.ciMinuteCost),
+                    developerHourlyCost: normalizeOptionalNumber(parsed && parsed.developerHourlyCost),
+                    analysisMinutesPerIncident: normalizeOptionalNumber(parsed && parsed.analysisMinutesPerIncident),
+                };
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        function saveStoredBusinessAssumptions(assumptions) {
+            try {
+                window.localStorage.setItem(businessCostStorageKey, JSON.stringify(assumptions));
+            } catch (_error) {
+                // localStorage недоступен, silently ignore
+            }
+        }
+
+        function clearStoredBusinessAssumptions() {
+            try {
+                window.localStorage.removeItem(businessCostStorageKey);
+            } catch (_error) {
+                // localStorage недоступен, silently ignore
+            }
+        }
+    </script>
+</body>
+</html>`
+}
+
+function renderProblematicTestRow(test: DashboardProblematicTest, filters: DashboardSummary['filters']): string {
+    const statusClass = getStatusClass(test.status, test.flaky)
+    const flakyLabel = test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no
+    const testHref = buildTestHistoryHref(test.title, {
+        branch: filters.branch,
+        project: test.project,
+        file: test.file,
+    })
+
+    return `
+        <tr>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
+            <td>${escapeHtml(test.file)}</td>
+            <td><span class="status-badge ${statusClass}">${escapeHtml(formatStatusLabel(test.status, test.flaky))}</span></td>
+            <td>${flakyLabel}</td>
+            <td>${escapeHtml(formatPercent(test.failureRate))} (${test.attempts} попыток)</td>
+            <td>${escapeHtml(formatDuration(test.durationMs))}</td>
+            <td class="mono">${escapeHtml(test.errorMessage)}</td>
+        </tr>
+    `
+}
+
+function renderFlakyTestRow(test: DashboardFlakyTestMetric, filters: DashboardSummary['filters']): string {
+    const testHref = buildTestHistoryHref(test.title, {
+        branch: filters.branch,
+        project: test.project,
+        file: test.file,
+    })
+
+    return `
+        <tr>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
+            <td>${escapeHtml(test.file)}</td>
+            <td>${escapeHtml(formatScore(test.flakyScore))}</td>
+            <td>${escapeHtml(formatPercent(test.failRate))}</td>
+            <td>${escapeHtml(formatNullableDays(test.mtbfDays))}</td>
+            <td>${test.unstableRuns} / ${test.totalRuns}</td>
+            <td><span class="status-badge ${getStatusClass(test.latestStatus, false)}">${escapeHtml(formatStatusLabel(test.latestStatus, false))}</span></td>
+        </tr>
+    `
+}
+
+function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['filters']): string {
+    const testHref = buildTestHistoryHref(test.title, {
+        branch: filters.branch,
+        project: test.project,
+        file: test.file,
+    })
+
+    return `
+        <tr>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
+            <td>${escapeHtml(test.file)}</td>
+            <td><span class="status-badge ${getStatusClass(test.status, test.flaky)}">${escapeHtml(formatStatusLabel(test.status, test.flaky))}</span></td>
+            <td>${test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
+            <td>${escapeHtml(formatDuration(test.durationMs))}</td>
+            <td class="mono">${escapeHtml(test.errorMessage ?? '—')}</td>
+        </tr>
+    `
+}
+
+function renderHistoryRow(run: DashboardSummary['history']['recentRuns'][number]): string {
+    return `
+        <tr>
+            <td>${escapeHtml(formatDate(run.reportTimestamp ?? run.generatedAt))}</td>
+            <td>${escapeHtml(formatPercent(run.passRate))}</td>
+            <td>${run.failedTests}</td>
+            <td>${run.flakyTests}</td>
+            <td>${escapeHtml(formatDuration(run.totalDurationMs))}</td>
+            <td>${escapeHtml(run.branch ?? '—')}</td>
+            <td>${escapeHtml(formatCommit(run.commit))}</td>
+            <td>${escapeHtml(run.author ?? '—')}</td>
+            <td>${escapeHtml(run.sourceFile)}</td>
+        </tr>
+    `
+}
+
+function renderTabButton(id: string, label: string, isActive = false): string {
+    return `<button class="tab-button${isActive ? ' is-active' : ''}" type="button" role="tab" aria-selected="${isActive ? 'true' : 'false'}" data-tab-button="${escapeHtml(id)}">${escapeHtml(label)}</button>`
+}
+
+function renderPlaceholderPanel(title: string, description: string, metrics: readonly string[]): string {
+    return `
+        <div class="placeholder-card">
+            <div class="placeholder-title">${escapeHtml(title)}</div>
+            <div class="muted">${escapeHtml(description)}</div>
+            <ul class="placeholder-list">
+                ${metrics.map((metric) => `<li>${escapeHtml(metric)}</li>`).join('')}
+            </ul>
+        </div>
+    `
+}
+
+function getStatusClass(status: string, flaky: boolean): string {
+    if (flaky) {
+        return 'status-flaky'
+    }
+
+    const normalizedStatus = status.toLowerCase()
+
+    if (normalizedStatus === 'failed' || normalizedStatus === 'timedout' || normalizedStatus === 'timed out' || normalizedStatus === 'interrupted') {
+        return 'status-failed'
+    }
+
+    if (normalizedStatus === 'passed') {
+        return 'status-passed'
+    }
+
+    if (normalizedStatus === 'skipped') {
+        return 'status-skipped'
+    }
+
+    return 'status-unknown'
+}
+
+function formatStatusLabel(status: string, flaky: boolean): string {
+    if (flaky) {
+        return DASHBOARD_TEXT.statusLabels.flaky
+    }
+
+    const normalizedStatus = status.toLowerCase()
+    return DASHBOARD_TEXT.statusLabels[normalizedStatus as keyof typeof DASHBOARD_TEXT.statusLabels] ?? status
+}
+
+function formatPassRateDelta(delta: number | null): string {
+    if (delta === null) {
+        return DASHBOARD_TEXT.states.noPreviousRun
+    }
+
+    if (delta === 0) {
+        return DASHBOARD_TEXT.states.noChanges
+    }
+
+    const sign = delta > 0 ? '+' : ''
+    return `${sign}${delta.toFixed(1)} п.п. к прошлому прогону`
+}
+
+function formatCountDelta(label: string, delta: number | null): string {
+    if (delta === null) {
+        return DASHBOARD_TEXT.states.noPreviousRun
+    }
+
+    if (delta === 0) {
+        return `Без изменений ${label}`
+    }
+
+    const sign = delta > 0 ? '+' : ''
+    return `${sign}${delta} ${label}`
+}
+
+function formatDurationDelta(delta: number | null): string {
+    if (delta === null) {
+        return DASHBOARD_TEXT.states.noPreviousRun
+    }
+
+    if (delta === 0) {
+        return DASHBOARD_TEXT.states.noChanges
+    }
+
+    const sign = delta > 0 ? '+' : '-'
+    return `${sign}${formatDuration(Math.abs(delta))} к прошлому прогону`
+}
+
+function formatMetricDelta(delta: number | null, type: 'pp' | 'count' | 'duration', inverted: boolean): string {
+    if (delta === null) {
+        return DASHBOARD_TEXT.states.noPreviousRunShort
+    }
+
+    if (delta === 0) {
+        return DASHBOARD_TEXT.states.noChangesShort
+    }
+
+    const arrow = getTrendArrow(delta, inverted)
+
+    if (type === 'pp') {
+        const sign = delta > 0 ? '+' : ''
+        return `${arrow} ${sign}${delta.toFixed(1)} п.п.`
+    }
+
+    if (type === 'count') {
+        const sign = delta > 0 ? '+' : ''
+        return `${arrow} ${sign}${delta}`
+    }
+
+    const sign = delta > 0 ? '+' : '-'
+    return `${arrow} ${sign}${formatDuration(Math.abs(delta))}`
+}
+
+function getTrendArrow(delta: number | null, inverted: boolean): string {
+    if (delta === null || delta === 0) {
+        return '→'
+    }
+
+    if (inverted) {
+        return delta < 0 ? '↑' : '↓'
+    }
+
+    return delta > 0 ? '↑' : '↓'
+}
+
+function formatCommit(commit: string | null): string {
+    if (!commit) {
+        return '—'
+    }
+
+    return commit.slice(0, 8)
+}
+
+function formatRunLabel(run: DashboardSummary['comparison']['currentRun']): string {
+    if (!run) {
+        return '—'
+    }
+
+    const dateLabel = formatDate(run.reportTimestamp ?? run.generatedAt)
+    const branchLabel = run.branch ? ` • ${run.branch}` : ''
+    const commitLabel = run.commit ? ` • ${formatCommit(run.commit)}` : ''
+
+    return `${dateLabel}${branchLabel}${commitLabel}`
+}
+
+function formatCurrency(value: number | null): string {
+    if (value === null) {
+        return '—'
+    }
+
+    return `${value.toFixed(2)} ₽`
+}
+
+function formatMinutes(value: number): string {
+    return `${value.toFixed(2)} мин`
+}
+
+function formatDailyRatio(value: number): string {
+    return `${value.toFixed(2)} / день`
+}
+
+function formatScore(value: number): string {
+    return `${value.toFixed(1)} / 100`
+}
+
+function formatNullableDays(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(2)} дн`
+}
+
+function formatCostAssumptions(summary: DashboardSummary): string {
+    const assumptions = summary.businessMetrics.costOfFlakiness.assumptions
+
+    if (assumptions.ciMinuteCostRub === null && assumptions.developerHourlyCostRub === null) {
+        return DASHBOARD_TEXT.business.assumptionsEmpty
+    }
+
+    return `${DASHBOARD_TEXT.business.ciMinuteCost} ${assumptions.ciMinuteCostRub ?? 0} ₽/мин • ${DASHBOARD_TEXT.business.devHourCost} ${assumptions.developerHourlyCostRub ?? 0} ₽/час • ${DASHBOARD_TEXT.business.analysisMinutes} ${assumptions.analysisMinutesPerUnstable ?? 0} мин/инцидент`
+}
+
+function formatAssumptionValue(value: number | null, unit: string): string {
+    if (value === null) {
+        return DASHBOARD_TEXT.states.notSet
+    }
+
+    return `${value} ${unit}`
+}
+
+function getTrendClass(delta: number | null, inverted: boolean): string {
+    if (delta === null || delta === 0) {
+        return 'trend-neutral'
+    }
+
+    if (inverted) {
+        return delta < 0 ? 'trend-up' : 'trend-down'
+    }
+
+    return delta > 0 ? 'trend-up' : 'trend-down'
+}
+
+function renderFilterSelect(name: 'branch' | 'project' | 'file', label: string, options: string[], selectedValue: string | null): string {
+    return `
+        <label class="filter-field">
+            <span class="filter-label">${escapeHtml(label)}</span>
+            <select class="filter-select" name="${name}">
+                <option value="">${escapeHtml(DASHBOARD_TEXT.filters.all)}</option>
+                ${options.map((option) => `<option value="${escapeHtml(option)}"${option === selectedValue ? ' selected' : ''}>${escapeHtml(option)}</option>`).join('')}
+            </select>
+        </label>
+    `
+}
+
+function buildTestHistoryHref(
+    title: string,
+    filters: { branch?: string | null; project?: string | null; file?: string | null },
+): string {
+    const query = buildQueryString(filters)
+    const basePath = `/test/${encodeURIComponent(title)}`
+    return query ? `${basePath}?${query}` : basePath
+}
+
+function buildQueryString(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {
+    const searchParams = new URLSearchParams()
+
+    if (filters.branch) {
+        searchParams.set('branch', filters.branch)
+    }
+
+    if (filters.project) {
+        searchParams.set('project', filters.project)
+    }
+
+    if (filters.file) {
+        searchParams.set('file', filters.file)
+    }
+
+    return searchParams.toString()
+}
+
+function serializeForInlineScript(value: unknown): string {
+    return JSON.stringify(value)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
+}
+
+function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}

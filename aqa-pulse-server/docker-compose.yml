@@ -1,0 +1,13 @@
+services:
+  aqa-pulse-server:
+    build:
+      context: ..
+      dockerfile: aqa-pulse-server/Dockerfile
+    env_file:
+      - .env.example
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+

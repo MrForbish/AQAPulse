@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log*
+dist
+runtime-data
+data
+.git
+.gitignore
+*.tgz
+

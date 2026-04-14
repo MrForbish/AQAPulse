@@ -1,0 +1,72 @@
+#!/usr/bin/env node
+
+const path = require('node:path')
+
+const [, , command = 'start', ...restArgs] = process.argv
+
+const commandMap = {
+    start: '../dist/server.js',
+    init: '../dist/backend/init-self-hosted.js',
+    'bootstrap-demo': '../dist/backend/bootstrap-demo.js',
+    'sqlite-migrate': '../dist/backend/sqlite-migrate.js',
+    'sqlite-backup': '../dist/backend/sqlite-backup.js',
+}
+
+if (command === '--help' || command === '-h') {
+    printHelp()
+} else if (!commandMap[command]) {
+    console.error(`Неизвестная команда: ${command}`)
+    printHelp()
+    process.exitCode = 1
+} else if (restArgs.includes('--help') || restArgs.includes('-h')) {
+    printCommandHelp(command)
+} else {
+    const entryFile = path.resolve(__dirname, commandMap[command])
+    process.argv = [process.argv[0], entryFile, ...restArgs]
+    require(entryFile)
+}
+
+function printHelp() {
+    console.log('Использование: aqa-pulse-server [start, init, bootstrap-demo, sqlite-migrate, sqlite-backup]')
+    console.log('')
+    console.log('Команды:')
+    console.log('  aqa-pulse-server start')
+    console.log('  aqa-pulse-server init')
+    console.log('  aqa-pulse-server bootstrap-demo')
+    console.log('  aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]')
+    console.log('  aqa-pulse-server sqlite-backup [backupDirectory]')
+    console.log('')
+    console.log('Подсказка: AQA_PULSE_DATA_ROOT и AQA_PULSE_ADMIN_TOKEN задаются через env.')
+}
+
+function printCommandHelp(commandName) {
+    if (commandName === 'start') {
+        console.log('aqa-pulse-server start')
+        console.log('Поднимает self-hosted AQA Pulse server с env-конфигом.')
+        return
+    }
+
+    if (commandName === 'init') {
+        console.log('aqa-pulse-server init')
+        console.log('Создаёт data root, workspaces/, registry.json и legacy директории.')
+        return
+    }
+
+    if (commandName === 'bootstrap-demo') {
+        console.log('aqa-pulse-server bootstrap-demo')
+        console.log('Создаёт demo workspace и ingest sample report в текущий data root.')
+        return
+    }
+
+    if (commandName === 'sqlite-migrate') {
+        console.log('aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]')
+        console.log('Мигрирует file storage data root в SQLite базу для self-hosted режима.')
+        return
+    }
+
+    if (commandName === 'sqlite-backup') {
+        console.log('aqa-pulse-server sqlite-backup [backupDirectory]')
+        console.log('Создаёт timestamped backup текущей SQLite базы в backup directory.')
+    }
+}
+

@@ -1,0 +1,10 @@
+node_modules/
+dist-ts/
+dist/
+history/
+history-real/
+dev-data-runtime/
+*.tgz
+*.pid
+*.log
+

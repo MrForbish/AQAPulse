@@ -565,7 +565,10 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response
             .status(getTestHistoryHtmlStatusCode(payload))
             .type('html')
-            .send(renderTestHistoryHtml(payload, testName, filters))
+            .send(renderTestHistoryHtml(payload, testName, filters, {
+                basePath: `/w/${workspace.slug}`,
+                apiBasePath: `/api/workspaces/${workspace.slug}/test`,
+            }))
     })
 
     app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {

@@ -77,9 +77,14 @@ copyFile(
     path.resolve(distRoot, 'fixtures', 'sample-llm-report.json'),
 )
 
+copyFile(chartAssetSourcePath, chartAssetTargetPath)
+
+verifyWorkspaceHistoryRoutingArtifacts()
+
 console.log('Внутренний пакет aqa-pulse-server собран.')
 console.log(`Источник runtime: ${sourceRoot}`)
 console.log(`Папка пакета: ${distRoot}`)
+console.log(`Chart.js asset: ${chartAssetTargetPath}`)
 
 function copyFileFromSource(relativePath) {
     const sourcePath = path.resolve(sourceRoot, relativePath)
@@ -103,5 +108,50 @@ function cleanDir(dirPath) {
         fs.rmSync(dirPath, { recursive: true, force: true })
     }
     fs.mkdirSync(dirPath, { recursive: true })
+}
+
+function verifyWorkspaceHistoryRoutingArtifacts() {
+    const compiledAppPath = path.resolve(sourceRoot, 'backend', 'app.js')
+    const compiledHistoryRendererPath = path.resolve(sourceRoot, 'render-test-history.js')
+    const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
+    const compiledHistoryRenderer = fs.readFileSync(compiledHistoryRendererPath, 'utf8')
+
+    assertIncludes(
+        compiledApp,
+        ".send((0, render_test_history_1.renderTestHistoryHtml)(payload, testName, filters, {",
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledApp,
+        "basePath: `/w/${workspace.slug}`",
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledApp,
+        "apiBasePath: `/api/workspaces/${workspace.slug}/test`",
+        compiledAppPath,
+    )
+
+    assertIncludes(
+        compiledHistoryRenderer,
+        'const normalizedBasePath = normalizeBasePath(options.basePath);',
+        compiledHistoryRendererPath,
+    )
+    assertIncludes(
+        compiledHistoryRenderer,
+        'const normalizedApiBasePath = normalizeBasePath(options.apiBasePath);',
+        compiledHistoryRendererPath,
+    )
+    assertIncludes(
+        compiledHistoryRenderer,
+        'const dashboardHref = buildDashboardHref(normalizedFilters, normalizedBasePath);',
+        compiledHistoryRendererPath,
+    )
+}
+
+function assertIncludes(value, expectedFragment, filePath) {
+    if (!value.includes(expectedFragment)) {
+        throw new Error(`Собранный runtime не содержит ожидаемый фрагмент в ${filePath}: ${expectedFragment}`)
+    }
 }
 

@@ -549,7 +549,10 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     app.get('/w/:slug', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
-        response.type('html').send(renderDashboardHtml(store.getFilteredSummary(getFiltersFromRequest(request))))
+        response.type('html').send(renderDashboardHtml(
+            store.getFilteredSummary(getFiltersFromRequest(request)),
+            { basePath: `/w/${workspace.slug}` },
+        ))
     })
 
     app.get('/w/:slug/test/:name', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {

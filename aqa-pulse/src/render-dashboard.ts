@@ -11,7 +11,15 @@ import { ru } from './shared/i18n/ru'
 const DASHBOARD_TEXT = ru.dashboard
 const METRIC_DESCRIPTIONS = DASHBOARD_TEXT.tooltips
 
-export function renderDashboardHtml(summary: DashboardSummary): string {
+export function renderDashboardHtml(
+    summary: DashboardSummary,
+    options: {
+        basePath?: string
+    } = {},
+): string {
+    const normalizedBasePath = normalizeDashboardBasePath(options.basePath)
+    const dashboardActionPath = normalizedBasePath || '/'
+    const testDetailsBasePath = normalizedBasePath ? `${normalizedBasePath}/test` : '/test'
     const previousRunLabel = formatRunLabel(summary.comparison.previousRun)
     const notesMarkup = summary.notes.length > 0
         ? summary.notes.map((note) => `<div class="list-item">${escapeHtml(note)}</div>`).join('')
@@ -498,13 +506,13 @@ export function renderDashboardHtml(summary: DashboardSummary): string {
                     <span class="meta-badge">${escapeHtml(DASHBOARD_TEXT.filters.file.toLowerCase())}: ${escapeHtml(summary.filters.file ?? DASHBOARD_TEXT.filters.all)}</span>
                 </div>
             </div>
-            <form class="filters-form" method="get" action="/">
+            <form class="filters-form" method="get" action="${escapeHtml(dashboardActionPath)}">
                 ${renderFilterSelect('branch', DASHBOARD_TEXT.filters.branch, summary.availableFilters.branches, summary.filters.branch)}
                 ${renderFilterSelect('project', DASHBOARD_TEXT.filters.project, summary.availableFilters.projects, summary.filters.project)}
                 ${renderFilterSelect('file', DASHBOARD_TEXT.filters.file, summary.availableFilters.files, summary.filters.file)}
                 <div class="filter-actions">
                     <button class="action-button" type="submit">${escapeHtml(DASHBOARD_TEXT.filters.apply)}</button>
-                    <a class="action-link" href="/">${escapeHtml(DASHBOARD_TEXT.filters.reset)}</a>
+                    <a class="action-link" href="${escapeHtml(dashboardActionPath)}">${escapeHtml(DASHBOARD_TEXT.filters.reset)}</a>
                 </div>
             </form>
         </div>
@@ -672,7 +680,7 @@ export function renderDashboardHtml(summary: DashboardSummary): string {
                     </thead>
                     <tbody>
                         ${summary.performance.slowestTests.length > 0
-                            ? summary.performance.slowestTests.map((test) => renderSlowTestRow(test, summary.filters)).join('')
+                            ? summary.performance.slowestTests.map((test) => renderSlowTestRow(test, summary.filters, testDetailsBasePath)).join('')
                             : `<tr><td colspan="6">${escapeHtml(DASHBOARD_TEXT.states.slowTestsEmpty)}</td></tr>`}
                     </tbody>
                 </table>
@@ -707,7 +715,7 @@ export function renderDashboardHtml(summary: DashboardSummary): string {
                     </thead>
                     <tbody>
                         ${summary.topProblematicTests.length > 0
-                            ? summary.topProblematicTests.map((test) => renderProblematicTestRow(test, summary.filters)).join('')
+                            ? summary.topProblematicTests.map((test) => renderProblematicTestRow(test, summary.filters, testDetailsBasePath)).join('')
                             : `<tr><td colspan="7">${escapeHtml(DASHBOARD_TEXT.states.problematicTestsEmpty)}</td></tr>`}
                     </tbody>
                 </table>
@@ -729,7 +737,7 @@ export function renderDashboardHtml(summary: DashboardSummary): string {
                     </thead>
                     <tbody>
                         ${summary.flakyAnalytics.topFlakyTests.length > 0
-                            ? summary.flakyAnalytics.topFlakyTests.map((test) => renderFlakyTestRow(test, summary.filters)).join('')
+                            ? summary.flakyAnalytics.topFlakyTests.map((test) => renderFlakyTestRow(test, summary.filters, testDetailsBasePath)).join('')
                             : `<tr><td colspan="7">${escapeHtml(DASHBOARD_TEXT.states.flakyTestsEmpty)}</td></tr>`}
                     </tbody>
                 </table>
@@ -1355,14 +1363,14 @@ export function renderDashboardHtml(summary: DashboardSummary): string {
 </html>`
 }
 
-function renderProblematicTestRow(test: DashboardProblematicTest, filters: DashboardSummary['filters']): string {
+function renderProblematicTestRow(test: DashboardProblematicTest, filters: DashboardSummary['filters'], testDetailsBasePath: string): string {
     const statusClass = getStatusClass(test.status, test.flaky)
     const flakyLabel = test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no
     const testHref = buildTestHistoryHref(test.title, {
         branch: filters.branch,
         project: test.project,
         file: test.file,
-    })
+    }, testDetailsBasePath)
 
     return `
         <tr>
@@ -1377,12 +1385,12 @@ function renderProblematicTestRow(test: DashboardProblematicTest, filters: Dashb
     `
 }
 
-function renderFlakyTestRow(test: DashboardFlakyTestMetric, filters: DashboardSummary['filters']): string {
+function renderFlakyTestRow(test: DashboardFlakyTestMetric, filters: DashboardSummary['filters'], testDetailsBasePath: string): string {
     const testHref = buildTestHistoryHref(test.title, {
         branch: filters.branch,
         project: test.project,
         file: test.file,
-    })
+    }, testDetailsBasePath)
 
     return `
         <tr>
@@ -1397,12 +1405,12 @@ function renderFlakyTestRow(test: DashboardFlakyTestMetric, filters: DashboardSu
     `
 }
 
-function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['filters']): string {
+function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['filters'], testDetailsBasePath: string): string {
     const testHref = buildTestHistoryHref(test.title, {
         branch: filters.branch,
         project: test.project,
         file: test.file,
-    })
+    }, testDetailsBasePath)
 
     return `
         <tr>
@@ -1644,10 +1652,25 @@ function renderFilterSelect(name: 'branch' | 'project' | 'file', label: string, 
 function buildTestHistoryHref(
     title: string,
     filters: { branch?: string | null; project?: string | null; file?: string | null },
+    testDetailsBasePath: string,
 ): string {
     const query = buildQueryString(filters)
-    const basePath = `/test/${encodeURIComponent(title)}`
+    const basePath = `${testDetailsBasePath}/${encodeURIComponent(title)}`
     return query ? `${basePath}?${query}` : basePath
+}
+
+function normalizeDashboardBasePath(basePath: string | undefined): string {
+    if (typeof basePath !== 'string') {
+        return ''
+    }
+
+    const trimmedValue = basePath.trim()
+
+    if (!trimmedValue || trimmedValue === '/') {
+        return ''
+    }
+
+    return trimmedValue.endsWith('/') ? trimmedValue.slice(0, -1) : trimmedValue
 }
 
 function buildQueryString(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {

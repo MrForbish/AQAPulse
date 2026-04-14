@@ -154,8 +154,14 @@ Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/dev/b
 $apiKey = "<workspace-api-key>"
 $report = Get-Content ".\fixtures\sample-llm-report.json" -Raw
 
+$apiKeyLogin = Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" `
+  -ContentType "application/json" `
+  -Body (@{ token = $apiKey } | ConvertTo-Json) |
+  Select-Object -ExpandProperty Content |
+  ConvertFrom-Json
+
 Invoke-WebRequest -Method Post -UseBasicParsing "http://127.0.0.1:3000/api/workspaces/demo/ingestions" `
-  -Headers @{ Authorization = "Bearer $apiKey" } `
+  -Headers @{ Authorization = "Bearer $($apiKeyLogin.accessToken)" } `
   -ContentType "application/json" `
   -Body (@{
     report = ($report | ConvertFrom-Json)

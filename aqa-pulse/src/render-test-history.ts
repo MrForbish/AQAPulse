@@ -29,16 +29,24 @@ interface HistoryPageFilters {
     file?: string
 }
 
+interface HistoryPageOptions {
+    basePath?: string
+    apiBasePath?: string
+}
+
 export function renderTestHistoryHtml(
     payload: TestHistoryResponse | TestHistoryConflict | null,
     requestedTitle: string,
     filters: HistoryPageFilters = {},
+    options: HistoryPageOptions = {},
 ): string {
     const normalizedFilters = {
         branch: normalizeOptionalFilter(filters.branch),
         project: normalizeOptionalFilter(filters.project),
         file: normalizeOptionalFilter(filters.file),
     }
+    const normalizedBasePath = normalizeBasePath(options.basePath)
+    const normalizedApiBasePath = normalizeBasePath(options.apiBasePath)
 
     if (!payload) {
         return renderStatePage({
@@ -48,6 +56,8 @@ export function renderTestHistoryHtml(
             toneClass: 'status-failed',
             message: HISTORY_TEXT.statePages.notFound.message,
             filters: normalizedFilters,
+            basePath: normalizedBasePath,
+            apiBasePath: normalizedApiBasePath,
             extraContent: `<div class="muted">${escapeHtml(HISTORY_TEXT.statePages.notFound.extra)}</div>`,
         })
     }
@@ -60,7 +70,7 @@ export function renderTestHistoryHtml(
                         branch: normalizedFilters.branch,
                         project: candidate.project,
                         file: candidate.file,
-                    }))}">${escapeHtml(candidate.title)}</a></div>
+                    }, normalizedBasePath))}">${escapeHtml(candidate.title)}</a></div>
                     <div class="muted">${escapeHtml(formatTemplate(HISTORY_TEXT.candidatesMeta, {
                         project: candidate.project,
                         file: candidate.file,
@@ -76,16 +86,18 @@ export function renderTestHistoryHtml(
             toneClass: 'status-flaky',
             message: payload.message,
             filters: normalizedFilters,
+            basePath: normalizedBasePath,
+            apiBasePath: normalizedApiBasePath,
             extraContent: `<div class="candidate-list">${candidatesHtml}</div>`,
         })
     }
 
-    const dashboardHref = buildDashboardHref(normalizedFilters)
+    const dashboardHref = buildDashboardHref(normalizedFilters, normalizedBasePath)
     const apiHref = buildApiTestHistoryHref(payload.test.title, {
         branch: normalizedFilters.branch,
         project: payload.test.project,
         file: payload.test.file,
-    })
+    }, normalizedApiBasePath)
     const latestStatusClass = payload.latestRun ? getStatusClass(payload.latestRun.status, payload.latestRun.flaky) : 'status-unknown'
     const latestUnstableEventHtml = renderLatestUnstableEvent(payload.history)
     const previousUnstableEventsHtml = renderPreviousUnstableEvents(payload.history)
@@ -612,10 +624,12 @@ function renderStatePage(options: {
     toneClass: string
     message: string
     filters: { branch: string | null; project: string | null; file: string | null }
+    basePath: string
+    apiBasePath: string
     extraContent?: string
 }): string {
-    const dashboardHref = buildDashboardHref(options.filters)
-    const apiHref = buildApiTestHistoryHref(options.title, options.filters)
+    const dashboardHref = buildDashboardHref(options.filters, options.basePath)
+    const apiHref = buildApiTestHistoryHref(options.title, options.filters, options.apiBasePath)
 
     return `<!DOCTYPE html>
 <html lang="ru">
@@ -674,27 +688,35 @@ function renderStatePage(options: {
 </html>`
 }
 
-function buildDashboardHref(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {
+function buildDashboardHref(
+    filters: { branch?: string | null; project?: string | null; file?: string | null },
+    basePath: string,
+): string {
     const query = buildQueryString(filters)
-    return query ? `/?${query}` : '/'
+    const normalizedBasePath = basePath || '/'
+    return query ? `${normalizedBasePath}?${query}` : normalizedBasePath
 }
 
 function buildTestHistoryHref(
     title: string,
     filters: { branch?: string | null; project?: string | null; file?: string | null },
+    basePath: string,
 ): string {
     const query = buildQueryString(filters)
-    const basePath = `/test/${encodeURIComponent(title)}`
-    return query ? `${basePath}?${query}` : basePath
+    const testHistoryBasePath = basePath ? `${basePath}/test` : '/test'
+    const testHistoryHref = `${testHistoryBasePath}/${encodeURIComponent(title)}`
+    return query ? `${testHistoryHref}?${query}` : testHistoryHref
 }
 
 function buildApiTestHistoryHref(
     title: string,
     filters: { branch?: string | null; project?: string | null; file?: string | null },
+    basePath: string,
 ): string {
     const query = buildQueryString(filters)
-    const basePath = `/api/test/${encodeURIComponent(title)}`
-    return query ? `${basePath}?${query}` : basePath
+    const apiTestHistoryBasePath = basePath || '/api/test'
+    const apiTestHistoryHref = `${apiTestHistoryBasePath}/${encodeURIComponent(title)}`
+    return query ? `${apiTestHistoryHref}?${query}` : apiTestHistoryHref
 }
 
 function buildQueryString(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {
@@ -717,6 +739,20 @@ function buildQueryString(filters: { branch?: string | null; project?: string | 
 
 function normalizeOptionalFilter(value: string | undefined): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function normalizeBasePath(value: string | undefined): string {
+    if (typeof value !== 'string') {
+        return ''
+    }
+
+    const trimmedValue = value.trim()
+
+    if (!trimmedValue || trimmedValue === '/') {
+        return ''
+    }
+
+    return trimmedValue.endsWith('/') ? trimmedValue.slice(0, -1) : trimmedValue
 }
 
 function getStatusClass(status: string, flaky: boolean): string {

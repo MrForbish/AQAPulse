@@ -216,6 +216,18 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         })
         assert(typeof summaryPayload === 'object' && summaryPayload !== null, 'workspace summary должен возвращать JSON payload.')
 
+        const sampleTestTitle = report.tests?.[0]?.title
+        assert(typeof sampleTestTitle === 'string' && sampleTestTitle.length > 0, 'fixture report должен содержать хотя бы один тест с title.')
+
+        const workspaceHistoryHtml = await fetchText(`${baseUrl}/w/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, {
+            headers: {
+                accept: 'text/html',
+                authorization: `Bearer ${workspaceJsonLogin.accessToken}`,
+            },
+        })
+        assertIncludes(workspaceHistoryHtml, `href="/w/${workspaceSlug}"`, 'workspace history back link')
+        assertIncludes(workspaceHistoryHtml, `href="/api/workspaces/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, 'workspace history api link')
+
         const workspaceHtmlViaJwt = await fetchText(`${baseUrl}/w/${workspaceSlug}`, {
             headers: {
                 accept: 'text/html',

@@ -1,7 +1,7 @@
 export const ru = {
     dashboard: {
-        title: 'AQA Pulse — наблюдаемость Playwright',
-        badge: 'Наблюдаемость Playwright',
+        title: 'AQA Pulse — Observability Playwright',
+        badge: 'Observability Playwright',
         sourceHint: 'Отдельный модуль в корне репозитория • визуально повторяет стиль dashboard.html • источник:',
         generatedAt: 'Отчёт построен',
         runTime: 'Время прогона',
@@ -20,7 +20,7 @@ export const ru = {
             description: 'Фильтрация работает через query-параметры и сразу влияет на сводку, историю и ссылки детализации.',
             branch: 'Ветка',
             project: 'Проект',
-            file: 'Файл',
+            file: 'Спека',
             apply: 'Применить',
             reset: 'Сбросить',
             all: 'Все',
@@ -259,14 +259,14 @@ export const ru = {
     },
     testHistory: {
         titleSuffix: 'история теста',
-        headerEyebrow: 'Наблюдаемость Playwright • страница истории теста',
+        headerEyebrow: 'Observability Playwright • страница истории теста',
         headerDescription: 'История конкретного теста по архиву запусков. Источник данных — серверный маршрут поверх существующего API.',
         backToDashboard: '← Назад к дашборду',
         openJson: 'Открыть JSON',
         filters: {
             branch: 'ветка',
             project: 'проект',
-            file: 'файл',
+            file: 'спека',
             all: 'Все',
         },
         candidatesMeta: 'проект: {project} • файл: {file}',

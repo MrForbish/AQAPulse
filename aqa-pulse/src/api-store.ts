@@ -80,6 +80,39 @@ export interface TestHistoryAttemptDetail {
     steps: TestHistoryStep[]
 }
 
+export type TestHistoryIncidentCategory = 'network' | 'timeout' | 'selector' | 'assertion' | 'auth' | 'infrastructure' | 'unknown'
+
+export type TestHistoryIncidentSeverity = 'active' | 'monitoring' | 'resolved'
+
+export type TestHistoryIncidentConfidence = 'high' | 'medium' | 'low'
+
+export interface TestHistoryIncidentSummary {
+    severity: TestHistoryIncidentSeverity
+    category: TestHistoryIncidentCategory
+    confidence: TestHistoryIncidentConfidence
+    summary: string
+    evidence: string[]
+    unstableRuns: number
+    matchingRuns: number
+    affectedAttempts: number
+    firstSeenAt: string | null
+    latestSeenAt: string | null
+    latestRecoveryAt: string | null
+    latestErrorMessage: string | null
+}
+
+interface IncidentSignalBundle {
+    corpus: string
+    normalizedErrorMessages: string[]
+    stepCategories: string[]
+    stepTitles: string[]
+    attachmentHints: string[]
+    hasContextAttachment: boolean
+    hasTraceAttachment: boolean
+    hasHarAttachment: boolean
+    signalSources: number
+}
+
 export interface TestHistoryResponse {
     test: {
         title: string
@@ -97,6 +130,7 @@ export interface TestHistoryResponse {
         mtbfDays: number | null
     }
     latestRun: TestHistoryItem | null
+    incidentSummary: TestHistoryIncidentSummary | null
     history: TestHistoryItem[]
     missingRuns: string[]
 }
@@ -376,6 +410,7 @@ export class ApiStore {
                 mtbfDays,
             },
             latestRun: historyItems[0] ?? null,
+            incidentSummary: buildIncidentSummary(historyItems),
             history: historyItems,
             missingRuns,
         }
@@ -754,6 +789,262 @@ function calculateApiMtbfDays(historyItems: TestHistoryItem[]): number | null {
     }
 
     return roundToTwoDigits(intervals.reduce((accumulator, value) => accumulator + value, 0) / intervals.length)
+}
+
+function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncidentSummary | null {
+    const unstableItems = historyItems.filter(isUnstableHistoryItem)
+
+    if (unstableItems.length === 0) {
+        return null
+    }
+
+    const latestRun = historyItems[0] ?? null
+    const latestUnstable = unstableItems[0]
+    const latestRelevantAttempt = [...latestUnstable.attemptDetails]
+        .reverse()
+        .find((attempt) => isUnstableStatus(attempt.status) || Boolean(attempt.errorMessage))
+        ?? latestUnstable.attemptDetails[latestUnstable.attemptDetails.length - 1]
+        ?? null
+
+    const latestSignals = collectIncidentSignals(latestUnstable)
+    const latestErrorMessage = latestRelevantAttempt?.errorMessage ?? latestUnstable.errorMessage ?? null
+    const category = classifyIncidentCategory(latestSignals)
+    const matchingRuns = unstableItems.filter((item) => classifyIncidentCategory(collectIncidentSignals(item)) === category)
+    const latestRecovery = historyItems.find((item) => getHistoryItemTime(item) < getHistoryItemTime(latestUnstable) && !isUnstableHistoryItem(item)) ?? null
+    const severity: TestHistoryIncidentSeverity = !latestRun
+        ? 'monitoring'
+        : isUnstableHistoryItem(latestRun)
+            ? (latestRun.flaky ? 'monitoring' : 'active')
+            : 'resolved'
+    const affectedAttempts = latestUnstable.attemptDetails.filter((attempt) => isUnstableStatus(attempt.status) || Boolean(attempt.errorMessage)).length
+    const confidence = getIncidentConfidence(category, matchingRuns.length, affectedAttempts, latestSignals)
+
+    return {
+        severity,
+        category,
+        confidence,
+        summary: buildIncidentNarrative(category, severity, latestSignals, matchingRuns.length),
+        evidence: buildIncidentEvidence({
+            latestUnstable,
+            matchingRuns,
+            latestRecovery,
+            latestSignals,
+            affectedAttempts,
+        }),
+        unstableRuns: unstableItems.length,
+        matchingRuns: matchingRuns.length,
+        affectedAttempts,
+        firstSeenAt: matchingRuns.length > 0 ? getItemTimestamp(matchingRuns[matchingRuns.length - 1]) : getItemTimestamp(latestUnstable),
+        latestSeenAt: getItemTimestamp(latestUnstable),
+        latestRecoveryAt: latestRecovery ? getItemTimestamp(latestRecovery) : null,
+        latestErrorMessage,
+    }
+}
+
+function buildIncidentNarrative(
+    category: TestHistoryIncidentCategory,
+    severity: TestHistoryIncidentSeverity,
+    latestSignals: IncidentSignalBundle,
+    matchingRunsCount: number,
+): string {
+    const categoryLabel = getIncidentCategoryLabel(category)
+    const statePrefix = severity === 'active'
+        ? 'Проблема остаётся активной.'
+        : severity === 'monitoring'
+            ? 'Инцидент пока не выглядит полностью закрытым.'
+            : 'Последний похожий инцидент уже восстановился.'
+    const recurrence = matchingRunsCount > 1
+        ? ` Паттерн повторялся ${matchingRunsCount} раза.`
+        : ' Пока это выглядит как единичный эпизод.'
+    const evidenceHint = latestSignals.hasContextAttachment
+        ? ' Есть `error-context.md` с дополнительным контекстом.'
+        : latestSignals.hasTraceAttachment
+            ? ' Есть trace или визуальные артефакты для детального разбора.'
+            : ''
+    const messagePart = latestSignals.normalizedErrorMessages[0]
+        ? ` Основной сигнал: ${latestSignals.normalizedErrorMessages[0]}.`
+        : ''
+
+    return `${statePrefix} Вероятная причина: ${categoryLabel}.${recurrence}${messagePart}${evidenceHint}`
+}
+
+function buildIncidentEvidence(input: {
+    latestUnstable: TestHistoryItem
+    matchingRuns: TestHistoryItem[]
+    latestRecovery: TestHistoryItem | null
+    latestSignals: IncidentSignalBundle
+    affectedAttempts: number
+}): string[] {
+    const evidence: string[] = []
+
+    if (input.latestSignals.normalizedErrorMessages[0]) {
+        evidence.push(`Последний сигнал: ${input.latestSignals.normalizedErrorMessages[0]}`)
+    }
+
+    evidence.push(`В последнем нестабильном запуске задеты попытки: ${input.affectedAttempts} из ${input.latestUnstable.attempts}.`)
+
+    if (input.latestSignals.stepCategories.length > 0) {
+        evidence.push(`Шаги вокруг инцидента: ${input.latestSignals.stepCategories.slice(0, 3).join(', ')}.`)
+    }
+
+    if (input.latestSignals.attachmentHints.length > 0) {
+        evidence.push(`Артефакты для разбора: ${input.latestSignals.attachmentHints.slice(0, 3).join(', ')}.`)
+    }
+
+    if (input.latestSignals.hasContextAttachment) {
+        evidence.push('Есть error-context.md: у инцидента уже сохранён текстовый контекст падения.')
+    }
+
+    if (input.matchingRuns.length > 1) {
+        evidence.push(`Похожий сбой встречался в ${input.matchingRuns.length} нестабильных прогонах.`)
+    }
+
+    if (input.latestRecovery) {
+        evidence.push(`После инцидента был зафиксирован стабильный запуск: ${input.latestRecovery.reportTimestamp ?? input.latestRecovery.generatedAt}.`)
+    }
+
+    return evidence
+}
+
+function getIncidentConfidence(
+    category: TestHistoryIncidentCategory,
+    matchingRunsCount: number,
+    affectedAttempts: number,
+    latestSignals: IncidentSignalBundle,
+): TestHistoryIncidentConfidence {
+    if (category !== 'unknown' && ((matchingRunsCount >= 2 || affectedAttempts >= 2) && latestSignals.signalSources >= 2)) {
+        return 'high'
+    }
+
+    if (category !== 'unknown' || latestSignals.normalizedErrorMessages.length > 0 || latestSignals.attachmentHints.length > 0) {
+        return 'medium'
+    }
+
+    return 'low'
+}
+
+function classifyIncidentCategory(signals: IncidentSignalBundle): TestHistoryIncidentCategory {
+    const message = signals.corpus
+
+    if (!message) {
+        return 'unknown'
+    }
+
+    if (/unauthor|forbidden|session|token|login|auth|refresh/i.test(message)) {
+        return 'auth'
+    }
+
+    if (/strict mode violation|locator|selector|resolved to \d+ elements|not attached/i.test(message)) {
+        return 'selector'
+    }
+
+    if (/err_connection|econn|socket|gateway|network|fetch|dns|enotfound|eai_again|reset|har|response status/i.test(message)) {
+        return 'network'
+    }
+
+    if (/timeout|timed out|waiting for|exceeded|slow/i.test(message)) {
+        return 'timeout'
+    }
+
+    if (/expect\(|tobe|tohave|assert|mismatch|received:/i.test(message)) {
+        return 'assertion'
+    }
+
+    if (/browser has been closed|target page, context or browser has been closed|worker process|sigterm|enomem|epipe|crash|detached/i.test(message)) {
+        return 'infrastructure'
+    }
+
+    return 'unknown'
+}
+
+function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {
+    const normalizedErrorMessages = unique(
+        [item.errorMessage, ...item.attemptDetails.map((attempt) => attempt.errorMessage)]
+            .filter((message): message is string => typeof message === 'string' && message.trim().length > 0)
+            .map(normalizeIncidentMessage),
+    )
+    const stepCategories = unique(
+        item.attemptDetails
+            .flatMap((attempt) => attempt.steps)
+            .map((step) => step.category ?? step.title)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map((value) => value.trim()),
+    )
+    const stepTitles = unique(
+        item.attemptDetails
+            .flatMap((attempt) => attempt.steps)
+            .map((step) => step.title)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map((value) => value.trim()),
+    )
+    const attachmentHints = unique(
+        item.attemptDetails
+            .flatMap((attempt) => attempt.attachments)
+            .map((attachment) => attachment.name ?? attachment.path ?? attachment.url ?? null)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map((value) => value.trim()),
+    )
+    const lowerAttachmentHints = attachmentHints.map((hint) => hint.toLowerCase())
+    const hasContextAttachment = lowerAttachmentHints.some((hint) => hint.includes('error-context.md'))
+    const hasTraceAttachment = lowerAttachmentHints.some((hint) => hint.includes('trace') || hint.includes('screenshot') || hint.includes('video'))
+    const hasHarAttachment = lowerAttachmentHints.some((hint) => hint.includes('.har') || hint.includes('har'))
+    const sourceCount = Number(normalizedErrorMessages.length > 0) + Number(stepCategories.length > 0 || stepTitles.length > 0) + Number(attachmentHints.length > 0)
+
+    return {
+        corpus: [
+            ...normalizedErrorMessages,
+            ...stepCategories,
+            ...stepTitles,
+            ...attachmentHints,
+        ].join(' ').toLowerCase(),
+        normalizedErrorMessages,
+        stepCategories,
+        stepTitles,
+        attachmentHints,
+        hasContextAttachment,
+        hasTraceAttachment,
+        hasHarAttachment,
+        signalSources: sourceCount,
+    }
+}
+
+function unique(values: string[]): string[] {
+    return [...new Set(values)]
+}
+
+function getIncidentCategoryLabel(category: TestHistoryIncidentCategory): string {
+    switch (category) {
+        case 'network':
+            return 'сетевой сбой или нестабильность внешнего ответа'
+        case 'timeout':
+            return 'таймаут или слишком медленный ответ'
+        case 'selector':
+            return 'нестабильный селектор или конфликт locator-логики'
+        case 'assertion':
+            return 'ошибка ожидания или assert-проверки'
+        case 'auth':
+            return 'авторизация или сессия'
+        case 'infrastructure':
+            return 'инфраструктура раннера или окружения'
+        default:
+            return 'неоднозначный сигнал'
+    }
+}
+
+function normalizeIncidentMessage(message: string): string {
+    return message.replace(/\s+/g, ' ').trim().slice(0, 220)
+}
+
+function getItemTimestamp(item: TestHistoryItem): string | null {
+    return item.reportTimestamp ?? item.generatedAt ?? null
+}
+
+function isUnstableHistoryItem(item: TestHistoryItem): boolean {
+    return item.flaky || isUnstableStatus(item.status) || Boolean(item.errorMessage)
+}
+
+function isUnstableStatus(status: string): boolean {
+    return status === 'failed' || status === 'timedout' || status === 'interrupted'
 }
 
 function roundToOneDigit(value: number): number {

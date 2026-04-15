@@ -99,6 +99,7 @@ export function renderTestHistoryHtml(
         file: payload.test.file,
     }, normalizedApiBasePath)
     const latestStatusClass = payload.latestRun ? getStatusClass(payload.latestRun.status, payload.latestRun.flaky) : 'status-unknown'
+    const incidentSummaryHtml = renderIncidentSummary(payload.incidentSummary)
     const latestUnstableEventHtml = renderLatestUnstableEvent(payload.history)
     const previousUnstableEventsHtml = renderPreviousUnstableEvents(payload.history)
     const latestStableRecoveryHtml = renderLatestStableRecovery(payload.history)
@@ -168,6 +169,17 @@ export function renderTestHistoryHtml(
         .event-list-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
         .event-list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
         .event-list-description { color: #c9d1d9; font-size: 12px; line-height: 1.45; }
+        .incident-card { padding: 16px; margin-bottom: 24px; background: linear-gradient(180deg, rgba(88, 166, 255, 0.08) 0%, #161b22 100%); }
+        .incident-card.is-active { border-color: rgba(248, 81, 73, 0.42); background: linear-gradient(180deg, rgba(248, 81, 73, 0.12) 0%, #161b22 100%); }
+        .incident-card.is-monitoring { border-color: rgba(210, 153, 34, 0.42); background: linear-gradient(180deg, rgba(210, 153, 34, 0.12) 0%, #161b22 100%); }
+        .incident-card.is-resolved { border-color: rgba(63, 185, 80, 0.42); background: linear-gradient(180deg, rgba(63, 185, 80, 0.12) 0%, #161b22 100%); }
+        .incident-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+        .incident-kpi { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: rgba(13, 17, 23, 0.7); }
+        .incident-kpi-label { color: #8b949e; font-size: 11px; margin-bottom: 6px; }
+        .incident-kpi-value { color: #ffffff; font-size: 15px; font-weight: 600; line-height: 1.4; }
+        .incident-evidence-list { display: grid; gap: 8px; margin-top: 12px; }
+        .incident-evidence-item { padding: 10px 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: #c9d1d9; font-size: 12px; line-height: 1.5; }
+        .incident-message { margin-top: 12px; }
         .diagnostics-shell { display: grid; gap: 12px; margin-bottom: 24px; }
         .diagnostics-card { padding: 16px; }
         .diagnostics-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -220,8 +232,8 @@ export function renderTestHistoryHtml(
         .test-link:hover { text-decoration: underline; }
         .candidate-list { display: grid; gap: 12px; }
         .candidate-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
-        @media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (max-width: 768px) { .summary-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1100px) { .summary-grid, .incident-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 768px) { .summary-grid, .incident-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -286,6 +298,8 @@ export function renderTestHistoryHtml(
             </div>
         </div>
 
+        ${incidentSummaryHtml}
+
         ${latestUnstableEventHtml}
 
         ${previousUnstableEventsHtml}
@@ -327,6 +341,50 @@ export function renderTestHistoryHtml(
     </div>
 </body>
 </html>`
+}
+
+function renderIncidentSummary(incidentSummary: TestHistoryResponse['incidentSummary']): string {
+    if (!incidentSummary) {
+        return ''
+    }
+
+    return `
+        <div class="notice-inline incident-card is-${escapeHtml(incidentSummary.severity)}">
+            <div class="event-title">
+                ${renderMetricHeading(HISTORY_TEXT.incident.title, HISTORY_TEXT.incident.tooltip, { className: 'inline-heading', tagName: 'div' })}
+                <span class="status-badge ${getIncidentStatusClass(incidentSummary.severity)}">${escapeHtml(HISTORY_TEXT.incident.severity[incidentSummary.severity])}</span>
+            </div>
+            <div class="event-body">${escapeHtml(incidentSummary.summary)}</div>
+            <div class="incident-grid">
+                <div class="incident-kpi">
+                    <div class="incident-kpi-label">${escapeHtml(HISTORY_TEXT.incident.categoryLabel)}</div>
+                    <div class="incident-kpi-value">${escapeHtml(HISTORY_TEXT.incident.category[incidentSummary.category])}</div>
+                </div>
+                <div class="incident-kpi">
+                    <div class="incident-kpi-label">${escapeHtml(HISTORY_TEXT.incident.confidenceLabel)}</div>
+                    <div class="incident-kpi-value">${escapeHtml(HISTORY_TEXT.incident.confidence[incidentSummary.confidence])}</div>
+                </div>
+                <div class="incident-kpi">
+                    <div class="incident-kpi-label">${escapeHtml(HISTORY_TEXT.incident.unstableRunsLabel)}</div>
+                    <div class="incident-kpi-value">${incidentSummary.unstableRuns}</div>
+                </div>
+                <div class="incident-kpi">
+                    <div class="incident-kpi-label">${escapeHtml(HISTORY_TEXT.incident.matchingRunsLabel)}</div>
+                    <div class="incident-kpi-value">${incidentSummary.matchingRuns}</div>
+                </div>
+            </div>
+            <div class="event-meta">
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.firstSeenLabel)}: ${escapeHtml(incidentSummary.firstSeenAt ? formatDate(incidentSummary.firstSeenAt) : '—')}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.latestSeenLabel)}: ${escapeHtml(incidentSummary.latestSeenAt ? formatDate(incidentSummary.latestSeenAt) : '—')}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.recoveryLabel)}: ${escapeHtml(incidentSummary.latestRecoveryAt ? formatDate(incidentSummary.latestRecoveryAt) : '—')}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.attemptsLabel)}: ${incidentSummary.affectedAttempts}</span>
+            </div>
+            ${incidentSummary.latestErrorMessage ? `<div class="incident-message mono">${escapeHtml(incidentSummary.latestErrorMessage)}</div>` : ''}
+            <div class="incident-evidence-list">
+                ${incidentSummary.evidence.map((item) => `<div class="incident-evidence-item">${escapeHtml(item)}</div>`).join('')}
+            </div>
+        </div>
+    `
 }
 
 function renderTestHistoryRow(item: TestHistoryResponse['history'][number]): string {
@@ -974,6 +1032,18 @@ function getStatusClass(status: string, flaky: boolean): string {
     }
 
     return 'status-unknown'
+}
+
+function getIncidentStatusClass(severity: 'active' | 'monitoring' | 'resolved'): string {
+    if (severity === 'active') {
+        return 'status-failed'
+    }
+
+    if (severity === 'monitoring') {
+        return 'status-flaky'
+    }
+
+    return 'status-passed'
 }
 
 function formatStatusLabel(status: string, flaky: boolean): string {

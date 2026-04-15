@@ -302,11 +302,6 @@ export function renderDashboardHtml(
             margin-bottom: 16px;
             color: #ffffff;
         }
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-        }
         .manager-summary-card {
             padding: 20px;
             margin-bottom: 24px;
@@ -471,24 +466,6 @@ export function renderDashboardHtml(
         }
         .manager-blocker-link:hover {
             text-decoration: underline;
-        }
-        .comparison-item {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 12px;
-        }
-        .comparison-label {
-            font-size: 12px;
-            color: #8b949e;
-            margin-bottom: 6px;
-        }
-        .comparison-value {
-            font-size: 22px;
-            font-weight: 600;
-            color: #a9d8ff;
-            text-shadow: 0 0 14px rgba(88, 166, 255, 0.1);
-            margin-bottom: 4px;
         }
         .tests-browser-card {
             padding: 20px;
@@ -1222,7 +1199,6 @@ export function renderDashboardHtml(
             }
             .business-kpi-grid,
             .business-details-grid,
-            .comparison-grid,
             .assumptions-grid,
             .business-signal-grid,
             .formula-grid,
@@ -1234,8 +1210,7 @@ export function renderDashboardHtml(
             .filters-form,
             .kpi-grid,
             .business-kpi-grid,
-            .charts-grid-2,
-            .comparison-grid {
+            .charts-grid-2 {
                 grid-template-columns: 1fr;
             }
             .status-drilldown-grid {
@@ -1342,39 +1317,9 @@ export function renderDashboardHtml(
         <section class="tab-panel is-active" data-tab-panel="overview">
             ${renderManagerOverview(summary, dashboardActionPath)}
 
-            <div class="charts-grid-2">
-                <div class="chart-card">
-                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.latestVsPrevious, METRIC_DESCRIPTIONS.latestVsPrevious)}</div>
-                    <div class="comparison-grid">
-                        <div class="comparison-item">
-                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRate, METRIC_DESCRIPTIONS.passRate)}</div>
-                            <div class="comparison-value">${escapeHtml(formatPercent(summary.kpis.passRate))}</div>
-                            <div class="${getTrendClass(summary.trend.passRateDelta, false)}">${escapeHtml(formatMetricDelta(summary.trend.passRateDelta, 'pp', false))}</div>
-                        </div>
-                        <div class="comparison-item">
-                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.failures, METRIC_DESCRIPTIONS.failedTests)}</div>
-                            <div class="comparison-value">${summary.kpis.failedTests}</div>
-                            <div class="${getTrendClass(summary.trend.failedTestsDelta, true)}">${escapeHtml(formatMetricDelta(summary.trend.failedTestsDelta, 'count', true))}</div>
-                        </div>
-                        <div class="comparison-item">
-                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.flakyShort, METRIC_DESCRIPTIONS.flakyTests)}</div>
-                            <div class="comparison-value">${summary.kpis.flakyTests}</div>
-                            <div class="${getTrendClass(summary.trend.flakyTestsDelta, true)}">${escapeHtml(formatMetricDelta(summary.trend.flakyTestsDelta, 'count', true))}</div>
-                        </div>
-                        <div class="comparison-item">
-                            <div class="comparison-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.duration, METRIC_DESCRIPTIONS.runDuration)}</div>
-                            <div class="comparison-value">${escapeHtml(formatDuration(summary.kpis.totalDurationMs))}</div>
-                            <div class="${getTrendClass(summary.trend.durationMsDelta, true)}">${escapeHtml(formatMetricDelta(summary.trend.durationMsDelta, 'duration', true))}</div>
-                        </div>
-                    </div>
-                    <div class="muted" style="margin-top: 16px;">
-                        Текущий: ${escapeHtml(formatRunLabel(summary.comparison.currentRun))} • Предыдущий: ${escapeHtml(formatRunLabel(summary.comparison.previousRun))}
-                    </div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRateTrend, METRIC_DESCRIPTIONS.passRateTrend)}</div>
-                    <canvas id="passRateTrendChart"></canvas>
-                </div>
+            <div class="chart-card" style="margin-bottom: 24px;">
+                <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRateTrend, METRIC_DESCRIPTIONS.passRateTrend)}</div>
+                <canvas id="passRateTrendChart"></canvas>
             </div>
 
             <div class="chart-card" style="margin-bottom: 24px;">
@@ -3009,6 +2954,9 @@ function renderManagerOverview(summary: DashboardSummary, dashboardActionPath: s
             <div class="chart-card">
                 <div class="chart-title">${escapeHtml(DASHBOARD_TEXT.manager.changesTitle)}</div>
                 <div class="muted">${escapeHtml(DASHBOARD_TEXT.manager.changesDescription)}</div>
+                <div class="muted" style="margin-top: 8px;">${escapeHtml(DASHBOARD_TEXT.manager.changesRunsMeta
+                    .replace('{current}', formatRunLabel(summary.comparison.currentRun))
+                    .replace('{previous}', formatRunLabel(summary.comparison.previousRun)))}</div>
                 <div class="manager-change-list">
                     ${summary.managerSummary.changes.length > 0
                         ? summary.managerSummary.changes.map((change) => renderManagerChange(change)).join('')

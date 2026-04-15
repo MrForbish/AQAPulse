@@ -120,6 +120,26 @@ export function renderTestHistoryHtml(
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #3d444d #161b22;
+        }
+        *::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        *::-webkit-scrollbar-track {
+            background: #161b22;
+            border-radius: 999px;
+        }
+        *::-webkit-scrollbar-thumb {
+            background: #3d444d;
+            border: 2px solid #161b22;
+            border-radius: 999px;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background: #57606a;
+        }
         .page-shell { max-width: 1440px; margin: 0 auto; }
         .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
         .page-title { font-size: 30px; font-weight: 600; color: #ffffff; margin-bottom: 10px; }
@@ -163,7 +183,7 @@ export function renderTestHistoryHtml(
         .attempt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .attempt-title { font-size: 13px; font-weight: 600; color: #ffffff; }
         .attempt-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-        .attempt-body { padding: 0 12px 12px; max-height: 320px; overflow: auto; scrollbar-gutter: stable; border-top: 1px solid #21262d; }
+        .attempt-body { padding: 0 12px 12px; max-height: min(640px, 70vh); overflow: auto; scrollbar-gutter: stable; border-top: 1px solid #21262d; }
         .attempt-section-title { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
         .attempt-error { margin-top: 8px; }
         .attempt-explainer { color: #8b949e; font-size: 12px; line-height: 1.5; margin-bottom: 12px; }
@@ -171,7 +191,7 @@ export function renderTestHistoryHtml(
         .attempt-step-group[open] { border-color: rgba(88, 166, 255, 0.22); }
         .attempt-step-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
         .attempt-step-summary::-webkit-details-marker { display: none; }
-        .attempt-step-body { max-height: 220px; overflow: auto; padding: 0 10px 10px; scrollbar-gutter: stable; }
+        .attempt-step-body { max-height: min(360px, 42vh); overflow: auto; padding: 0 10px 10px; scrollbar-gutter: stable; }
         .step-list, .attachment-list { display: grid; gap: 8px; }
         .step-item, .attachment-item { padding: 10px 12px; border-radius: 8px; background: #161b22; border: 1px solid #21262d; }
         .step-item-header, .attachment-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }

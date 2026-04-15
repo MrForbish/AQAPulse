@@ -66,6 +66,26 @@ export function renderDashboardHtml(
             color: #c9d1d9;
             padding: 24px;
         }
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #3d444d #161b22;
+        }
+        *::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        *::-webkit-scrollbar-track {
+            background: #161b22;
+            border-radius: 999px;
+        }
+        *::-webkit-scrollbar-thumb {
+            background: #3d444d;
+            border: 2px solid #161b22;
+            border-radius: 999px;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background: #57606a;
+        }
         .dashboard {
             max-width: 1600px;
             margin: 0 auto;

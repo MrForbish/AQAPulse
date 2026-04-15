@@ -7,11 +7,9 @@ import {
     type DashboardRunMetadata,
     type ReporterAttachment,
     type ReporterRoot,
-    writeJsonFile,
 } from '../dashboard-utils'
 import {
     appendHistoryEntry,
-    archiveHistoryRun,
     buildHistoryEntryId,
 } from '../history-utils'
 import type { IngestionResult, WorkspaceDescriptor } from './contracts'
@@ -138,33 +136,89 @@ function copyAttachmentToArtifactStore(options: {
     attachmentIndex: number
 }) {
     const attachmentPath = typeof options.attachment.path === 'string' ? options.attachment.path.trim() : ''
+    const inlineContentBase64 = typeof options.attachment.inlineContentBase64 === 'string'
+        ? options.attachment.inlineContentBase64.trim()
+        : ''
+    const inlineContentEncoding = typeof options.attachment.inlineContentEncoding === 'string'
+        ? options.attachment.inlineContentEncoding.trim().toLowerCase()
+        : ''
 
-    if (!attachmentPath || /^https?:\/\//i.test(attachmentPath)) {
-        return options.attachment
-    }
-
-    const sourcePath = resolveAttachmentSourcePath(attachmentPath, options.reportDirectory)
-
-    if (!sourcePath || !fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+    if ((!attachmentPath || /^https?:\/\//i.test(attachmentPath)) && !inlineContentBase64) {
         return options.attachment
     }
 
     fs.mkdirSync(options.runArtifactsDirectory, { recursive: true })
 
-    const fileExtension = path.extname(sourcePath)
     const attachmentName = typeof options.attachment.name === 'string' && options.attachment.name.trim().length > 0
         ? options.attachment.name.trim()
-        : path.basename(sourcePath)
+        : path.basename(attachmentPath || `attachment-${options.attachmentIndex + 1}`)
+    const sourcePath = resolveAttachmentSourcePath(attachmentPath, options.reportDirectory)
+    const fileExtension = sourcePath
+        ? path.extname(sourcePath)
+        : path.extname(attachmentName) || inferExtensionFromContentType(options.attachment.contentType)
     const fileBaseName = sanitizeArtifactSegment(path.basename(attachmentName, path.extname(attachmentName)) || `attachment-${options.attachmentIndex + 1}`)
     const targetFileName = `${String(options.attemptIndex + 1).padStart(2, '0')}-${String(options.attachmentIndex + 1).padStart(2, '0')}-${fileBaseName}${fileExtension || path.extname(attachmentName)}`
     const targetPath = path.join(options.runArtifactsDirectory, targetFileName)
 
-    fs.copyFileSync(sourcePath, targetPath)
+    if (inlineContentBase64) {
+        if (inlineContentEncoding !== '' && inlineContentEncoding !== 'base64') {
+            return options.attachment
+        }
+
+        fs.writeFileSync(targetPath, Buffer.from(inlineContentBase64, 'base64'))
+    } else {
+        if (!sourcePath || !fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+            return options.attachment
+        }
+
+        fs.copyFileSync(sourcePath, targetPath)
+    }
+
+    const {
+        inlineContentBase64: _inlineContentBase64,
+        inlineContentEncoding: _inlineContentEncoding,
+        inlineContentSizeBytes: _inlineContentSizeBytes,
+        ...attachmentWithoutInlineContent
+    } = options.attachment
 
     return {
-        ...options.attachment,
+        ...attachmentWithoutInlineContent,
         path: toPosixPath(path.relative(path.dirname(options.runArtifactsDirectory), targetPath)),
     }
+}
+
+function inferExtensionFromContentType(contentType: string | undefined): string {
+    const normalizedType = typeof contentType === 'string' ? contentType.trim().toLowerCase() : ''
+
+    if (normalizedType === 'image/png') {
+        return '.png'
+    }
+
+    if (normalizedType === 'image/jpeg') {
+        return '.jpg'
+    }
+
+    if (normalizedType === 'image/webp') {
+        return '.webp'
+    }
+
+    if (normalizedType === 'image/gif') {
+        return '.gif'
+    }
+
+    if (normalizedType === 'image/svg+xml') {
+        return '.svg'
+    }
+
+    if (normalizedType === 'image/bmp') {
+        return '.bmp'
+    }
+
+    if (normalizedType.includes('markdown')) {
+        return '.md'
+    }
+
+    return ''
 }
 
 function resolveReportDirectory(sourceFile: string): string | null {

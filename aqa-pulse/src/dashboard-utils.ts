@@ -57,6 +57,9 @@ export interface ReporterAttachment {
     contentType?: string
     path?: string
     url?: string
+    inlineContentBase64?: string
+    inlineContentEncoding?: 'base64' | string
+    inlineContentSizeBytes?: number
 }
 
 export interface ReporterStep {

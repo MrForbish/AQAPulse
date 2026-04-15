@@ -3,9 +3,8 @@ import * as path from 'node:path'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ApiStore, type ApiFilters } from '../api-store'
 import { buildDashboardSummary, type ReporterRoot } from '../dashboard-utils'
+import { injectFrontendBootstrap, type FrontendBootstrapData } from '../frontend-bootstrap'
 import { createEmptyHistory } from '../history-utils'
-import { renderDashboardHtml } from '../render-dashboard'
-import { renderTestHistoryHtml } from '../render-test-history'
 import { getErrorMessage } from '../shared/error-utils'
 import {
     type AdminDashboardActionResult,
@@ -47,10 +46,16 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     })
     const distPath = config.distPath
     const distAssetsPath = path.resolve(distPath, './assets')
+    const frontendDistPath = path.resolve(distPath, './web')
+    const frontendTemplatePath = path.resolve(frontendDistPath, './index.html')
+    const frontendTemplate = fs.existsSync(frontendTemplatePath)
+        ? fs.readFileSync(frontendTemplatePath, 'utf8')
+        : null
 
     app.use(express.json({ limit: config.requestBodyLimit }))
     app.use(express.urlencoded({ extended: true, limit: config.requestBodyLimit }))
     app.use('/assets', express.static(distAssetsPath))
+    app.use('/ui-assets', express.static(frontendDistPath))
     app.use('/static', express.static(distPath))
     app.use('/w/:slug/assets', express.static(distAssetsPath))
 
@@ -394,7 +399,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     })
 
     app.get('/', (request: Request, response: Response) => {
-        response.type('html').send(renderDashboardHtml(defaultStore.getFilteredSummary(getFiltersFromRequest(request))))
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'dashboard', workspaceSlug: null },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: defaultStore.getFilteredSummary(getFiltersFromRequest(request)),
+            initialTestHistoryPayload: null,
+        })
     })
 
     app.get('/api/health', (_request: Request, response: Response) => {
@@ -442,10 +452,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const filters = getTestHistoryFiltersFromRequest(request)
         const payload = defaultStore.getTestHistory(testName, filters)
 
-        response
-            .status(getTestHistoryHtmlStatusCode(payload))
-            .type('html')
-            .send(renderTestHistoryHtml(payload, testName, filters, { artifactBasePath: '/api/artifacts' }))
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'test-history', workspaceSlug: null, testName },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: null,
+            initialTestHistoryPayload: payload,
+        }, getTestHistoryHtmlStatusCode(payload))
     })
 
     app.get('/api/test/:name', (request: Request, response: Response) => {
@@ -555,10 +567,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     app.get('/w/:slug', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
-        response.type('html').send(renderDashboardHtml(
-            store.getFilteredSummary(getFiltersFromRequest(request)),
-            { basePath: `/w/${workspace.slug}` },
-        ))
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'dashboard', workspaceSlug: workspace.slug },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: store.getFilteredSummary(getFiltersFromRequest(request)),
+            initialTestHistoryPayload: null,
+        })
     })
 
     app.get('/w/:slug/test/:name', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
@@ -568,14 +582,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const filters = getTestHistoryFiltersFromRequest(request)
         const payload = store.getTestHistory(testName, filters)
 
-        response
-            .status(getTestHistoryHtmlStatusCode(payload))
-            .type('html')
-            .send(renderTestHistoryHtml(payload, testName, filters, {
-                basePath: `/w/${workspace.slug}`,
-                apiBasePath: `/api/workspaces/${workspace.slug}/test`,
-                artifactBasePath: `/api/workspaces/${workspace.slug}/artifacts`,
-            }))
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'test-history', workspaceSlug: workspace.slug, testName },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: null,
+            initialTestHistoryPayload: payload,
+        }, getTestHistoryHtmlStatusCode(payload))
     })
 
     app.get('/api/workspaces/:slug/artifacts/:runId', workspaceResolver, workspaceUserGuard, (_request: Request, response: Response) => {
@@ -683,6 +695,20 @@ function isPayloadTooLargeError(error: unknown): boolean {
         || maybeError.status === 413
         || maybeError.statusCode === 413
         || maybeError.message === 'request entity too large'
+}
+
+function sendFrontendShell(
+    response: Response,
+    htmlTemplate: string | null,
+    bootstrap: FrontendBootstrapData,
+    statusCode = 200,
+): void {
+    if (!htmlTemplate) {
+        response.status(503).type('html').send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>AQA Pulse UI unavailable</title></head><body><h1>React frontend не собран</h1><p>Запусти compile/build для aqa-pulse, чтобы получить dist/web/index.html.</p></body></html>`)
+        return
+    }
+
+    response.status(statusCode).type('html').send(injectFrontendBootstrap(htmlTemplate, bootstrap))
 }
 
 function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage): ApiStore {

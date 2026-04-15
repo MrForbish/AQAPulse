@@ -17,9 +17,9 @@
     - сохраняет историю запусков в `dist/history.json`;
     - показывает тренд `Pass Rate` и дельты к предыдущему прогону;
 - генерирует `dist/dashboard-data.json`;
-- собирает статический `dist/index.html` из текущего dashboard renderer;
+- собирает React-based static shell `dist/index.html` и web bundle в `dist/web`;
 - показывает dashboard по табам категорий метрик: `Обзор`, `Производительность`, `Flaky-аналитика`, `Качество кода тестов`, `Бизнес-метрики`, `Командные метрики`, `AI / ML`;
-- рендерит server-side drill-down страницу истории конкретного теста;
+- открывает dashboard и историю теста через React frontend поверх существующих API `/api/summary` и `/api/test/:name`;
 - показывает info icon / tooltip с описанием ключевых метрик;
 - использует общий helper `src/render-metric-info.ts` для tooltip'ов и заголовков метрик в dashboard и на drill-down странице теста;
 - поддерживает каскадные фильтры `branch -> project -> file` в UI и query params.
@@ -260,8 +260,8 @@ npm run api
 - `AQA_PULSE_STORAGE_DRIVER` — storage backend: `file`, `sqlite` или `postgres`;
 - `AQA_PULSE_SQLITE_PATH` — путь к sqlite-файлу для self-hosted SQLite режима;
 - `AQA_PULSE_POSTGRES_URL` — connection string для Postgres режима;
-- `AQA_PULSE_DIST_PATH` — legacy summary/static HTML для root dashboard;
-- `AQA_PULSE_ARCHIVE_PATH` — legacy archive runs для root API/drill-down;
+- `AQA_PULSE_DIST_PATH` — папка root UI-артефактов: `dashboard-data.json`, `index.html`, `web/**/*` и runtime assets;
+- `AQA_PULSE_ARCHIVE_PATH` — архив прогонов для root API и истории тестов;
 - `AQA_PULSE_ADMIN_TOKEN` — защита admin routes (`/api/workspaces*`, `/api/dev/bootstrap`);
 - `AQA_PULSE_JWT_SECRET` — секрет подписи admin/workspace JWT, если нужен отдельный secret;
 - `AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS` — TTL JWT/cookie в секундах;

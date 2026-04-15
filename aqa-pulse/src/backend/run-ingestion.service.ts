@@ -12,7 +12,6 @@ import {
     appendHistoryEntry,
     buildHistoryEntryId,
 } from '../history-utils'
-import { normalizeOptionalText } from '../shared/text-utils'
 import type { IngestionResult, WorkspaceDescriptor } from './contracts'
 import type { WorkspaceRunStorage } from './storage'
 
@@ -97,7 +96,7 @@ function materializeReportArtifacts(options: {
 
     let hasCopiedArtifacts = false
 
-    const tests = (options.report.tests ?? []).map((test) => ({
+    const tests = (options.report.tests ?? []).map((test, testIndex) => ({
         ...test,
         attempts: (test.attempts ?? []).map((attempt, attemptIndex) => ({
             ...attempt,
@@ -106,6 +105,7 @@ function materializeReportArtifacts(options: {
                     attachment,
                     reportDirectory,
                     runArtifactsDirectory,
+                    testIndex,
                     attemptIndex,
                     attachmentIndex,
                 })
@@ -133,6 +133,7 @@ function copyAttachmentToArtifactStore(options: {
     attachment: ReporterAttachment
     reportDirectory: string | null
     runArtifactsDirectory: string
+    testIndex: number
     attemptIndex: number
     attachmentIndex: number
 }) {
@@ -158,7 +159,7 @@ function copyAttachmentToArtifactStore(options: {
         ? path.extname(sourcePath)
         : path.extname(attachmentName) || inferExtensionFromContentType(options.attachment.contentType)
     const fileBaseName = sanitizeArtifactSegment(path.basename(attachmentName, path.extname(attachmentName)) || `attachment-${options.attachmentIndex + 1}`)
-    const targetFileName = `${String(options.attemptIndex + 1).padStart(2, '0')}-${String(options.attachmentIndex + 1).padStart(2, '0')}-${fileBaseName}${fileExtension || path.extname(attachmentName)}`
+    const targetFileName = `${String(options.testIndex + 1).padStart(4, '0')}-${String(options.attemptIndex + 1).padStart(2, '0')}-${String(options.attachmentIndex + 1).padStart(2, '0')}-${fileBaseName}${fileExtension || path.extname(attachmentName)}`
     const targetPath = path.join(options.runArtifactsDirectory, targetFileName)
 
     if (inlineContentBase64) {
@@ -275,4 +276,7 @@ function buildDefaultSourceFile(workspaceSlug: string, report: ReporterRoot): st
     return `saas://${workspaceSlug}/ingestions/${timestamp}`
 }
 
+function normalizeOptionalText(value: string | null | undefined): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
 

@@ -39,12 +39,13 @@
   },
   "files": [
     "dist-ts/**/*",
+    "dist/web/**/*",
     "bin/**/*",
     "README.md"
   ],
   "scripts": {
     "parse": "ts-node src/parser.ts",
-    "build": "ts-node src/build-dashboard.ts",
+    "build": "npm run frontend:build && ts-node src/build-dashboard.ts",
     "api": "ts-node src/server.ts",
     "api:demo": "npm run generate:history-demo && npm run api",
     "saas:demo": "ts-node src/backend/bootstrap-demo.ts",
@@ -56,8 +57,10 @@
     "generate": "npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
     "generate:history-demo": "npm run parse -- ./fixtures/sample-llm-report-previous.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit abcdef123456 --author \"QA Bot\" && npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit fedcba654321 --author \"QA Bot\" && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
     "clean:package": "node -e \"const fs=require('fs'); if(fs.existsSync('dist-ts')) fs.rmSync('dist-ts',{recursive:true,force:true});\"",
-    "compile": "npm run clean:package && tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "frontend:build": "vite build",
+    "frontend:dev": "vite",
+    "compile": "npm run clean:package && tsc -p tsconfig.json && npm run frontend:build",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.frontend.json --noEmit",
     "smoke": "node -e \"const fs=require('fs'); ['dist','history'].forEach((dir)=>{ if(fs.existsSync(dir)) fs.rmSync(dir,{recursive:true,force:true}); });\" && npm run generate:history-demo && npm run typecheck",
     "prepack": "npm run compile",
     "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse является внутренним и не предназначен для публикации. Публикуй только aqa-pulse-client.'); process.exit(1)\"",
@@ -68,11 +71,18 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^24.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vite": "^8.0.8"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.1"
   }
 }

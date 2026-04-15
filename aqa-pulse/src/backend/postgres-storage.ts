@@ -14,6 +14,7 @@ import {
 } from '../history-utils'
 import type { WorkspacePaths, WorkspaceRegistrySnapshot } from './contracts'
 import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './storage'
+import { getWorkspacePathsFromDataRoot, resolveWorkspaceDataRoot } from './workspace-paths'
 
 const REGISTRY_SCHEMA_VERSION = 1
 
@@ -50,9 +51,9 @@ export class PostgresWorkspaceRegistryStorage implements WorkspaceRegistryStorag
 export class PostgresWorkspaceRunStorage implements WorkspaceRunStorage, DashboardReadStorage {
     readonly paths: WorkspacePaths
 
-    constructor(private readonly connectionString: string, private readonly workspaceSlug: string) {
+    constructor(private readonly connectionString: string, private readonly workspaceSlug: string, dataRoot = resolveWorkspaceDataRoot()) {
         ensureSchema(connectionString)
-        this.paths = buildPostgresWorkspacePaths(connectionString, workspaceSlug)
+        this.paths = buildPostgresWorkspacePaths(connectionString, workspaceSlug, dataRoot)
     }
 
     readSummary(): DashboardSummary {
@@ -142,7 +143,7 @@ export class PostgresWorkspaceRunStorage implements WorkspaceRunStorage, Dashboa
 export class PostgresBackendStorage {
     readonly registry: PostgresWorkspaceRegistryStorage
 
-    constructor(public readonly connectionString: string) {
+    constructor(public readonly connectionString: string, private readonly dataRoot = resolveWorkspaceDataRoot()) {
         this.registry = new PostgresWorkspaceRegistryStorage(connectionString)
     }
 
@@ -151,7 +152,7 @@ export class PostgresBackendStorage {
     }
 
     getWorkspaceStorage(slug: string): PostgresWorkspaceRunStorage {
-        return new PostgresWorkspaceRunStorage(this.connectionString, slug)
+        return new PostgresWorkspaceRunStorage(this.connectionString, slug, this.dataRoot)
     }
 }
 
@@ -267,8 +268,9 @@ function buildRunDirectoryKey(value: string): string {
         .replace(/^-+|-+$/g, '') || 'run'
 }
 
-function buildPostgresWorkspacePaths(connectionString: string, slug: string): WorkspacePaths {
+function buildPostgresWorkspacePaths(connectionString: string, slug: string, dataRoot: string): WorkspacePaths {
     const baseUri = connectionString.replace(/\s+/g, '')
+    const fileSystemPaths = getWorkspacePathsFromDataRoot(slug, dataRoot)
 
     return {
         rootPath: `${baseUri}#workspace=${slug}`,
@@ -277,6 +279,7 @@ function buildPostgresWorkspacePaths(connectionString: string, slug: string): Wo
         historyPath: `${baseUri}#workspace=${slug}/dist/history.json`,
         archiveRootPath: `${baseUri}#workspace=${slug}/history`,
         rawReportsPath: `${baseUri}#workspace=${slug}/raw-reports`,
+        artifactsPath: fileSystemPaths.artifactsPath,
     }
 }
 

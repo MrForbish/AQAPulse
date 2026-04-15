@@ -1,8 +1,10 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
     buildAdvancedMetrics,
     buildDashboardSummary,
     type DashboardRunMetadata,
+    type ReporterAttachment,
     type ReporterRoot,
     writeJsonFile,
 } from '../dashboard-utils'
@@ -20,6 +22,7 @@ export function ingestReporterRun(options: {
     report: ReporterRoot
     metadata?: Partial<DashboardRunMetadata>
     sourceFile?: string
+    artifactsPath?: string
 }): IngestionResult {
     const runMetadata: DashboardRunMetadata = {
         branch: normalizeOptionalText(options.metadata?.branch),
@@ -53,12 +56,19 @@ export function ingestReporterRun(options: {
         errorClusterCount: summaryWithoutHistory.kpis.errorClusterCount,
     }
 
-    options.storage.persistRawReport(nextHistoryEntry.id, options.report)
+    const reportWithArtifacts = materializeReportArtifacts({
+        report: options.report,
+        runId: nextHistoryEntry.id,
+        sourceFile,
+        artifactsPath: options.artifactsPath ?? options.storage.paths.artifactsPath,
+    })
+
+    options.storage.persistRawReport(nextHistoryEntry.id, reportWithArtifacts)
 
     const history = appendHistoryEntry(options.storage.readHistory(), nextHistoryEntry)
-    const archivedRun = options.storage.archiveRun(options.report, nextHistoryEntry)
-    const advancedMetrics = buildAdvancedMetrics(options.report, history.runs, options.storage.paths.archiveRootPath)
-    const dashboardSummary = buildDashboardSummary(options.report, sourceFile, history.runs, runMetadata, advancedMetrics)
+    const archivedRun = options.storage.archiveRun(reportWithArtifacts, nextHistoryEntry)
+    const advancedMetrics = buildAdvancedMetrics(reportWithArtifacts, history.runs, options.storage.paths.archiveRootPath)
+    const dashboardSummary = buildDashboardSummary(reportWithArtifacts, sourceFile, history.runs, runMetadata, advancedMetrics)
 
     options.storage.writeSummary(dashboardSummary)
     options.storage.writeHistory(history)
@@ -72,6 +82,134 @@ export function ingestReporterRun(options: {
         sourceFile,
         summaryGeneratedAt: dashboardSummary.generatedAt,
     }
+}
+
+function materializeReportArtifacts(options: {
+    report: ReporterRoot
+    runId: string
+    sourceFile: string
+    artifactsPath: string
+}): ReporterRoot {
+    const reportDirectory = resolveReportDirectory(options.sourceFile)
+    const runDirectoryName = buildArtifactRunDirectoryName(options.runId)
+    const runArtifactsDirectory = path.join(options.artifactsPath, runDirectoryName)
+
+    let hasCopiedArtifacts = false
+
+    const tests = (options.report.tests ?? []).map((test) => ({
+        ...test,
+        attempts: (test.attempts ?? []).map((attempt, attemptIndex) => ({
+            ...attempt,
+            attachments: (attempt.attachments ?? []).map((attachment, attachmentIndex) => {
+                const copiedAttachment = copyAttachmentToArtifactStore({
+                    attachment,
+                    reportDirectory,
+                    runArtifactsDirectory,
+                    attemptIndex,
+                    attachmentIndex,
+                })
+
+                if (copiedAttachment !== attachment) {
+                    hasCopiedArtifacts = true
+                }
+
+                return copiedAttachment
+            }),
+        })),
+    }))
+
+    if (!hasCopiedArtifacts) {
+        return options.report
+    }
+
+    return {
+        ...options.report,
+        tests,
+    }
+}
+
+function copyAttachmentToArtifactStore(options: {
+    attachment: ReporterAttachment
+    reportDirectory: string | null
+    runArtifactsDirectory: string
+    attemptIndex: number
+    attachmentIndex: number
+}) {
+    const attachmentPath = typeof options.attachment.path === 'string' ? options.attachment.path.trim() : ''
+
+    if (!attachmentPath || /^https?:\/\//i.test(attachmentPath)) {
+        return options.attachment
+    }
+
+    const sourcePath = resolveAttachmentSourcePath(attachmentPath, options.reportDirectory)
+
+    if (!sourcePath || !fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+        return options.attachment
+    }
+
+    fs.mkdirSync(options.runArtifactsDirectory, { recursive: true })
+
+    const fileExtension = path.extname(sourcePath)
+    const attachmentName = typeof options.attachment.name === 'string' && options.attachment.name.trim().length > 0
+        ? options.attachment.name.trim()
+        : path.basename(sourcePath)
+    const fileBaseName = sanitizeArtifactSegment(path.basename(attachmentName, path.extname(attachmentName)) || `attachment-${options.attachmentIndex + 1}`)
+    const targetFileName = `${String(options.attemptIndex + 1).padStart(2, '0')}-${String(options.attachmentIndex + 1).padStart(2, '0')}-${fileBaseName}${fileExtension || path.extname(attachmentName)}`
+    const targetPath = path.join(options.runArtifactsDirectory, targetFileName)
+
+    fs.copyFileSync(sourcePath, targetPath)
+
+    return {
+        ...options.attachment,
+        path: toPosixPath(path.relative(path.dirname(options.runArtifactsDirectory), targetPath)),
+    }
+}
+
+function resolveReportDirectory(sourceFile: string): string | null {
+    if (!sourceFile || sourceFile.startsWith('saas://')) {
+        return null
+    }
+
+    const resolvedPath = path.isAbsolute(sourceFile)
+        ? sourceFile
+        : path.resolve(process.cwd(), sourceFile)
+
+    if (!fs.existsSync(resolvedPath)) {
+        return null
+    }
+
+    const stats = fs.statSync(resolvedPath)
+    return stats.isDirectory() ? resolvedPath : path.dirname(resolvedPath)
+}
+
+function resolveAttachmentSourcePath(attachmentPath: string, reportDirectory: string | null): string | null {
+    if (path.isAbsolute(attachmentPath)) {
+        return attachmentPath
+    }
+
+    if (!reportDirectory) {
+        return null
+    }
+
+    return path.resolve(reportDirectory, attachmentPath)
+}
+
+function buildArtifactRunDirectoryName(runId: string): string {
+    return runId
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'run'
+}
+
+function sanitizeArtifactSegment(value: string): string {
+    return value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'artifact'
+}
+
+function toPosixPath(value: string): string {
+    return value.replace(/\\/g, '/')
 }
 
 

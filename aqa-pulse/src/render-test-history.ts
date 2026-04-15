@@ -32,6 +32,7 @@ interface HistoryPageFilters {
 interface HistoryPageOptions {
     basePath?: string
     apiBasePath?: string
+    artifactBasePath?: string
 }
 
 export function renderTestHistoryHtml(
@@ -47,6 +48,7 @@ export function renderTestHistoryHtml(
     }
     const normalizedBasePath = normalizeBasePath(options.basePath)
     const normalizedApiBasePath = normalizeBasePath(options.apiBasePath)
+    const normalizedArtifactBasePath = normalizeBasePath(options.artifactBasePath)
 
     if (!payload) {
         return renderStatePage({
@@ -105,7 +107,7 @@ export function renderTestHistoryHtml(
     const latestStableRecoveryHtml = renderLatestStableRecovery(payload.history)
     const currentStabilityStreakHtml = renderCurrentStabilityStreak(payload.history)
     const unstableStreakBeforeRecoveryHtml = renderUnstableStreakBeforeRecovery(payload.history)
-    const attemptDiagnosticsHtml = renderAttemptDiagnostics(payload.history)
+    const attemptDiagnosticsHtml = renderAttemptDiagnostics(payload.history, normalizedArtifactBasePath)
     const missingRunsHtml = payload.missingRuns.length > 0
         ? `<div class="notice-inline">${renderMetricHeading(HISTORY_TEXT.metrics.archiveGaps, METRIC_DESCRIPTIONS.archiveGaps, { className: 'inline-heading', tagName: 'div' })}<div class="mono">${escapeHtml(payload.missingRuns.join(', '))}</div></div>`
         : ''
@@ -210,6 +212,15 @@ export function renderTestHistoryHtml(
         .step-title, .attachment-title { color: #ffffff; font-size: 12px; font-weight: 500; }
         .attachment-link { color: #58a6ff; text-decoration: none; font-size: 12px; }
         .attachment-link:hover { text-decoration: underline; }
+        .attachment-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+        .attachment-preview { margin-top: 10px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; overflow: hidden; }
+        .attachment-preview[open] { border-color: rgba(88, 166, 255, 0.28); }
+        .attachment-preview-summary { padding: 10px 12px; cursor: pointer; list-style: none; color: #c9d1d9; font-size: 12px; font-weight: 500; }
+        .attachment-preview-summary::-webkit-details-marker { display: none; }
+        .attachment-preview-body { padding: 0 12px 12px; }
+        .attachment-image-preview { display: block; width: 100%; max-width: 100%; max-height: min(420px, 52vh); object-fit: contain; border-radius: 8px; border: 1px solid #21262d; background: #010409; }
+        .attachment-markdown-preview { max-height: min(360px, 42vh); overflow: auto; padding: 12px; border-radius: 8px; border: 1px solid #21262d; background: #010409; color: #c9d1d9; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+        .attachment-preview-loading, .attachment-preview-error { padding: 10px 12px; border-radius: 8px; border: 1px solid #21262d; background: #010409; color: #8b949e; font-size: 12px; line-height: 1.5; }
         ${METRIC_INFO_STYLES}
         .inline-heading { font-size: 13px; color: #ffffff; margin-bottom: 10px; }
         .notice-inline { padding: 14px 16px; margin-bottom: 24px; }
@@ -339,6 +350,62 @@ export function renderTestHistoryHtml(
             </table>
         </div>
     </div>
+    <script>
+        (() => {
+            const markdownPreviews = document.querySelectorAll('[data-markdown-preview]')
+
+            async function loadMarkdownPreview(container) {
+                if (!(container instanceof HTMLElement)) {
+                    return
+                }
+
+                const state = container.dataset.state
+                if (state === 'loading' || state === 'loaded') {
+                    return
+                }
+
+                const href = container.dataset.previewHref
+                const content = container.querySelector('[data-markdown-content]')
+                const loading = container.querySelector('[data-markdown-loading]')
+                const error = container.querySelector('[data-markdown-error]')
+
+                if (!(content instanceof HTMLElement) || !(loading instanceof HTMLElement) || !(error instanceof HTMLElement) || !href) {
+                    return
+                }
+
+                container.dataset.state = 'loading'
+                loading.hidden = false
+                error.hidden = true
+
+                try {
+                    const response = await fetch(href, { credentials: 'same-origin' })
+
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status)
+                    }
+
+                    const text = await response.text()
+                    content.textContent = text
+                    content.hidden = false
+                    loading.hidden = true
+                    error.hidden = true
+                    container.dataset.state = 'loaded'
+                } catch {
+                    loading.hidden = true
+                    error.hidden = false
+                    container.dataset.state = 'error'
+                }
+            }
+
+            markdownPreviews.forEach((preview) => {
+                preview.addEventListener('toggle', () => {
+                    if (preview instanceof HTMLDetailsElement && preview.open) {
+                        void loadMarkdownPreview(preview)
+                    }
+                })
+            })
+        })()
+    </script>
 </body>
 </html>`
 }
@@ -582,7 +649,7 @@ function renderUnstableStreakBeforeRecovery(history: TestHistoryResponse['histor
     `
 }
 
-function renderAttemptDiagnostics(history: TestHistoryResponse['history']): string {
+function renderAttemptDiagnostics(history: TestHistoryResponse['history'], artifactBasePath: string): string {
     if (history.length === 0) {
         return ''
     }
@@ -592,11 +659,11 @@ function renderAttemptDiagnostics(history: TestHistoryResponse['history']): stri
     const cards: string[] = []
 
     if (latestRun) {
-        cards.push(renderAttemptDiagnosticsCard(latestRun, HISTORY_TEXT.diagnostics.latestRunTitle, HISTORY_TEXT.diagnostics.latestRunDescription))
+        cards.push(renderAttemptDiagnosticsCard(latestRun, HISTORY_TEXT.diagnostics.latestRunTitle, HISTORY_TEXT.diagnostics.latestRunDescription, artifactBasePath))
     }
 
     if (latestUnstable && latestUnstable.runId !== latestRun?.runId) {
-        cards.push(renderAttemptDiagnosticsCard(latestUnstable, HISTORY_TEXT.diagnostics.latestUnstableTitle, HISTORY_TEXT.diagnostics.latestUnstableDescription))
+        cards.push(renderAttemptDiagnosticsCard(latestUnstable, HISTORY_TEXT.diagnostics.latestUnstableTitle, HISTORY_TEXT.diagnostics.latestUnstableDescription, artifactBasePath))
     }
 
     if (cards.length === 0) {
@@ -614,6 +681,7 @@ function renderAttemptDiagnosticsCard(
     item: TestHistoryResponse['history'][number],
     title: string,
     description: string,
+    artifactBasePath: string,
 ): string {
     const rowAnchor = buildHistoryRowAnchor(item.runId)
     const attempts = item.attemptDetails ?? []
@@ -633,7 +701,7 @@ function renderAttemptDiagnosticsCard(
             </div>
             <div class="attempt-explainer">${escapeHtml(HISTORY_TEXT.diagnostics.retriesHint)}</div>
             <div class="attempt-list">
-                ${attempts.map((attempt, index) => renderAttemptDetail(attempt, index === 0)).join('')}
+                ${attempts.map((attempt, index) => renderAttemptDetail(item.runId, attempt, index === 0, artifactBasePath)).join('')}
             </div>
             <div class="event-actions">
                 <a class="event-link" href="#${escapeHtml(rowAnchor)}">${escapeHtml(HISTORY_TEXT.actions.jumpToRow)}</a>
@@ -643,8 +711,10 @@ function renderAttemptDiagnosticsCard(
 }
 
 function renderAttemptDetail(
+    runId: string,
     attempt: TestHistoryResponse['history'][number]['attemptDetails'][number],
     isOpenByDefault: boolean,
+    artifactBasePath: string,
 ): string {
     const hasSteps = attempt.steps.length > 0
     const hasAttachments = attempt.attachments.length > 0
@@ -674,7 +744,7 @@ function renderAttemptDetail(
                 ${hasAttachments ? `
                     <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
                     <div class="attachment-list">
-                        ${attempt.attachments.map((attachment) => renderAttachmentDetail(attachment)).join('')}
+                        ${attempt.attachments.map((attachment) => renderAttachmentDetail(runId, attachment, artifactBasePath)).join('')}
                     </div>
                 ` : ''}
                 ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${escapeHtml(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}
@@ -714,9 +784,35 @@ function renderStepDetail(step: TestHistoryResponse['history'][number]['attemptD
     `
 }
 
-function renderAttachmentDetail(attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number]): string {
-    const href = attachment.url ?? null
+function renderAttachmentDetail(
+    runId: string,
+    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
+    artifactBasePath: string,
+): string {
+    const href = buildAttachmentHref(runId, attachment, artifactBasePath)
     const location = attachment.url ?? attachment.path ?? HISTORY_TEXT.diagnostics.attachmentLocationMissing
+    const imagePreviewHtml = href && isImageAttachment(attachment)
+        ? `
+            <details class="attachment-preview">
+                <summary class="attachment-preview-summary">${escapeHtml(HISTORY_TEXT.diagnostics.inlineImagePreview)}</summary>
+                <div class="attachment-preview-body">
+                    <img class="attachment-image-preview" src="${escapeHtml(href)}" alt="${escapeHtml(attachment.name)}" loading="lazy">
+                </div>
+            </details>
+        `
+        : ''
+    const markdownPreviewHtml = href && isMarkdownAttachment(attachment) && canInlineMarkdownPreview(href)
+        ? `
+            <details class="attachment-preview" data-markdown-preview data-preview-href="${escapeHtml(href)}">
+                <summary class="attachment-preview-summary">${escapeHtml(HISTORY_TEXT.diagnostics.inlineMarkdownPreview)}</summary>
+                <div class="attachment-preview-body">
+                    <div class="attachment-preview-loading" data-markdown-loading>${escapeHtml(HISTORY_TEXT.diagnostics.loadingMarkdownPreview)}</div>
+                    <pre class="attachment-markdown-preview" data-markdown-content hidden></pre>
+                    <div class="attachment-preview-error" data-markdown-error hidden>${escapeHtml(HISTORY_TEXT.diagnostics.markdownPreviewUnavailable)}</div>
+                </div>
+            </details>
+        `
+        : ''
 
     return `
         <div class="attachment-item">
@@ -725,9 +821,69 @@ function renderAttachmentDetail(attachment: TestHistoryResponse['history'][numbe
                 ${attachment.contentType ? `<span class="meta-badge">${escapeHtml(attachment.contentType)}</span>` : ''}
             </div>
             <div class="mono">${escapeHtml(location)}</div>
-            ${href ? `<div style="margin-top: 8px;"><a class="attachment-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
+            ${href ? `<div class="attachment-actions"><a class="attachment-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
+            ${imagePreviewHtml}
+            ${markdownPreviewHtml}
         </div>
     `
+}
+
+function buildAttachmentHref(
+    runId: string,
+    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
+    artifactBasePath: string,
+): string | null {
+    if (attachment.url) {
+        return attachment.url
+    }
+
+    if (!artifactBasePath || !attachment.path) {
+        return null
+    }
+
+    const normalizedRunId = runId
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'run'
+    const normalizedPath = attachment.path.replace(/\\/g, '/').replace(/^\/+/, '')
+
+    if (!normalizedPath.startsWith(`${normalizedRunId}/`)) {
+        return null
+    }
+
+    return `${artifactBasePath}/${encodeURIComponent(runId)}?path=${encodeURIComponent(normalizedPath)}`
+}
+
+function isImageAttachment(
+    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
+): boolean {
+    const contentType = attachment.contentType?.toLowerCase() ?? ''
+    if (contentType.startsWith('image/')) {
+        return true
+    }
+
+    return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(getAttachmentReference(attachment))
+}
+
+function isMarkdownAttachment(
+    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
+): boolean {
+    const contentType = attachment.contentType?.toLowerCase() ?? ''
+    if (contentType.includes('markdown')) {
+        return true
+    }
+
+    return /\.(md|markdown|mdx)$/i.test(getAttachmentReference(attachment))
+}
+
+function canInlineMarkdownPreview(href: string): boolean {
+    return !/^[a-z][a-z0-9+.-]*:/i.test(href)
+}
+
+function getAttachmentReference(
+    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
+): string {
+    return attachment.path ?? attachment.url ?? attachment.name
 }
 
 function findLatestStableRecovery(history: TestHistoryResponse['history']): {

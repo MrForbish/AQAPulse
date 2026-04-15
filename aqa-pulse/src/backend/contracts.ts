@@ -99,6 +99,7 @@ export interface WorkspacePaths {
     historyPath: string
     archiveRootPath: string
     rawReportsPath: string
+    artifactsPath: string
 }
 
 export interface WorkspaceApiAuthResult {

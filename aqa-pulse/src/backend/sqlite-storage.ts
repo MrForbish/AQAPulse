@@ -14,6 +14,7 @@ import {
 } from '../history-utils'
 import type { WorkspacePaths, WorkspaceRegistrySnapshot } from './contracts'
 import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './storage'
+import { getWorkspacePathsFromDataRoot, resolveWorkspaceDataRoot } from './workspace-paths'
 
 const REGISTRY_SCHEMA_VERSION = 1
 
@@ -58,10 +59,10 @@ export class SqliteWorkspaceRunStorage implements WorkspaceRunStorage, Dashboard
     readonly paths: WorkspacePaths
     private readonly database: SqliteDatabase
 
-    constructor(private readonly sqlitePath: string, private readonly workspaceSlug: string) {
+    constructor(private readonly sqlitePath: string, private readonly workspaceSlug: string, dataRoot = resolveWorkspaceDataRoot(path.dirname(sqlitePath))) {
         this.database = openSqliteDatabase(sqlitePath)
         ensureSchema(this.database)
-        this.paths = buildSqliteWorkspacePaths(sqlitePath, workspaceSlug)
+        this.paths = buildSqliteWorkspacePaths(sqlitePath, workspaceSlug, dataRoot)
     }
 
     readSummary(): DashboardSummary {
@@ -153,7 +154,7 @@ export class SqliteWorkspaceRunStorage implements WorkspaceRunStorage, Dashboard
 export class SqliteBackendStorage {
     readonly registry: SqliteWorkspaceRegistryStorage
 
-    constructor(public readonly sqlitePath: string) {
+    constructor(public readonly sqlitePath: string, private readonly dataRoot = resolveWorkspaceDataRoot(path.dirname(sqlitePath))) {
         this.registry = new SqliteWorkspaceRegistryStorage(sqlitePath)
     }
 
@@ -162,7 +163,7 @@ export class SqliteBackendStorage {
     }
 
     getWorkspaceStorage(slug: string): SqliteWorkspaceRunStorage {
-        return new SqliteWorkspaceRunStorage(this.sqlitePath, slug)
+        return new SqliteWorkspaceRunStorage(this.sqlitePath, slug, this.dataRoot)
     }
 }
 
@@ -235,9 +236,10 @@ function buildRunDirectoryKey(value: string): string {
         .replace(/^-+|-+$/g, '') || 'run'
 }
 
-function buildSqliteWorkspacePaths(sqlitePath: string, slug: string): WorkspacePaths {
+function buildSqliteWorkspacePaths(sqlitePath: string, slug: string, dataRoot: string): WorkspacePaths {
     const resolvedPath = path.resolve(sqlitePath).replace(/\\/g, '/')
     const baseUri = `sqlite://${resolvedPath}`
+    const fileSystemPaths = getWorkspacePathsFromDataRoot(slug, dataRoot)
 
     return {
         rootPath: `${baseUri}#workspace=${slug}`,
@@ -246,6 +248,7 @@ function buildSqliteWorkspacePaths(sqlitePath: string, slug: string): WorkspaceP
         historyPath: `${baseUri}#workspace=${slug}/dist/history.json`,
         archiveRootPath: `${baseUri}#workspace=${slug}/history`,
         rawReportsPath: `${baseUri}#workspace=${slug}/raw-reports`,
+        artifactsPath: fileSystemPaths.artifactsPath,
     }
 }
 

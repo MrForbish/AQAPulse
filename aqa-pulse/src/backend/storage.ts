@@ -175,11 +175,11 @@ export function createBackendStorage(config: Pick<SaasAppConfig, 'storageDriver'
             throw new Error('Для storageDriver=postgres требуется AQA_PULSE_POSTGRES_URL.')
         }
 
-        return new PostgresBackendStorage(postgresConnectionString)
+        return new PostgresBackendStorage(postgresConnectionString, config.dataRoot)
     }
 
     if (config.storageDriver === 'sqlite') {
-        return new SqliteBackendStorage(config.sqlitePath ?? path.join(config.dataRoot, 'aqa-pulse.sqlite'))
+        return new SqliteBackendStorage(config.sqlitePath ?? path.join(config.dataRoot, 'aqa-pulse.sqlite'), config.dataRoot)
     }
 
     return new FileSystemBackendStorage(config.dataRoot)

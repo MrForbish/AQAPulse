@@ -463,6 +463,10 @@ export const ru = {
             emptyAttempt: 'Для этой попытки нет дополнительных шагов, артефактов или текста ошибки.',
             noCategory: 'Категория не указана',
             openAttachment: 'Открыть артефакт',
+            inlineImagePreview: 'Показать изображение внутри diagnostics',
+            inlineMarkdownPreview: 'Показать markdown внутри diagnostics',
+            loadingMarkdownPreview: 'Загружаем markdown для preview…',
+            markdownPreviewUnavailable: 'Не удалось загрузить markdown-preview для этого артефакта.',
             attachmentLocationMissing: 'Источник артефакта не указан',
         },
         labels: {

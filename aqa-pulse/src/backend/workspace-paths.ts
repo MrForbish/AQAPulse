@@ -43,6 +43,7 @@ function buildWorkspacePaths(rootPath: string, distPath: string): WorkspacePaths
         historyPath: path.join(distPath, 'history.json'),
         archiveRootPath: path.join(rootPath, 'history'),
         rawReportsPath: path.join(rootPath, 'raw-reports'),
+        artifactsPath: path.join(rootPath, 'artifacts'),
     }
 }
 

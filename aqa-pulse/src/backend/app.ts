@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ApiStore, type ApiFilters } from '../api-store'
@@ -431,6 +432,10 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response.json(defaultStore.getCostMetricsPayload(getFiltersFromRequest(request)))
     })
 
+    app.get('/api/artifacts/:runId', (request: Request, response: Response) => {
+        sendArtifactFile(response, path.join(config.legacyArchiveRootPath, '_artifacts'), getRouteParam(request, 'runId'), pickOptionalString(request.query.path) ?? undefined)
+    })
+
     app.get('/test/:name', (request: Request, response: Response) => {
         const testName = getRouteParam(request, 'name')
         const filters = getTestHistoryFiltersFromRequest(request)
@@ -439,7 +444,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response
             .status(getTestHistoryHtmlStatusCode(payload))
             .type('html')
-            .send(renderTestHistoryHtml(payload, testName, filters))
+            .send(renderTestHistoryHtml(payload, testName, filters, { artifactBasePath: '/api/artifacts' }))
     })
 
     app.get('/api/test/:name', (request: Request, response: Response) => {
@@ -568,7 +573,14 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             .send(renderTestHistoryHtml(payload, testName, filters, {
                 basePath: `/w/${workspace.slug}`,
                 apiBasePath: `/api/workspaces/${workspace.slug}/test`,
+                artifactBasePath: `/api/workspaces/${workspace.slug}/artifacts`,
             }))
+    })
+
+    app.get('/api/workspaces/:slug/artifacts/:runId', workspaceResolver, workspaceUserGuard, (_request: Request, response: Response) => {
+        const workspace = requireWorkspaceFromLocals(response)
+        const storage = backendStorage.getWorkspaceStorage(workspace.slug)
+        sendArtifactFile(response, storage.paths.artifactsPath, getRouteParam(_request, 'runId'), pickOptionalString(_request.query.path) ?? undefined)
     })
 
     app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
@@ -800,6 +812,43 @@ function sendAdminDashboardHtml(
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
+}
+
+function sendArtifactFile(response: Response, artifactsRootPath: string, runId: string, requestedPath: string | undefined): void {
+    if (!requestedPath) {
+        response.status(400).json({ error: 'Нужно передать query-параметр path.' })
+        return
+    }
+
+    const normalizedRunDirectory = normalizeRunDirectory(runId)
+    const normalizedRequestedPath = requestedPath.replace(/\\/g, '/').replace(/^\/+/, '')
+
+    if (!normalizedRequestedPath.startsWith(`${normalizedRunDirectory}/`) || normalizedRequestedPath.includes('..')) {
+        response.status(400).json({ error: 'Некорректный путь к артефакту.' })
+        return
+    }
+
+    const resolvedRoot = path.resolve(artifactsRootPath)
+    const resolvedPath = path.resolve(resolvedRoot, normalizedRequestedPath)
+
+    if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) && resolvedPath !== resolvedRoot) {
+        response.status(400).json({ error: 'Некорректный путь к артефакту.' })
+        return
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+        response.status(404).json({ error: 'Артефакт не найден.' })
+        return
+    }
+
+    response.sendFile(resolvedPath)
+}
+
+function normalizeRunDirectory(runId: string): string {
+    return runId
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'run'
 }
 
 function expectsFormResponse(request: Request): boolean {

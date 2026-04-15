@@ -45,6 +45,7 @@ try {
         report,
         metadata: runMetadata,
         sourceFile: inputPath,
+        artifactsPath: path.join(historyArchivePath, '_artifacts'),
     })
     const dashboardSummary = readDashboardSummary(outputPath)
 

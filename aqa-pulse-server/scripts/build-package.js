@@ -84,7 +84,7 @@ copyFile(chartAssetSourcePath, chartAssetTargetPath)
 verifyWorkspaceHistoryRoutingArtifacts()
 
 console.log('Внутренний пакет aqa-pulse-server собран.')
-console.log(`Источник runtime: ${sourceRoot}`)
+console.log(`Источник собранных server-файлов: ${sourceRoot}`)
 console.log(`Папка пакета: ${distRoot}`)
 console.log(`Chart.js asset: ${chartAssetTargetPath}`)
 
@@ -153,7 +153,7 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
 
 function assertIncludes(value, expectedFragment, filePath) {
     if (!value.includes(expectedFragment)) {
-        throw new Error(`Собранный runtime не содержит ожидаемый фрагмент в ${filePath}: ${expectedFragment}`)
+        throw new Error(`Собранная server-сборка не содержит ожидаемый фрагмент в ${filePath}: ${expectedFragment}`)
     }
 }
 

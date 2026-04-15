@@ -572,7 +572,7 @@ function printHelp() {
     console.log('  --public-scheme <http|https>      Схема для public host, по умолчанию https')
     console.log('  --public-port <port>              Внешний порт для public host, если не 80/443')
     console.log('  --local-base-url <url>            Локальный URL для health-check, по умолчанию http://127.0.0.1:<port>')
-    console.log('  --port <port>                     HTTP port для compose и runtime')
+    console.log('  --port <port>                     HTTP port для compose и самого сервера')
     console.log('  --storage-driver <file|sqlite|postgres>  Storage driver, по умолчанию sqlite')
     console.log('  --postgres-url <url>              Connection string для postgres storage')
     console.log('  --admin-token <token>             Явный admin token вместо автогенерации')

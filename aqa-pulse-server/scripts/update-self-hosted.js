@@ -303,7 +303,7 @@ function printSummary(options) {
     }
 
     if (options.buildPackage) {
-        console.log('Runtime bundle был пересобран перед update.')
+        console.log('Готовая сборка сервера была пересобрана перед update.')
     }
 
     if (options.dryRun) {

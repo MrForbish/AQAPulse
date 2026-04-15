@@ -4,7 +4,7 @@ Self-hosted server package для AQA Pulse.
 
 В этом пакете есть:
 
-- server runtime и HTML dashboard;
+- готовый сервер и HTML dashboard;
 - storage для `file`, `sqlite`, `postgres`;
 - auth для admin, workspace API key и workspace user token;
 - Dockerfile и Docker Compose;
@@ -47,15 +47,17 @@ npm run docker:restart
 - `update:docker` — backup SQLite, rebuild Docker image, restart container, wait for health-check.
 - `docker:restart` — restart контейнера без rebuild образа и без backup.
 
-Если сервер запускается не из готового bundle, а из исходников этого workspace:
+Если ты работаешь прямо из этой папки проекта и обновил код через `git pull`:
 
 ```bash
 npm run update:docker -- --build-package
 ```
 
-## Bundle состав
+Двойной `--` здесь нужен специально: npm передаёт `--build-package` во внутренний script `update:docker`.
 
-Готовый bundle можно везти без соседней папки `aqa-pulse`, если `dist/**/*` уже собран.
+## Что входит в готовую сборку
+
+Готовую сборку сервера можно передавать без соседней папки `aqa-pulse`, если `dist/**/*` уже собран.
 
 В поставку входят:
 

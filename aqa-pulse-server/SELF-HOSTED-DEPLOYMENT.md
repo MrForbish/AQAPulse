@@ -18,7 +18,7 @@
 - Docker Compose;
 - каталог `aqa-pulse-server`.
 
-Если у тебя уже есть bundle с `dist/**/*`, соседний `aqa-pulse` не нужен.
+Если у тебя уже есть готовая сборка с `dist/**/*`, соседний `aqa-pulse` не нужен.
 
 Все команды ниже выполняются из директории `aqa-pulse-server`.
 
@@ -185,7 +185,7 @@ docker compose logs -f aqa-pulse-server
 docker compose down
 ```
 
-Обновление после нового bundle:
+Обновление после новой сборки:
 
 ```bash
 npm run update:docker
@@ -197,11 +197,13 @@ npm run update:docker
 npm run docker:restart
 ```
 
-Если сервер запускается из исходников этого workspace, а не из готового bundle:
+Если ты работаешь прямо из этой папки проекта и обновил код через `git pull`:
 
 ```bash
 npm run update:docker -- --build-package
 ```
+
+Это не опечатка: первый `--` нужен npm, чтобы передать следующий флаг во внутренний script `update:docker`, а уже `--build-package` читает `scripts/update-self-hosted.js`.
 
 ## Частые проблемы
 

@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { getErrorMessage } from '../shared/error-utils'
 import { runAuthFlowSmoke } from './auth-flow-smoke'
 
 const POSTGRES_IMAGE = process.env.AQA_PULSE_POSTGRES_SMOKE_IMAGE ?? 'postgres:16-alpine'
@@ -144,7 +145,4 @@ function sleep(milliseconds: number): void {
     }
 }
 
-function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error)
-}
 

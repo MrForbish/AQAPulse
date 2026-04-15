@@ -12,6 +12,7 @@ import {
     appendHistoryEntry,
     buildHistoryEntryId,
 } from '../history-utils'
+import { normalizeOptionalText } from '../shared/text-utils'
 import type { IngestionResult, WorkspaceDescriptor } from './contracts'
 import type { WorkspaceRunStorage } from './storage'
 
@@ -274,7 +275,4 @@ function buildDefaultSourceFile(workspaceSlug: string, report: ReporterRoot): st
     return `saas://${workspaceSlug}/ingestions/${timestamp}`
 }
 
-function normalizeOptionalText(value: string | null | undefined): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
 

@@ -29,6 +29,7 @@
     "dist/**/*",
     "bin/**/*",
     "scripts/install-self-hosted.ps1",
+    "scripts/self-hosted-utils.js",
     "scripts/update-self-hosted.js",
     "scripts/setup-self-hosted.js",
     "template/**/*",

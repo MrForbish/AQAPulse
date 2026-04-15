@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { parseEnvFile, normalizeBaseUrl, normalizePort, normalizePositiveInteger } = require('./self-hosted-utils')
 
 const DEFAULT_PORT = 3000
 const DEFAULT_HEALTH_TIMEOUT_MS = 90_000
@@ -139,30 +140,6 @@ function parseArgs(args) {
     return options
 }
 
-function parseEnvFile(text) {
-    const values = {}
-
-    for (const rawLine of text.split(/\r?\n/)) {
-        const line = rawLine.trim()
-
-        if (!line || line.startsWith('#')) {
-            continue
-        }
-
-        const separatorIndex = line.indexOf('=')
-
-        if (separatorIndex <= 0) {
-            continue
-        }
-
-        const key = line.slice(0, separatorIndex).trim()
-        const value = line.slice(separatorIndex + 1).trim()
-        values[key] = value
-    }
-
-    return values
-}
-
 function backupSqliteDatabase(options) {
     const sqliteHostPath = resolveHostSqlitePath(options.serverRoot, options.hostDataDir, options.sqlitePath)
 
@@ -217,27 +194,6 @@ function getNpmCommand() {
     return process.platform === 'win32' ? 'npm.cmd' : 'npm'
 }
 
-function normalizePort(value) {
-    const parsed = normalizePositiveInteger(value)
-    return parsed && parsed <= 65535 ? parsed : null
-}
-
-function normalizePositiveInteger(value) {
-    if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
-        return value
-    }
-
-    if (typeof value !== 'string' || value.trim().length === 0) {
-        return null
-    }
-
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function normalizeBaseUrl(value) {
-    return value.trim().replace(/\/+$/, '')
-}
 
 async function waitForHealth(healthUrl, timeoutMs) {
     const startedAt = Date.now()

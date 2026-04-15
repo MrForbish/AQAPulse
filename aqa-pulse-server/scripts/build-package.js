@@ -13,8 +13,10 @@ const runtimeFiles = [
     'dashboard-utils.js',
     'history-utils.js',
     'render-dashboard.js',
+    'render-dashboard-sections.js',
     'render-metric-info.js',
     'render-test-history.js',
+    'render-test-history-sections.js',
     'server.js',
     path.join('backend', 'admin-ui.js'),
     path.join('backend', 'app.js'),
@@ -33,8 +35,10 @@ const runtimeFiles = [
     path.join('backend', 'storage.js'),
     path.join('backend', 'workspace-paths.js'),
     path.join('backend', 'workspace-registry.js'),
+    path.join('shared', 'error-utils.js'),
     path.join('shared', 'formatting.js'),
     path.join('shared', 'i18n', 'ru.js'),
+    path.join('shared', 'text-utils.js'),
 ]
 
 const declarationFiles = [
@@ -42,8 +46,10 @@ const declarationFiles = [
     'dashboard-utils.d.ts',
     'history-utils.d.ts',
     'render-dashboard.d.ts',
+    'render-dashboard-sections.d.ts',
     'render-metric-info.d.ts',
     'render-test-history.d.ts',
+    'render-test-history-sections.d.ts',
     path.join('backend', 'admin-ui.d.ts'),
     path.join('backend', 'app.d.ts'),
     path.join('backend', 'auth.d.ts'),
@@ -60,8 +66,10 @@ const declarationFiles = [
     path.join('backend', 'storage.d.ts'),
     path.join('backend', 'workspace-paths.d.ts'),
     path.join('backend', 'workspace-registry.d.ts'),
+    path.join('shared', 'error-utils.d.ts'),
     path.join('shared', 'formatting.d.ts'),
     path.join('shared', 'i18n', 'ru.d.ts'),
+    path.join('shared', 'text-utils.d.ts'),
 ]
 
 cleanDir(distRoot)
@@ -136,17 +144,17 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
 
     assertIncludes(
         compiledHistoryRenderer,
-        'const normalizedBasePath = normalizeBasePath(options.basePath);',
+        'const normalizedBasePath = (0, render_test_history_sections_1.normalizeBasePath)(options.basePath);',
         compiledHistoryRendererPath,
     )
     assertIncludes(
         compiledHistoryRenderer,
-        'const normalizedApiBasePath = normalizeBasePath(options.apiBasePath);',
+        'const normalizedApiBasePath = (0, render_test_history_sections_1.normalizeBasePath)(options.apiBasePath);',
         compiledHistoryRendererPath,
     )
     assertIncludes(
         compiledHistoryRenderer,
-        'const dashboardHref = buildDashboardHref(normalizedFilters, normalizedBasePath);',
+        'const dashboardHref = (0, render_test_history_sections_1.buildDashboardHref)(normalizedFilters, normalizedBasePath);',
         compiledHistoryRendererPath,
     )
 }

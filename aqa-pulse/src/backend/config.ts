@@ -1,4 +1,5 @@
 import * as path from 'node:path'
+import { normalizeOptionalText } from '../shared/text-utils'
 import type { StorageDriver } from './contracts'
 import { resolveWorkspaceDataRoot } from './workspace-paths'
 
@@ -50,10 +51,6 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
         adminSessionCookieName: configuredAdminSessionCookieName ?? 'aqa_pulse_admin_session',
         workspaceSessionCookiePrefix: configuredWorkspaceSessionCookiePrefix ?? 'aqa_pulse_workspace_session',
     }
-}
-
-function normalizeOptionalText(value: string | null | undefined): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
 function normalizePort(value: number | string | undefined): number | null {

@@ -1,4 +1,5 @@
 import type { WorkspaceDescriptor } from './contracts'
+import { escapeHtml } from '../shared/text-utils'
 
 export interface AdminDashboardActionResult {
     title: string
@@ -242,29 +243,47 @@ function renderActionResult(actionResult: AdminDashboardActionResult): string {
     </section>`
 }
 
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-}
-
 const COMMON_STYLES = `
     :root {
         color-scheme: light;
-        font-family: Inter, Arial, sans-serif;
+        font-family: "Segoe UI", Inter, Arial, sans-serif;
+        --bg-top: #f7f4ec;
+        --bg-bottom: #eef3fb;
+        --surface: rgba(255, 255, 255, 0.88);
+        --surface-strong: #ffffff;
+        --border: rgba(148, 163, 184, 0.22);
+        --border-strong: rgba(59, 130, 246, 0.24);
+        --text-main: #172033;
+        --text-muted: #5b6475;
+        --accent: #0f766e;
+        --accent-strong: #0b5d57;
+        --accent-soft: rgba(15, 118, 110, 0.08);
+        --shadow-lg: 0 22px 60px rgba(15, 23, 42, 0.12);
+        --shadow-md: 0 14px 32px rgba(15, 23, 42, 0.08);
     }
     body {
         margin: 0;
-        background: #f5f7fb;
-        color: #1f2937;
+        min-height: 100vh;
+        background:
+            radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32%),
+            radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 26%),
+            linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+        color: var(--text-main);
+    }
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image: linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px);
+        background-size: 28px 28px;
+        opacity: 0.28;
     }
     .shell {
+        position: relative;
         max-width: 1280px;
         margin: 0 auto;
-        padding: 32px 20px 48px;
+        padding: 36px 20px 56px;
     }
     .shell-narrow {
         max-width: 560px;
@@ -273,27 +292,34 @@ const COMMON_STYLES = `
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 24px;
+        gap: 18px;
+        margin-bottom: 28px;
+        padding: 20px 22px;
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.72) 100%);
+        box-shadow: var(--shadow-md);
+        backdrop-filter: blur(18px);
     }
     .card {
-        background: #fff;
-        border: 1px solid #dbe2f0;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+        background: linear-gradient(180deg, var(--surface-strong) 0%, var(--surface) 100%);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: var(--shadow-md);
+        backdrop-filter: blur(16px);
     }
     .card-success {
-        border-color: #86efac;
-        background: #f0fdf4;
+        border-color: rgba(34, 197, 94, 0.28);
+        background: linear-gradient(180deg, rgba(240, 253, 244, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
     }
     .card-error {
-        border-color: #fca5a5;
-        background: #fef2f2;
+        border-color: rgba(239, 68, 68, 0.28);
+        background: linear-gradient(180deg, rgba(254, 242, 242, 0.96) 0%, rgba(255, 255, 255, 0.9) 100%);
     }
     .card-info {
-        border-color: #93c5fd;
-        background: #eff6ff;
+        border-color: var(--border-strong);
+        background: linear-gradient(180deg, rgba(239, 246, 255, 0.96) 0%, rgba(255, 255, 255, 0.9) 100%);
     }
     .grid {
         display: grid;
@@ -327,6 +353,7 @@ const COMMON_STYLES = `
         justify-content: space-between;
         align-items: flex-start;
         gap: 16px;
+        margin-bottom: 10px;
     }
     .workspace-links {
         display: flex;
@@ -336,6 +363,20 @@ const COMMON_STYLES = `
     }
     h1, h2, h3 {
         margin: 0 0 10px;
+    }
+    h1 {
+        font-size: 32px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+    }
+    h2 {
+        font-size: 22px;
+        line-height: 1.15;
+        letter-spacing: -0.025em;
+    }
+    h3 {
+        font-size: 16px;
+        line-height: 1.25;
     }
     label {
         display: grid;
@@ -347,39 +388,64 @@ const COMMON_STYLES = `
         font: inherit;
     }
     input, select {
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid #cbd5e1;
-        background: #fff;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--text-main);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    input:focus,
+    select:focus {
+        outline: none;
+        border-color: rgba(15, 118, 110, 0.44);
+        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
     }
     button {
         border: 0;
-        border-radius: 10px;
-        background: #2563eb;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
         color: #fff;
-        padding: 10px 14px;
+        padding: 12px 16px;
         cursor: pointer;
         font-weight: 700;
+        box-shadow: 0 12px 24px rgba(15, 118, 110, 0.2);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+    button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 28px rgba(15, 118, 110, 0.22);
+        filter: saturate(1.04);
+    }
+    button:focus-visible {
+        outline: 2px solid rgba(15, 118, 110, 0.35);
+        outline-offset: 3px;
     }
     button.secondary {
-        background: #64748b;
+        background: linear-gradient(135deg, #546179 0%, #394150 100%);
+        box-shadow: 0 12px 24px rgba(51, 65, 85, 0.16);
     }
     .muted {
-        color: #64748b;
+        color: var(--text-muted);
+        line-height: 1.55;
     }
     .compact-list {
         margin: 0;
         padding-left: 18px;
+        display: grid;
+        gap: 8px;
     }
     .alert {
-        border-radius: 12px;
-        padding: 12px 14px;
+        border-radius: 16px;
+        padding: 14px 16px;
         font-size: 14px;
     }
     .alert-error {
-        background: #fef2f2;
+        background: rgba(254, 242, 242, 0.96);
         color: #991b1b;
-        border: 1px solid #fecaca;
+        border: 1px solid rgba(248, 113, 113, 0.3);
     }
     .details-table {
         width: 100%;
@@ -388,19 +454,49 @@ const COMMON_STYLES = `
     .details-table th,
     .details-table td {
         text-align: left;
-        padding: 8px 10px;
-        border-bottom: 1px solid #dcfce7;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.18);
         vertical-align: top;
+    }
+    .details-table th {
+        color: var(--text-muted);
+        font-weight: 600;
+        width: 34%;
     }
     code {
         font-family: Consolas, monospace;
         font-size: 13px;
         white-space: pre-wrap;
         word-break: break-word;
+        padding: 2px 6px;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.06);
     }
     a {
-        color: #2563eb;
+        color: var(--accent-strong);
         text-decoration: none;
+        transition: color 0.18s ease, opacity 0.18s ease;
+    }
+    a:hover {
+        color: #1d4ed8;
+    }
+    .workspace-links a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 118, 110, 0.16);
+        background: var(--accent-soft);
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .workspace-links a:hover {
+        background: rgba(15, 118, 110, 0.14);
+    }
+    form {
+        margin: 0;
     }
     @media (max-width: 900px) {
         .grid-main,
@@ -411,6 +507,9 @@ const COMMON_STYLES = `
         }
         .workspace-links {
             text-align: left;
+        }
+        h1 {
+            font-size: 28px;
         }
     }
 `

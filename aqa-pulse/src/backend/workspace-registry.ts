@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { normalizeOptionalText } from '../shared/text-utils'
 import type {
     CreateWorkspaceInput,
     CreateWorkspaceUserInput,
@@ -285,10 +286,6 @@ function normalizeRequiredText(value: string, fieldName: string): string {
     }
 
     return normalizedValue
-}
-
-function normalizeOptionalText(value: string | null | undefined): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
 function normalizeWorkspaceSlug(value: string): string {

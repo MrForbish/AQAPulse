@@ -6,6 +6,7 @@ import { buildDashboardSummary, type ReporterRoot } from '../dashboard-utils'
 import { createEmptyHistory } from '../history-utils'
 import { renderDashboardHtml } from '../render-dashboard'
 import { renderTestHistoryHtml } from '../render-test-history'
+import { getErrorMessage } from '../shared/error-utils'
 import {
     type AdminDashboardActionResult,
     renderAdminDashboardHtml,
@@ -832,10 +833,6 @@ function sendAdminDashboardHtml(
             workspaces: registry.listWorkspaces(),
             actionResult: options.actionResult,
         }))
-}
-
-function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error)
 }
 
 function sendArtifactFile(response: Response, artifactsRootPath: string, runId: string, requestedPath: string | undefined): void {

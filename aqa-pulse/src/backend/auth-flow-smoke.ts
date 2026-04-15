@@ -3,6 +3,7 @@ import * as http from 'node:http'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { loadReporterReport } from '../dashboard-utils'
+import { getErrorMessage } from '../shared/error-utils'
 import { createSaasApp } from './app'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 
@@ -396,7 +397,4 @@ function closeServer(server: http.Server): Promise<void> {
     })
 }
 
-function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error)
-}
 

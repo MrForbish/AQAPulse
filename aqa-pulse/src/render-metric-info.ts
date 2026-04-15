@@ -1,3 +1,4 @@
+import { escapeHtml } from './shared/text-utils'
 import { ru } from './shared/i18n/ru'
 
 export const METRIC_INFO_STYLES = `
@@ -183,12 +184,4 @@ function normalizeLabel(label: string): string {
     return label.trim().toLowerCase()
 }
 
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-}
 

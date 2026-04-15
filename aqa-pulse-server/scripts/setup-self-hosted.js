@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
 const { spawnSync } = require('node:child_process')
+const { parseEnvFile, normalizeBaseUrl, normalizePort, normalizePositiveInteger } = require('./self-hosted-utils')
 
 const DEFAULT_PORT = 3000
 const DEFAULT_HEALTH_TIMEOUT_MS = 90_000
@@ -341,54 +342,8 @@ function renderEnvFile(envValues) {
     return lines.join('\n')
 }
 
-function parseEnvFile(text) {
-    const values = {}
-
-    for (const rawLine of text.split(/\r?\n/)) {
-        const line = rawLine.trim()
-
-        if (!line || line.startsWith('#')) {
-            continue
-        }
-
-        const separatorIndex = line.indexOf('=')
-
-        if (separatorIndex <= 0) {
-            continue
-        }
-
-        const key = line.slice(0, separatorIndex).trim()
-        const value = line.slice(separatorIndex + 1).trim()
-        values[key] = value
-    }
-
-    return values
-}
-
 function generateSecret(byteLength) {
     return crypto.randomBytes(byteLength).toString('base64url')
-}
-
-function normalizePort(value) {
-    const parsed = normalizePositiveInteger(value)
-    return parsed && parsed <= 65535 ? parsed : null
-}
-
-function normalizePositiveInteger(value) {
-    if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
-        return value
-    }
-
-    if (typeof value !== 'string' || value.trim().length === 0) {
-        return null
-    }
-
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function normalizeBaseUrl(value) {
-    return value.trim().replace(/\/+$/, '')
 }
 
 function normalizeBooleanString(value, fallback) {

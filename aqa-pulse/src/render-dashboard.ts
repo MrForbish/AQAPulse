@@ -1,5 +1,7 @@
 ﻿import type {
+    DashboardDurationBreakdownItem,
     DashboardFlakyTestMetric,
+    DashboardPhaseBreakdownItem,
     DashboardProblematicTest,
     DashboardSlowTest,
     DashboardSummary,
@@ -29,6 +31,18 @@ export function renderDashboardHtml(
     const statusChartData = serializeForInlineScript(summary.charts.statusDistribution)
     const errorChartData = serializeForInlineScript(summary.charts.errorClusters)
     const slowestChartData = serializeForInlineScript(summary.charts.slowestTests)
+    const phaseBreakdownChartData = serializeForInlineScript(toPerformanceChartDataset(summary.performance.phaseBreakdown, {
+        labelFormatter: (label) => formatPerformancePhaseLabel(label),
+        unit: 'minutes',
+    }))
+    const suiteDurationChartData = serializeForInlineScript(toPerformanceChartDataset(summary.performance.suiteDuration, {
+        labelFormatter: (label) => shortenChartLabel(label, 28),
+        unit: 'minutes',
+    }))
+    const browserDurationChartData = serializeForInlineScript(toPerformanceChartDataset(summary.performance.durationPerBrowser, {
+        labelFormatter: (label) => shortenChartLabel(label, 24),
+        unit: 'minutes',
+    }))
     const dashboardTextData = serializeForInlineScript({
         filters: DASHBOARD_TEXT.filters,
         charts: DASHBOARD_TEXT.charts,
@@ -44,6 +58,9 @@ export function renderDashboardHtml(
             activeDays: summary.businessMetrics.costOfFlakiness.activeDays,
         },
     })
+    const leadingPhase = getLeadingPhase(summary.performance.phaseBreakdown)
+    const topSuite = summary.performance.suiteDuration[0] ?? null
+    const topBrowser = summary.performance.durationPerBrowser[0] ?? null
 
     return `<!DOCTYPE html>
 <html lang="ru">
@@ -301,6 +318,34 @@ export function renderDashboardHtml(
             font-weight: 500;
             margin-bottom: 16px;
             color: #ffffff;
+        }
+        .chart-subtitle {
+            margin: -6px 0 14px;
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .phase-legend {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .phase-legend-item {
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #0d1117;
+        }
+        .phase-legend-label {
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .phase-legend-value {
+            color: #c9d1d9;
+            font-size: 14px;
+            font-weight: 600;
         }
         .manager-summary-card {
             padding: 20px;
@@ -1213,6 +1258,9 @@ export function renderDashboardHtml(
             .charts-grid-2 {
                 grid-template-columns: 1fr;
             }
+            .phase-legend {
+                grid-template-columns: 1fr;
+            }
             .status-drilldown-grid {
                 grid-template-columns: 1fr;
             }
@@ -1376,6 +1424,39 @@ export function renderDashboardHtml(
         </section>
 
         <section class="tab-panel" data-tab-panel="performance">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.p95Duration, METRIC_DESCRIPTIONS.p95Duration)}</div>
+                    <div class="kpi-value">${escapeHtml(formatDuration(summary.performance.p95DurationMs))}</div>
+                    <div class="trend-neutral">95% тестов укладываются в это значение или быстрее</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.p99Duration, METRIC_DESCRIPTIONS.p99Duration)}</div>
+                    <div class="kpi-value">${escapeHtml(formatDuration(summary.performance.p99DurationMs))}</div>
+                    <div class="trend-neutral">Хвост самых долгих 1% тестов текущего среза</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.leadingPhase, METRIC_DESCRIPTIONS.phaseBreakdown)}</div>
+                    <div class="kpi-value">${escapeHtml(leadingPhase ? formatPerformancePhaseLabel(leadingPhase.label) : '—')}</div>
+                    <div class="trend-neutral">${escapeHtml(leadingPhase ? `${formatPercent(leadingPhase.sharePercent)} от длительности прогона` : 'Нет данных по фазам')}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
+                    <div class="kpi-value">${escapeHtml(topBrowser ? topBrowser.label : '—')}</div>
+                    <div class="trend-neutral">${escapeHtml(topBrowser ? `${formatDuration(topBrowser.durationMs)} • ${topBrowser.tests} тестов` : 'Нет данных по браузерам / проектам')}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
+                    <div class="kpi-value">${escapeHtml(topSuite ? shortenChartLabel(topSuite.label, 16) : '—')}</div>
+                    <div class="trend-neutral">${escapeHtml(topSuite ? `${formatDuration(topSuite.durationMs)} • ${topSuite.tests} тестов` : 'Нет данных по наборам')}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationTrend, METRIC_DESCRIPTIONS.durationTrend)}</div>
+                    <div class="kpi-value">${escapeHtml(formatDuration(summary.performance.durationTrend.currentDurationMs))}</div>
+                    <div class="${summary.performance.durationTrend.deltaPercent === null ? 'trend-neutral' : summary.performance.durationTrend.deltaPercent <= 0 ? 'trend-up' : 'trend-down'}">${escapeHtml(formatDurationDelta(summary.performance.durationTrend.deltaPercent))}</div>
+                </div>
+            </div>
+
             <div class="charts-grid-2">
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationTrend, METRIC_DESCRIPTIONS.durationTrend)}</div>
@@ -1385,6 +1466,65 @@ export function renderDashboardHtml(
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topSlowestTests, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
                     <canvas id="slowestChart"></canvas>
                 </div>
+            </div>
+
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.phaseBreakdown, METRIC_DESCRIPTIONS.phaseBreakdown)}</div>
+                    <div class="chart-subtitle">${escapeHtml(DASHBOARD_TEXT.performance.phaseBreakdownDescription)}</div>
+                    <canvas id="phaseBreakdownChart"></canvas>
+                    ${renderPhaseLegend(summary.performance.phaseBreakdown)}
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
+                    <div class="chart-subtitle">${escapeHtml(DASHBOARD_TEXT.performance.suiteDurationDescription)}</div>
+                    <canvas id="suiteDurationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-title" data-tab-section="browser-duration">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
+                    <div class="chart-subtitle">${escapeHtml(DASHBOARD_TEXT.performance.durationPerBrowserDescription)}</div>
+                    <canvas id="browserDurationChart"></canvas>
+                </div>
+                <div class="table-container" style="margin-bottom: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>${escapeHtml(DASHBOARD_TEXT.filters.project)}</th>
+                                <th>${escapeHtml(DASHBOARD_TEXT.tables.duration)}</th>
+                                <th>${escapeHtml(DASHBOARD_TEXT.tables.share)}</th>
+                                <th>${escapeHtml(DASHBOARD_TEXT.tables.tests)}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${summary.performance.durationPerBrowser.length > 0
+                                ? summary.performance.durationPerBrowser.map((item) => renderDurationBreakdownRow(item)).join('')
+                                : `<tr><td colspan="4">${escapeHtml(DASHBOARD_TEXT.states.performanceBreakdownEmpty)}</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-title" data-tab-section="suite-duration">${renderMetricHeading(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                                <th>${escapeHtml(DASHBOARD_TEXT.tables.group)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.duration)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.share)}</th>
+                            <th>${escapeHtml(DASHBOARD_TEXT.tables.tests)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summary.performance.suiteDuration.length > 0
+                            ? summary.performance.suiteDuration.map((item) => renderDurationBreakdownRow(item)).join('')
+                            : `<tr><td colspan="4">${escapeHtml(DASHBOARD_TEXT.states.performanceBreakdownEmpty)}</td></tr>`}
+                    </tbody>
+                </table>
             </div>
 
             <div class="table-title" data-tab-section="slow-tests">${renderMetricHeading(DASHBOARD_TEXT.metrics.topSlowestTestsP1, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
@@ -1712,6 +1852,9 @@ export function renderDashboardHtml(
         const statusDataset = ${statusChartData};
         const errorDataset = ${errorChartData};
         const slowestDataset = ${slowestChartData};
+        const phaseBreakdownDataset = ${phaseBreakdownChartData};
+        const suiteDurationDataset = ${suiteDurationChartData};
+        const browserDurationDataset = ${browserDurationChartData};
         const businessCostConfig = ${businessCostConfigData};
 
         const filtersForm = document.querySelector('.filters-form');
@@ -1792,7 +1935,7 @@ export function renderDashboardHtml(
         const chartInstances = {};
         const chartTabs = {
             overview: ['passRateTrendChart', 'statusChart'],
-            performance: ['durationTrendChart', 'slowestChart'],
+            performance: ['durationTrendChart', 'slowestChart', 'phaseBreakdownChart', 'suiteDurationChart', 'browserDurationChart'],
             flaky: ['flakyTrendChart', 'clusterChart'],
             'code-quality': [],
             business: [],
@@ -1892,6 +2035,22 @@ export function renderDashboardHtml(
                 });
             }
 
+            if (chartId === 'phaseBreakdownChart') {
+                return new Chart(chartElement, {
+                    type: 'doughnut',
+                    data: {
+                        labels: phaseBreakdownDataset.labels,
+                        datasets: [{
+                            data: phaseBreakdownDataset.values,
+                            backgroundColor: ['#2f81f7', '#3fb950', '#f0883e'],
+                            borderColor: '#161b22',
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: buildDoughnutChartOptions(),
+                });
+            }
+
             if (chartId === 'slowestChart') {
                 return new Chart(chartElement, {
                     type: 'bar',
@@ -1904,24 +2063,39 @@ export function renderDashboardHtml(
                             borderRadius: 6,
                         }],
                     },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                labels: { color: '#c9d1d9' },
-                            },
-                        },
-                        scales: {
-                            x: {
-                                ticks: { color: '#8b949e' },
-                                grid: { color: '#21262d' },
-                            },
-                            y: {
-                                ticks: { color: '#8b949e' },
-                                grid: { color: '#21262d' },
-                            },
-                        },
+                    options: buildBarChartOptions(false),
+                });
+            }
+
+            if (chartId === 'suiteDurationChart') {
+                return new Chart(chartElement, {
+                    type: 'bar',
+                    data: {
+                        labels: suiteDurationDataset.labels,
+                        datasets: [{
+                            label: dashboardText.charts.durationDataset,
+                            data: suiteDurationDataset.values,
+                            backgroundColor: '#58a6ff',
+                            borderRadius: 6,
+                        }],
                     },
+                    options: buildBarChartOptions(true),
+                });
+            }
+
+            if (chartId === 'browserDurationChart') {
+                return new Chart(chartElement, {
+                    type: 'bar',
+                    data: {
+                        labels: browserDurationDataset.labels,
+                        datasets: [{
+                            label: dashboardText.charts.durationDataset,
+                            data: browserDurationDataset.values,
+                            backgroundColor: '#d29922',
+                            borderRadius: 6,
+                        }],
+                    },
+                    options: buildBarChartOptions(true),
                 });
             }
 
@@ -2148,6 +2322,28 @@ export function renderDashboardHtml(
                     y: {
                         ...(typeof min === 'number' ? { min: min } : {}),
                         ...(typeof max === 'number' ? { max: max } : {}),
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' },
+                    },
+                },
+            };
+        }
+
+        function buildBarChartOptions(horizontal) {
+            return {
+                responsive: true,
+                indexAxis: horizontal ? 'y' : 'x',
+                plugins: {
+                    legend: {
+                        labels: { color: '#c9d1d9' },
+                    },
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' },
+                    },
+                    y: {
                         ticks: { color: '#8b949e' },
                         grid: { color: '#21262d' },
                     },
@@ -2601,6 +2797,17 @@ function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['f
     `
 }
 
+function renderDurationBreakdownRow(item: DashboardDurationBreakdownItem): string {
+    return `
+        <tr>
+            <td>${escapeHtml(item.label)}</td>
+            <td>${escapeHtml(formatDuration(item.durationMs))}</td>
+            <td>${escapeHtml(formatPercent(item.sharePercent))}</td>
+            <td>${item.tests}</td>
+        </tr>
+    `
+}
+
 function renderCurrentRunTestsBrowser(summary: DashboardSummary, testDetailsBasePath: string): string {
     const groups = [
         { id: 'all', label: DASHBOARD_TEXT.testsBrowser.all, tests: summary.currentRunTests.all },
@@ -2732,6 +2939,74 @@ function renderPlaceholderPanel(title: string, description: string, metrics: rea
             </ul>
         </div>
     `
+}
+
+function renderPhaseLegend(items: DashboardPhaseBreakdownItem[]): string {
+    const visibleItems = items.filter((item) => item.durationMs > 0)
+
+    if (visibleItems.length === 0) {
+        return ''
+    }
+
+    return `
+        <div class="phase-legend" aria-label="${escapeHtml(DASHBOARD_TEXT.performance.phaseLegendLabel)}">
+            ${visibleItems.map((item) => `
+                <div class="phase-legend-item">
+                    <div class="phase-legend-label">${escapeHtml(formatPerformancePhaseLabel(item.label))}</div>
+                    <div class="phase-legend-value">${escapeHtml(formatDuration(item.durationMs))} • ${escapeHtml(formatPercent(item.sharePercent))}</div>
+                </div>
+            `).join('')}
+        </div>
+    `
+}
+
+function toPerformanceChartDataset<T extends DashboardPhaseBreakdownItem | DashboardDurationBreakdownItem>(
+    items: T[],
+    options: {
+        labelFormatter?: (label: string) => string
+        unit?: 'minutes' | 'seconds'
+    } = {},
+): { labels: string[]; values: number[] } {
+    const labelFormatter = options.labelFormatter ?? ((label: string) => label)
+    const divisor = options.unit === 'seconds' ? 1000 : 60000
+    const normalizedItems = items.filter((item) => item.durationMs > 0)
+
+    return {
+        labels: normalizedItems.map((item) => labelFormatter(item.label)),
+        values: normalizedItems.map((item) => roundChartValue(item.durationMs / divisor)),
+    }
+}
+
+function getLeadingPhase(items: DashboardPhaseBreakdownItem[]): DashboardPhaseBreakdownItem | null {
+    if (items.length === 0) {
+        return null
+    }
+
+    return [...items].sort((left, right) => right.durationMs - left.durationMs)[0] ?? null
+}
+
+function formatPerformancePhaseLabel(label: string): string {
+    if (label === 'Setup') {
+        return 'Подготовка'
+    }
+
+    if (label === 'Teardown') {
+        return 'Завершение'
+    }
+
+    return 'Тесты'
+}
+
+function shortenChartLabel(label: string, maxLength: number): string {
+    if (label.length <= maxLength) {
+        return label
+    }
+
+    return `${label.slice(0, Math.max(maxLength - 1, 1)).trimEnd()}…`
+}
+
+function roundChartValue(value: number): number {
+    return Math.round(value * 10) / 10
 }
 
 function getStatusClass(status: string, flaky: boolean): string {

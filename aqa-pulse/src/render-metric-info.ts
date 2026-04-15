@@ -27,8 +27,14 @@ const METRIC_ICON_BY_KEY: Record<string, string> = {
     notes: '📝',
     latestRuns: '🗂️',
     durationTrend: '📊',
+    p95Duration: '📏',
+    p99Duration: '📐',
     topSlowestTests: '🐢',
     topSlowestTestsP1: '🐢',
+    phaseBreakdown: '🧱',
+    suiteDuration: '🗃️',
+    durationPerBrowser: '🌐',
+    leadingPhase: '🧭',
     flakyTrend: '📉',
     clusterDistribution: '🧩',
     problematicTests: '🚨',
@@ -123,8 +129,14 @@ function createMetricIconLabelMap(): Map<string, string> {
     register(ru.dashboard.metrics.notes, 'notes')
     register(ru.dashboard.metrics.latestRuns, 'latestRuns')
     register(ru.dashboard.metrics.durationTrend, 'durationTrend')
+    register(ru.dashboard.metrics.p95Duration, 'p95Duration')
+    register(ru.dashboard.metrics.p99Duration, 'p99Duration')
     register(ru.dashboard.metrics.topSlowestTests, 'topSlowestTests')
     register(ru.dashboard.metrics.topSlowestTestsP1, 'topSlowestTestsP1')
+    register(ru.dashboard.metrics.phaseBreakdown, 'phaseBreakdown')
+    register(ru.dashboard.metrics.suiteDuration, 'suiteDuration')
+    register(ru.dashboard.metrics.durationPerBrowser, 'durationPerBrowser')
+    register(ru.dashboard.metrics.leadingPhase, 'leadingPhase')
     register(ru.dashboard.metrics.flakyTrend, 'flakyTrend')
     register(ru.dashboard.metrics.clusterDistribution, 'clusterDistribution')
     register(ru.dashboard.metrics.problematicTests, 'problematicTests')

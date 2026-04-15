@@ -220,11 +220,27 @@ export interface DashboardBusinessAutomationRoiMetric {
     source: 'pendingAssumptions'
 }
 
+export interface DashboardPhaseBreakdownItem {
+    label: string
+    durationMs: number
+    sharePercent: number
+}
+
+export interface DashboardDurationBreakdownItem {
+    label: string
+    durationMs: number
+    sharePercent: number
+    tests: number
+}
+
 export interface DashboardAdvancedMetrics {
     performance: {
         p95DurationMs: number
         p99DurationMs: number
         slowestTests: DashboardSlowTest[]
+        phaseBreakdown: DashboardPhaseBreakdownItem[]
+        suiteDuration: DashboardDurationBreakdownItem[]
+        durationPerBrowser: DashboardDurationBreakdownItem[]
         durationTrend: {
             currentDurationMs: number
             previousDurationMs: number | null
@@ -741,27 +757,9 @@ export function buildAdvancedMetricsFromArchivedRuns(
     const durationValues = tests
         .map((test) => safeNumber(test.durationMs))
         .filter((durationMs) => durationMs > 0)
-    const slowestTests = [...tests]
-        .sort((left, right) => safeNumber(right.durationMs) - safeNumber(left.durationMs))
-        .slice(0, 10)
-        .map((test) => ({
-            title: test.title ?? 'Тест без названия',
-            file: test.location?.file ?? 'неизвестно',
-            project: test.project ?? 'неизвестно',
-            status: getFinalStatus(test),
-            flaky: Boolean(test.flaky),
-            durationMs: safeNumber(test.durationMs),
-            errorMessage: extractErrorMessage(test),
-        }))
+    const performanceMetrics = buildPerformanceMetrics(report, historyRuns)
 
     const previousRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
-    const durationTrend = {
-        currentDurationMs: report.durationMs ?? sum(durationValues),
-        previousDurationMs: previousRun?.totalDurationMs ?? null,
-        deltaPercent: previousRun && previousRun.totalDurationMs > 0
-            ? roundToOneDigit((((report.durationMs ?? sum(durationValues)) - previousRun.totalDurationMs) / previousRun.totalDurationMs) * 100)
-            : null,
-    }
 
     const flakyTrend = {
         currentFlakyTests: historyRuns[historyRuns.length - 1]?.flakyTests ?? tests.filter((test) => Boolean(test.flaky)).length,
@@ -776,12 +774,7 @@ export function buildAdvancedMetricsFromArchivedRuns(
     const firstFlakeToFix = collectFirstFlakeToFixMetric(archivedRuns)
 
     return {
-        performance: {
-            p95DurationMs: getPercentile(durationValues, 95),
-            p99DurationMs: getPercentile(durationValues, 99),
-            slowestTests,
-            durationTrend,
-        },
+        performance: performanceMetrics,
         flakyAnalytics: {
             averageFlakyScore: topFlakyTests.length > 0 ? roundToOneDigit(average(topFlakyTests.map((test) => test.flakyScore))) : null,
             averageMtbfDays: (() => {
@@ -1012,6 +1005,226 @@ function roundToTwoDigits(value: number): number {
     return Math.round(value * 100) / 100
 }
 
+function buildPerformanceMetrics(
+    report: Pick<ReporterRoot, 'tests' | 'durationMs'>,
+    historyRuns: DashboardHistoryEntry[],
+): DashboardAdvancedMetrics['performance'] {
+    const tests = report.tests ?? []
+    const durationValues = tests
+        .map((test) => safeNumber(test.durationMs))
+        .filter((durationMs) => durationMs > 0)
+    const totalDurationMs = report.durationMs ?? sum(tests.map((test) => safeNumber(test.durationMs)))
+    const previousRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
+
+    return {
+        p95DurationMs: getPercentile(durationValues, 95),
+        p99DurationMs: getPercentile(durationValues, 99),
+        slowestTests: [...tests]
+            .sort((left, right) => safeNumber(right.durationMs) - safeNumber(left.durationMs))
+            .slice(0, 10)
+            .map((test) => ({
+                title: test.title ?? 'Тест без названия',
+                file: test.location?.file ?? 'неизвестно',
+                project: test.project ?? 'неизвестно',
+                status: getFinalStatus(test),
+                flaky: Boolean(test.flaky),
+                durationMs: safeNumber(test.durationMs),
+                errorMessage: extractErrorMessage(test),
+            })),
+        phaseBreakdown: buildPhaseBreakdown(tests, totalDurationMs),
+        suiteDuration: buildSuiteDuration(tests, totalDurationMs),
+        durationPerBrowser: buildDurationPerBrowser(tests, totalDurationMs),
+        durationTrend: {
+            currentDurationMs: totalDurationMs,
+            previousDurationMs: previousRun?.totalDurationMs ?? null,
+            deltaPercent: previousRun && previousRun.totalDurationMs > 0
+                ? roundToOneDigit(((totalDurationMs - previousRun.totalDurationMs) / previousRun.totalDurationMs) * 100)
+                : null,
+        },
+    }
+}
+
+function buildPhaseBreakdown(tests: ReporterTest[], totalDurationMs: number): DashboardPhaseBreakdownItem[] {
+    let setupMs = 0
+    let testsMs = 0
+    let teardownMs = 0
+
+    for (const test of tests) {
+        const observedDurationMs = getObservedTestDurationMs(test)
+        const steps = (test.attempts ?? []).flatMap((attempt) => attempt.steps ?? [])
+
+        if (steps.length === 0) {
+            testsMs += observedDurationMs
+            continue
+        }
+
+        let stepsDurationMs = 0
+
+        for (const step of steps) {
+            const stepDurationMs = safeNumber(step.durationMs)
+
+            if (stepDurationMs <= 0) {
+                continue
+            }
+
+            stepsDurationMs += stepDurationMs
+
+            switch (classifyPerformanceStepPhase(step)) {
+                case 'setup':
+                    setupMs += stepDurationMs
+                    break
+                case 'teardown':
+                    teardownMs += stepDurationMs
+                    break
+                default:
+                    testsMs += stepDurationMs
+                    break
+            }
+        }
+
+        testsMs += Math.max(observedDurationMs - stepsDurationMs, 0)
+    }
+
+    const normalizationBase = totalDurationMs > 0 ? totalDurationMs : (setupMs + testsMs + teardownMs)
+
+    return [
+        buildPhaseBreakdownItem('Setup', setupMs, normalizationBase),
+        buildPhaseBreakdownItem('Tests', testsMs, normalizationBase),
+        buildPhaseBreakdownItem('Teardown', teardownMs, normalizationBase),
+    ]
+}
+
+function buildPhaseBreakdownItem(label: string, durationMs: number, totalDurationMs: number): DashboardPhaseBreakdownItem {
+    return {
+        label,
+        durationMs: roundToOneDigit(durationMs),
+        sharePercent: totalDurationMs <= 0 ? 0 : roundToOneDigit((durationMs / totalDurationMs) * 100),
+    }
+}
+
+function buildSuiteDuration(tests: ReporterTest[], totalDurationMs: number): DashboardDurationBreakdownItem[] {
+    const durationsBySuite = new Map<string, { durationMs: number; tests: number }>()
+
+    for (const test of tests) {
+        const label = resolveSuiteLabel(test)
+        const currentEntry = durationsBySuite.get(label) ?? { durationMs: 0, tests: 0 }
+
+        currentEntry.durationMs += getObservedTestDurationMs(test)
+        currentEntry.tests += 1
+        durationsBySuite.set(label, currentEntry)
+    }
+
+    return buildDurationBreakdownItems(durationsBySuite, totalDurationMs)
+}
+
+function buildDurationPerBrowser(tests: ReporterTest[], totalDurationMs: number): DashboardDurationBreakdownItem[] {
+    const durationsByBrowser = new Map<string, { durationMs: number; tests: number }>()
+
+    for (const test of tests) {
+        const label = resolveBrowserDimensionLabel(test.project)
+        const currentEntry = durationsByBrowser.get(label) ?? { durationMs: 0, tests: 0 }
+
+        currentEntry.durationMs += getObservedTestDurationMs(test)
+        currentEntry.tests += 1
+        durationsByBrowser.set(label, currentEntry)
+    }
+
+    return buildDurationBreakdownItems(durationsByBrowser, totalDurationMs)
+}
+
+function buildDurationBreakdownItems(
+    source: Map<string, { durationMs: number; tests: number }>,
+    totalDurationMs: number,
+): DashboardDurationBreakdownItem[] {
+    return [...source.entries()]
+        .map(([label, entry]) => ({
+            label,
+            durationMs: roundToOneDigit(entry.durationMs),
+            sharePercent: totalDurationMs <= 0 ? 0 : roundToOneDigit((entry.durationMs / totalDurationMs) * 100),
+            tests: entry.tests,
+        }))
+        .sort((left, right) => right.durationMs - left.durationMs)
+        .slice(0, 10)
+}
+
+function classifyPerformanceStepPhase(step: ReporterStep): 'setup' | 'tests' | 'teardown' {
+    const category = (step.category ?? '').trim().toLowerCase()
+    const title = (step.title ?? '').trim().toLowerCase()
+
+    if (/(beforeall|beforeeach|hook:before|fixture:setup|(^|\W)setup($|\W)|bootstrap|initialize|initialise)/.test(category)) {
+        return 'setup'
+    }
+
+    if (/(afterall|aftereach|hook:after|fixture:teardown|(^|\W)teardown($|\W)|cleanup|clean up)/.test(category)) {
+        return 'teardown'
+    }
+
+    if (/^(open|load|launch|bootstrap|prepare|initialize|initialise|init|login|log in|authorize|authorise|navigate|warm up|connect|seed|restore|create session|open checkout|open filter)/.test(title)) {
+        return 'setup'
+    }
+
+    if (/^(cleanup|clean up|close|dispose|logout|log out|sign out|reset|remove|delete|drop|stop|clear|release|disconnect)/.test(title)) {
+        return 'teardown'
+    }
+
+    return 'tests'
+}
+
+function getObservedTestDurationMs(test: ReporterTest): number {
+    const attempts = test.attempts ?? []
+
+    if (attempts.length > 0) {
+        return sum(attempts.map((attempt) => safeNumber(attempt.durationMs)))
+    }
+
+    return safeNumber(test.durationMs)
+}
+
+function resolveSuiteLabel(test: ReporterTest): string {
+    const title = typeof test.title === 'string' ? test.title.trim() : ''
+
+    if (title.includes('>')) {
+        const [suiteLabel] = title.split('>')
+
+        if (suiteLabel && suiteLabel.trim().length > 0) {
+            return suiteLabel.trim()
+        }
+    }
+
+    const filePath = typeof test.location?.file === 'string' ? test.location.file.trim() : ''
+
+    if (filePath) {
+        const normalizedPath = filePath.replace(/\\/g, '/')
+        const fileName = normalizedPath.split('/').pop() ?? normalizedPath
+        return fileName.replace(/\.spec\.[^.]+$/i, '').replace(/\.[^.]+$/i, '') || 'Набор без названия'
+    }
+
+    return 'Набор без названия'
+}
+
+function resolveBrowserDimensionLabel(project: string | undefined): string {
+    const normalizedProject = typeof project === 'string' && project.trim().length > 0 ? project.trim() : 'неизвестно'
+    const loweredProject = normalizedProject.toLowerCase()
+
+    if (/(chromium|chrome)/.test(loweredProject)) {
+        return 'Chromium'
+    }
+
+    if (/firefox/.test(loweredProject)) {
+        return 'Firefox'
+    }
+
+    if (/(webkit|safari)/.test(loweredProject)) {
+        return 'WebKit'
+    }
+
+    if (/edge/.test(loweredProject)) {
+        return 'Edge'
+    }
+
+    return normalizedProject
+}
+
 function collectFlakyCandidates(archivedRuns: Array<{ run: DashboardHistoryEntry; report: ReporterRoot }>): DashboardFlakyTestMetric[] {
     const candidates = new Map<string, {
         title: string
@@ -1222,33 +1435,11 @@ function buildFallbackAdvancedMetrics(
     flakyTests: number,
     totalDurationMs: number,
 ): DashboardAdvancedMetrics {
-    const durationValues = tests.map((test) => safeNumber(test.durationMs)).filter((value) => value > 0)
     const previousRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
+    const performanceMetrics = buildPerformanceMetrics({ tests, durationMs: totalDurationMs }, historyRuns)
 
     return {
-        performance: {
-            p95DurationMs: getPercentile(durationValues, 95),
-            p99DurationMs: getPercentile(durationValues, 99),
-            slowestTests: [...tests]
-                .sort((left, right) => safeNumber(right.durationMs) - safeNumber(left.durationMs))
-                .slice(0, 10)
-                .map((test) => ({
-                    title: test.title ?? 'Тест без названия',
-                    file: test.location?.file ?? 'неизвестно',
-                    project: test.project ?? 'неизвестно',
-                    status: getFinalStatus(test),
-                    flaky: Boolean(test.flaky),
-                    durationMs: safeNumber(test.durationMs),
-                    errorMessage: extractErrorMessage(test),
-                })),
-            durationTrend: {
-                currentDurationMs: totalDurationMs,
-                previousDurationMs: previousRun?.totalDurationMs ?? null,
-                deltaPercent: previousRun && previousRun.totalDurationMs > 0
-                    ? roundToOneDigit(((totalDurationMs - previousRun.totalDurationMs) / previousRun.totalDurationMs) * 100)
-                    : null,
-            },
-        },
+        performance: performanceMetrics,
         flakyAnalytics: {
             averageFlakyScore: null,
             averageMtbfDays: null,

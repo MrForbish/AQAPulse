@@ -533,6 +533,12 @@ export function renderDashboardHtml(
         .tests-browser-panel.is-active {
             display: block;
         }
+        .tests-browser-table-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            scrollbar-gutter: stable;
+        }
         .status-drilldown-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1198,7 +1204,7 @@ export function renderDashboardHtml(
                 <div class="subtle" style="margin-top: 10px;">
                     ${escapeHtml(DASHBOARD_TEXT.sourceHint)} ${escapeHtml(summary.sourceFile)}
                 </div>
-            </div>
+                    <div class="table-container tests-browser-table-container" style="margin-bottom: 0;">
             <div class="subtle">
                 <div>${escapeHtml(DASHBOARD_TEXT.generatedAt)}: ${escapeHtml(formatDate(summary.generatedAt))}</div>
                 <div>${escapeHtml(DASHBOARD_TEXT.runTime)}: ${escapeHtml(formatDuration(summary.kpis.totalDurationMs))}</div>

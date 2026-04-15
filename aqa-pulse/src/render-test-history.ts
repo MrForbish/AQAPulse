@@ -153,12 +153,25 @@ export function renderTestHistoryHtml(
         .diagnostics-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .diagnostics-card-description { color: #8b949e; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
         .attempt-list { display: grid; gap: 10px; }
-        .attempt-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
-        .attempt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+        .attempt-item { border-radius: 8px; border: 1px solid #30363d; background: #0d1117; overflow: hidden; }
+        .attempt-item[open] { border-color: rgba(88, 166, 255, 0.32); }
+        .attempt-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px; cursor: pointer; list-style: none; }
+        .attempt-summary::-webkit-details-marker { display: none; }
+        .attempt-summary-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .attempt-chevron { color: #8b949e; font-size: 11px; transition: transform 0.18s ease; }
+        .attempt-item[open] .attempt-chevron { transform: rotate(90deg); }
+        .attempt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .attempt-title { font-size: 13px; font-weight: 600; color: #ffffff; }
-        .attempt-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .attempt-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+        .attempt-body { padding: 0 12px 12px; max-height: 320px; overflow: auto; scrollbar-gutter: stable; border-top: 1px solid #21262d; }
         .attempt-section-title { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
         .attempt-error { margin-top: 8px; }
+        .attempt-explainer { color: #8b949e; font-size: 12px; line-height: 1.5; margin-bottom: 12px; }
+        .attempt-step-group { margin-top: 10px; border: 1px solid #21262d; border-radius: 8px; background: #161b22; overflow: hidden; }
+        .attempt-step-group[open] { border-color: rgba(88, 166, 255, 0.22); }
+        .attempt-step-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
+        .attempt-step-summary::-webkit-details-marker { display: none; }
+        .attempt-step-body { max-height: 220px; overflow: auto; padding: 0 10px 10px; scrollbar-gutter: stable; }
         .step-list, .attachment-list { display: grid; gap: 8px; }
         .step-item, .attachment-item { padding: 10px 12px; border-radius: 8px; background: #161b22; border: 1px solid #21262d; }
         .step-item-header, .attachment-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
@@ -540,8 +553,9 @@ function renderAttemptDiagnosticsCard(
                 <span class="meta-badge">${escapeHtml(HISTORY_TEXT.meta.retries)}: ${item.retries}</span>
                 <span class="meta-badge">${escapeHtml(HISTORY_TEXT.meta.attempts)}: ${item.attempts}</span>
             </div>
+            <div class="attempt-explainer">${escapeHtml(HISTORY_TEXT.diagnostics.retriesHint)}</div>
             <div class="attempt-list">
-                ${attempts.map((attempt) => renderAttemptDetail(attempt)).join('')}
+                ${attempts.map((attempt, index) => renderAttemptDetail(attempt, index === 0)).join('')}
             </div>
             <div class="event-actions">
                 <a class="event-link" href="#${escapeHtml(rowAnchor)}">${escapeHtml(HISTORY_TEXT.actions.jumpToRow)}</a>
@@ -550,37 +564,63 @@ function renderAttemptDiagnosticsCard(
     `
 }
 
-function renderAttemptDetail(attempt: TestHistoryResponse['history'][number]['attemptDetails'][number]): string {
+function renderAttemptDetail(
+    attempt: TestHistoryResponse['history'][number]['attemptDetails'][number],
+    isOpenByDefault: boolean,
+): string {
     const hasSteps = attempt.steps.length > 0
     const hasAttachments = attempt.attachments.length > 0
 
     return `
-        <div class="attempt-item">
-            <div class="attempt-header">
-                <div class="attempt-title">${escapeHtml(formatTemplate(HISTORY_TEXT.diagnostics.attemptTitle, { attempt: String(attempt.attempt) }))}</div>
-                <span class="status-badge ${getStatusClass(attempt.status, false)}">${escapeHtml(formatStatusLabel(attempt.status, false))}</span>
+        <details class="attempt-item"${isOpenByDefault ? ' open' : ''}>
+            <summary class="attempt-summary">
+                <div class="attempt-summary-main">
+                    <span class="attempt-chevron">▶</span>
+                    <div class="attempt-title">${escapeHtml(formatTemplate(HISTORY_TEXT.diagnostics.attemptTitle, { attempt: String(attempt.attempt) }))}</div>
+                </div>
+                <div class="attempt-header">
+                    <div class="attempt-meta">
+                        <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.duration)}: ${escapeHtml(formatDuration(attempt.durationMs))}</span>
+                        <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.steps)}: ${attempt.steps.length}</span>
+                        <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.attachments)}: ${attempt.attachments.length}</span>
+                    </div>
+                    <span class="status-badge ${getStatusClass(attempt.status, false)}">${escapeHtml(formatStatusLabel(attempt.status, false))}</span>
+                </div>
+            </summary>
+            <div class="attempt-body">
+                <div class="attempt-meta" style="margin: 10px 0 8px;">
+                    <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.startTime)}: ${escapeHtml(attempt.startTime ? formatDate(attempt.startTime) : '—')}</span>
+                </div>
+                ${attempt.errorMessage ? `<div class="attempt-error mono">${escapeHtml(attempt.errorMessage)}</div>` : ''}
+                ${hasSteps ? renderAttemptSteps(attempt.steps, Boolean(attempt.errorMessage)) : ''}
+                ${hasAttachments ? `
+                    <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
+                    <div class="attachment-list">
+                        ${attempt.attachments.map((attachment) => renderAttachmentDetail(attachment)).join('')}
+                    </div>
+                ` : ''}
+                ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${escapeHtml(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}
             </div>
-            <div class="attempt-meta">
-                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.duration)}: ${escapeHtml(formatDuration(attempt.durationMs))}</span>
-                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.startTime)}: ${escapeHtml(attempt.startTime ? formatDate(attempt.startTime) : '—')}</span>
-                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.steps)}: ${attempt.steps.length}</span>
-                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.attachments)}: ${attempt.attachments.length}</span>
-            </div>
-            ${attempt.errorMessage ? `<div class="attempt-error mono">${escapeHtml(attempt.errorMessage)}</div>` : ''}
-            ${hasSteps ? `
-                <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.stepsTitle)}</div>
+        </details>
+    `
+}
+
+function renderAttemptSteps(
+    steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
+    isOpenByDefault: boolean,
+): string {
+    return `
+        <details class="attempt-step-group"${isOpenByDefault ? ' open' : ''}>
+            <summary class="attempt-step-summary">
+                <span class="attempt-section-title" style="margin: 0;">${escapeHtml(HISTORY_TEXT.diagnostics.stepsTitle)}</span>
+                <span class="meta-badge">${steps.length}</span>
+            </summary>
+            <div class="attempt-step-body">
                 <div class="step-list">
-                    ${attempt.steps.map((step) => renderStepDetail(step)).join('')}
+                    ${steps.map((step) => renderStepDetail(step)).join('')}
                 </div>
-            ` : ''}
-            ${hasAttachments ? `
-                <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
-                <div class="attachment-list">
-                    ${attempt.attachments.map((attachment) => renderAttachmentDetail(attachment)).join('')}
-                </div>
-            ` : ''}
-            ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${escapeHtml(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}
-        </div>
+            </div>
+        </details>
     `
 }
 

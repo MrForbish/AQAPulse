@@ -475,7 +475,9 @@ export function renderDashboardHtml(
             margin-bottom: 24px;
             display: flex;
             flex-direction: column;
-            max-height: 75vh;
+            max-height: min(75vh, 960px);
+            min-height: 520px;
+            overflow: hidden;
         }
         .tests-browser-header {
             display: flex;
@@ -533,9 +535,12 @@ export function renderDashboardHtml(
             min-height: 0;
         }
         .tests-browser-panel.is-active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         .tests-browser-table-container {
+            flex: 1 1 auto;
             max-height: 100%;
             min-height: 0;
             overflow-y: auto;

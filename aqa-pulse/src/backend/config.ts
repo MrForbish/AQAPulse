@@ -8,6 +8,7 @@ export interface SaasAppConfig {
     storageDriver: StorageDriver
     sqlitePath: string | null
     postgresConnectionString: string | null
+    requestBodyLimit: string
     distPath: string
     legacyArchiveRootPath: string
     allowDevBootstrap: boolean
@@ -26,6 +27,7 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
     const configuredArchiveRootPath = normalizeOptionalText(overrides.legacyArchiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH)
     const configuredSqlitePath = normalizeOptionalText(overrides.sqlitePath ?? process.env.AQA_PULSE_SQLITE_PATH)
     const configuredPostgresConnectionString = normalizeOptionalText(overrides.postgresConnectionString ?? process.env.AQA_PULSE_POSTGRES_URL)
+    const configuredRequestBodyLimit = normalizeOptionalText(overrides.requestBodyLimit ?? process.env.AQA_PULSE_REQUEST_BODY_LIMIT)
     const configuredJwtSecret = normalizeOptionalText(overrides.jwtSecret ?? process.env.AQA_PULSE_JWT_SECRET)
     const configuredAccessTokenTtlSeconds = normalizePositiveInteger(overrides.accessTokenTtlSeconds ?? process.env.AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS)
     const configuredAdminSessionCookieName = normalizeOptionalText(overrides.adminSessionCookieName ?? process.env.AQA_PULSE_ADMIN_SESSION_COOKIE_NAME)
@@ -37,6 +39,7 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
         storageDriver: normalizeStorageDriver(overrides.storageDriver ?? process.env.AQA_PULSE_STORAGE_DRIVER),
         sqlitePath: configuredSqlitePath ? path.resolve(configuredSqlitePath) : null,
         postgresConnectionString: configuredPostgresConnectionString,
+        requestBodyLimit: configuredRequestBodyLimit ?? '50mb',
         distPath: configuredDistPath ? path.resolve(configuredDistPath) : path.resolve(process.cwd(), './dist'),
         legacyArchiveRootPath: configuredArchiveRootPath ? path.resolve(configuredArchiveRootPath) : path.resolve(process.cwd(), './history'),
         allowDevBootstrap: normalizeBoolean(overrides.allowDevBootstrap ?? process.env.AQA_PULSE_ENABLE_DEV_BOOTSTRAP, true),

@@ -47,8 +47,8 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     const distPath = config.distPath
     const distAssetsPath = path.resolve(distPath, './assets')
 
-    app.use(express.json({ limit: '25mb' }))
-    app.use(express.urlencoded({ extended: true }))
+    app.use(express.json({ limit: config.requestBodyLimit }))
+    app.use(express.urlencoded({ extended: true, limit: config.requestBodyLimit }))
     app.use('/assets', express.static(distAssetsPath))
     app.use('/static', express.static(distPath))
     app.use('/w/:slug/assets', express.static(distAssetsPath))
@@ -654,10 +654,34 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
         const message = error instanceof Error ? error.message : String(error)
+
+        if (isPayloadTooLargeError(error)) {
+            response.status(413).json({ error: 'request entity too large' })
+            return
+        }
+
         response.status(500).json({ error: message })
     })
 
     return app
+}
+
+function isPayloadTooLargeError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false
+    }
+
+    const maybeError = error as {
+        type?: string
+        status?: number
+        statusCode?: number
+        message?: string
+    }
+
+    return maybeError.type === 'entity.too.large'
+        || maybeError.status === 413
+        || maybeError.statusCode === 413
+        || maybeError.message === 'request entity too large'
 }
 
 function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage): ApiStore {

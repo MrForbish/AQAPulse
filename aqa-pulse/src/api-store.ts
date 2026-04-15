@@ -828,10 +828,10 @@ function normalizeAttemptSteps(
 
 function buildCandidateIdentity(test: ReporterTest): { title: string; file: string; project: string } | null {
     const title = test.title ?? ''
-    const file = test.location?.file ?? ''
+    const file = test.location?.file ?? 'неизвестно'
     const project = test.project ?? 'unknown'
 
-    if (!title || !file) {
+    if (!title) {
         return null
     }
 

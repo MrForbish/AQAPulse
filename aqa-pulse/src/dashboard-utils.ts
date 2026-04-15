@@ -1032,10 +1032,10 @@ function collectFlakyCandidates(archivedRuns: Array<{ run: DashboardHistoryEntry
     for (const archivedRun of archivedRuns) {
         for (const test of archivedRun.report.tests ?? []) {
             const title = test.title ?? ''
-            const file = test.location?.file ?? ''
+            const file = test.location?.file ?? 'неизвестно'
             const project = test.project ?? 'неизвестно'
 
-            if (!title || !file) {
+            if (!title) {
                 continue
             }
 
@@ -1125,10 +1125,10 @@ function collectResolvedFlakyFixMetrics(
     for (const archivedRun of archivedRuns) {
         for (const test of archivedRun.report.tests ?? []) {
             const title = test.title ?? ''
-            const file = test.location?.file ?? ''
+            const file = test.location?.file ?? 'неизвестно'
             const project = test.project ?? 'неизвестно'
 
-            if (!title || !file) {
+            if (!title) {
                 continue
             }
 

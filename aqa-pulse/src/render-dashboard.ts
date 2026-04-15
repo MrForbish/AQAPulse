@@ -1317,15 +1317,17 @@ export function renderDashboardHtml(
         <section class="tab-panel is-active" data-tab-panel="overview">
             ${renderManagerOverview(summary, dashboardActionPath)}
 
-            <div class="chart-card" style="margin-bottom: 24px;">
-                <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRateTrend, METRIC_DESCRIPTIONS.passRateTrend)}</div>
-                <canvas id="passRateTrendChart"></canvas>
-            </div>
+            <div class="charts-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.passRateTrend, METRIC_DESCRIPTIONS.passRateTrend)}</div>
+                    <canvas id="passRateTrendChart"></canvas>
+                </div>
 
-            <div class="chart-card" style="margin-bottom: 24px;">
-                <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
-                <canvas id="statusChart"></canvas>
-                ${renderStatusDrilldown(summary)}
+                <div class="chart-card">
+                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
+                    <canvas id="statusChart"></canvas>
+                    ${renderStatusDrilldown(summary)}
+                </div>
             </div>
 
             ${renderCurrentRunTestsBrowser(summary, testDetailsBasePath)}

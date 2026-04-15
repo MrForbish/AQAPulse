@@ -925,13 +925,11 @@ function getIncidentConfidence(
 
 function classifyIncidentCategory(signals: IncidentSignalBundle): TestHistoryIncidentCategory {
     const message = signals.corpus
+    const errorCorpus = signals.normalizedErrorMessages.join(' ').toLowerCase()
+    const attachmentCorpus = signals.attachmentHints.join(' ').toLowerCase()
 
     if (!message) {
         return 'unknown'
-    }
-
-    if (/unauthor|forbidden|session|token|login|auth|refresh/i.test(message)) {
-        return 'auth'
     }
 
     if (/strict mode violation|locator|selector|resolved to \d+ elements|not attached/i.test(message)) {
@@ -952,6 +950,13 @@ function classifyIncidentCategory(signals: IncidentSignalBundle): TestHistoryInc
 
     if (/browser has been closed|target page, context or browser has been closed|worker process|sigterm|enomem|epipe|crash|detached/i.test(message)) {
         return 'infrastructure'
+    }
+
+    if (
+        /unauthorized|forbidden|access denied|invalid token|token expired|session expired|login required|not authenticated|auth failed|authentication failed|refresh token/i.test(errorCorpus)
+        || ((signals.hasContextAttachment || attachmentCorpus.includes('storage-state')) && /token|session|login|auth/i.test(errorCorpus))
+    ) {
+        return 'auth'
     }
 
     return 'unknown'

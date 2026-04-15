@@ -6,8 +6,10 @@ import {
     type DashboardFilters,
     normalizeDashboardSummary,
     readDashboardSummary,
+    type ReporterAttachment,
     type DashboardSummary,
     type ReporterRoot,
+    type ReporterStep,
     type ReporterTest,
 } from './dashboard-utils'
 import {
@@ -52,6 +54,30 @@ export interface TestHistoryItem {
     retries: number
     attempts: number
     errorMessage: string | null
+    attemptDetails: TestHistoryAttemptDetail[]
+}
+
+export interface TestHistoryAttachment {
+    name: string
+    contentType: string | null
+    path: string | null
+    url: string | null
+}
+
+export interface TestHistoryStep {
+    title: string
+    category: string | null
+    durationMs: number
+}
+
+export interface TestHistoryAttemptDetail {
+    attempt: number
+    status: string
+    durationMs: number
+    startTime: string | null
+    errorMessage: string | null
+    attachments: TestHistoryAttachment[]
+    steps: TestHistoryStep[]
 }
 
 export interface TestHistoryResponse {
@@ -607,7 +633,64 @@ function normalizeTestHistoryItem(run: DashboardHistoryEntry, test: ReporterTest
         errorMessage: test.errors?.find((error) => typeof error.message === 'string' && error.message.trim().length > 0)?.message
             ?? failedAttempt?.error?.message
             ?? null,
+        attemptDetails: normalizeAttemptDetails(test),
     }
+}
+
+function normalizeAttemptDetails(test: ReporterTest): TestHistoryAttemptDetail[] {
+    const attempts = test.attempts ?? []
+
+    if (attempts.length === 0) {
+        return [{
+            attempt: 1,
+            status: normalizeStatus(test.status),
+            durationMs: typeof test.durationMs === 'number' ? test.durationMs : 0,
+            startTime: null,
+            errorMessage: test.errors?.find((error) => typeof error.message === 'string' && error.message.trim().length > 0)?.message ?? null,
+            attachments: [],
+            steps: [],
+        }]
+    }
+
+    return attempts.map((attempt, index) => ({
+        attempt: typeof attempt.attempt === 'number' ? attempt.attempt : (index + 1),
+        status: normalizeStatus(attempt.status),
+        durationMs: typeof attempt.durationMs === 'number' ? attempt.durationMs : 0,
+        startTime: typeof attempt.startTime === 'string' ? attempt.startTime : null,
+        errorMessage: typeof attempt.error?.message === 'string' && attempt.error.message.trim().length > 0
+            ? attempt.error.message.trim()
+            : null,
+        attachments: normalizeAttemptAttachments(attempt.attachments),
+        steps: normalizeAttemptSteps(attempt.steps),
+    }))
+}
+
+function normalizeAttemptAttachments(attachments: ReporterAttachment[] | undefined): TestHistoryAttachment[] {
+    if (!Array.isArray(attachments)) {
+        return []
+    }
+
+    return attachments
+        .map((attachment) => ({
+            name: typeof attachment.name === 'string' && attachment.name.trim().length > 0 ? attachment.name.trim() : 'attachment',
+            contentType: typeof attachment.contentType === 'string' && attachment.contentType.trim().length > 0 ? attachment.contentType.trim() : null,
+            path: typeof attachment.path === 'string' && attachment.path.trim().length > 0 ? attachment.path.trim() : null,
+            url: typeof attachment.url === 'string' && attachment.url.trim().length > 0 ? attachment.url.trim() : null,
+        }))
+        .filter((attachment) => attachment.path !== null || attachment.url !== null)
+}
+
+function normalizeAttemptSteps(steps: ReporterStep[] | undefined): TestHistoryStep[] {
+    if (!Array.isArray(steps)) {
+        return []
+    }
+
+    return steps
+        .map((step) => ({
+            title: typeof step.title === 'string' && step.title.trim().length > 0 ? step.title.trim() : 'step',
+            category: typeof step.category === 'string' && step.category.trim().length > 0 ? step.category.trim() : null,
+            durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
+        }))
 }
 
 function buildCandidateIdentity(test: ReporterTest): { title: string; file: string; project: string } | null {

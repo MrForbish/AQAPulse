@@ -63,6 +63,30 @@
           "status": "failed",
           "durationMs": 14500,
           "startTime": "2026-04-14T12:34:30.000Z",
+          "steps": [
+            {
+              "title": "Open checkout",
+              "category": "pw:api",
+              "durationMs": 1800
+            },
+            {
+              "title": "Submit payment",
+              "category": "test.step",
+              "durationMs": 7200
+            }
+          ],
+          "attachments": [
+            {
+              "name": "trace.zip",
+              "contentType": "application/zip",
+              "path": "artifacts/checkout-payment-trace.zip"
+            },
+            {
+              "name": "payment-timeout.png",
+              "contentType": "image/png",
+              "path": "artifacts/checkout-payment-timeout.png"
+            }
+          ],
           "error": {
             "message": "Timeout 30000ms while waiting for payment gateway response"
           }
@@ -71,7 +95,14 @@
           "attempt": 2,
           "status": "passed",
           "durationMs": 13800,
-          "startTime": "2026-04-14T12:34:45.000Z"
+          "startTime": "2026-04-14T12:34:45.000Z",
+          "steps": [
+            {
+              "title": "Retry payment after gateway recovery",
+              "category": "test.step",
+              "durationMs": 5400
+            }
+          ]
         }
       ]
     },
@@ -99,6 +130,18 @@
           "status": "failed",
           "durationMs": 10200,
           "startTime": "2026-04-14T12:35:00.000Z",
+          "steps": [
+            {
+              "title": "Open filter drawer",
+              "category": "test.step",
+              "durationMs": 1400
+            },
+            {
+              "title": "Click category filter",
+              "category": "pw:api",
+              "durationMs": 900
+            }
+          ],
           "error": {
             "message": "strict mode violation: locator('.filter-option') resolved to 2 elements"
           }
@@ -108,6 +151,13 @@
           "status": "failed",
           "durationMs": 11000,
           "startTime": "2026-04-14T12:35:11.000Z",
+          "attachments": [
+            {
+              "name": "strict-mode-dom.html",
+              "contentType": "text/html",
+              "path": "artifacts/catalog-filter-dom.html"
+            }
+          ],
           "error": {
             "message": "strict mode violation: locator('.filter-option') resolved to 2 elements"
           }

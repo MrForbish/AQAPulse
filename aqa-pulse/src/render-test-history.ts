@@ -104,6 +104,7 @@ export function renderTestHistoryHtml(
     const latestStableRecoveryHtml = renderLatestStableRecovery(payload.history)
     const currentStabilityStreakHtml = renderCurrentStabilityStreak(payload.history)
     const unstableStreakBeforeRecoveryHtml = renderUnstableStreakBeforeRecovery(payload.history)
+    const attemptDiagnosticsHtml = renderAttemptDiagnostics(payload.history)
     const missingRunsHtml = payload.missingRuns.length > 0
         ? `<div class="notice-inline">${renderMetricHeading(HISTORY_TEXT.metrics.archiveGaps, METRIC_DESCRIPTIONS.archiveGaps, { className: 'inline-heading', tagName: 'div' })}<div class="mono">${escapeHtml(payload.missingRuns.join(', '))}</div></div>`
         : ''
@@ -147,6 +148,23 @@ export function renderTestHistoryHtml(
         .event-list-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
         .event-list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
         .event-list-description { color: #c9d1d9; font-size: 12px; line-height: 1.45; }
+        .diagnostics-shell { display: grid; gap: 12px; margin-bottom: 24px; }
+        .diagnostics-card { padding: 16px; }
+        .diagnostics-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .diagnostics-card-description { color: #8b949e; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
+        .attempt-list { display: grid; gap: 10px; }
+        .attempt-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
+        .attempt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+        .attempt-title { font-size: 13px; font-weight: 600; color: #ffffff; }
+        .attempt-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .attempt-section-title { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
+        .attempt-error { margin-top: 8px; }
+        .step-list, .attachment-list { display: grid; gap: 8px; }
+        .step-item, .attachment-item { padding: 10px 12px; border-radius: 8px; background: #161b22; border: 1px solid #21262d; }
+        .step-item-header, .attachment-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+        .step-title, .attachment-title { color: #ffffff; font-size: 12px; font-weight: 500; }
+        .attachment-link { color: #58a6ff; text-decoration: none; font-size: 12px; }
+        .attachment-link:hover { text-decoration: underline; }
         ${METRIC_INFO_STYLES}
         .inline-heading { font-size: 13px; color: #ffffff; margin-bottom: 10px; }
         .notice-inline { padding: 14px 16px; margin-bottom: 24px; }
@@ -244,6 +262,8 @@ export function renderTestHistoryHtml(
         ${currentStabilityStreakHtml}
 
         ${unstableStreakBeforeRecoveryHtml}
+
+        ${attemptDiagnosticsHtml}
 
         ${missingRunsHtml}
 
@@ -467,6 +487,127 @@ function renderUnstableStreakBeforeRecovery(history: TestHistoryResponse['histor
             <div class="event-actions">
                 <a class="event-link" href="#${escapeHtml(rowAnchor)}">${escapeHtml(HISTORY_TEXT.actions.jumpToRow)}</a>
             </div>
+        </div>
+    `
+}
+
+function renderAttemptDiagnostics(history: TestHistoryResponse['history']): string {
+    if (history.length === 0) {
+        return ''
+    }
+
+    const latestRun = history[0]
+    const latestUnstable = getUnstableHistoryItems(history)[0]
+    const cards: string[] = []
+
+    if (latestRun) {
+        cards.push(renderAttemptDiagnosticsCard(latestRun, HISTORY_TEXT.diagnostics.latestRunTitle, HISTORY_TEXT.diagnostics.latestRunDescription))
+    }
+
+    if (latestUnstable && latestUnstable.runId !== latestRun?.runId) {
+        cards.push(renderAttemptDiagnosticsCard(latestUnstable, HISTORY_TEXT.diagnostics.latestUnstableTitle, HISTORY_TEXT.diagnostics.latestUnstableDescription))
+    }
+
+    if (cards.length === 0) {
+        return ''
+    }
+
+    return `
+        <div class="diagnostics-shell">
+            ${cards.join('')}
+        </div>
+    `
+}
+
+function renderAttemptDiagnosticsCard(
+    item: TestHistoryResponse['history'][number],
+    title: string,
+    description: string,
+): string {
+    const rowAnchor = buildHistoryRowAnchor(item.runId)
+    const attempts = item.attemptDetails ?? []
+
+    return `
+        <div class="notice-inline diagnostics-card">
+            <div class="diagnostics-card-header">
+                ${renderMetricHeading(title, METRIC_DESCRIPTIONS.timeline, { className: 'inline-heading', tagName: 'div' })}
+                <span class="status-badge ${getStatusClass(item.status, item.flaky)}">${escapeHtml(formatStatusLabel(item.status, item.flaky))}</span>
+            </div>
+            <div class="diagnostics-card-description">${escapeHtml(description)}</div>
+            <div class="event-meta">
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.meta.time)}: ${escapeHtml(formatDate(item.reportTimestamp ?? item.generatedAt))}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.meta.branch)}: ${escapeHtml(item.branch ?? '—')}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.meta.retries)}: ${item.retries}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.meta.attempts)}: ${item.attempts}</span>
+            </div>
+            <div class="attempt-list">
+                ${attempts.map((attempt) => renderAttemptDetail(attempt)).join('')}
+            </div>
+            <div class="event-actions">
+                <a class="event-link" href="#${escapeHtml(rowAnchor)}">${escapeHtml(HISTORY_TEXT.actions.jumpToRow)}</a>
+            </div>
+        </div>
+    `
+}
+
+function renderAttemptDetail(attempt: TestHistoryResponse['history'][number]['attemptDetails'][number]): string {
+    const hasSteps = attempt.steps.length > 0
+    const hasAttachments = attempt.attachments.length > 0
+
+    return `
+        <div class="attempt-item">
+            <div class="attempt-header">
+                <div class="attempt-title">${escapeHtml(formatTemplate(HISTORY_TEXT.diagnostics.attemptTitle, { attempt: String(attempt.attempt) }))}</div>
+                <span class="status-badge ${getStatusClass(attempt.status, false)}">${escapeHtml(formatStatusLabel(attempt.status, false))}</span>
+            </div>
+            <div class="attempt-meta">
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.duration)}: ${escapeHtml(formatDuration(attempt.durationMs))}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.startTime)}: ${escapeHtml(attempt.startTime ? formatDate(attempt.startTime) : '—')}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.steps)}: ${attempt.steps.length}</span>
+                <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.attachments)}: ${attempt.attachments.length}</span>
+            </div>
+            ${attempt.errorMessage ? `<div class="attempt-error mono">${escapeHtml(attempt.errorMessage)}</div>` : ''}
+            ${hasSteps ? `
+                <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.stepsTitle)}</div>
+                <div class="step-list">
+                    ${attempt.steps.map((step) => renderStepDetail(step)).join('')}
+                </div>
+            ` : ''}
+            ${hasAttachments ? `
+                <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
+                <div class="attachment-list">
+                    ${attempt.attachments.map((attachment) => renderAttachmentDetail(attachment)).join('')}
+                </div>
+            ` : ''}
+            ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${escapeHtml(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}
+        </div>
+    `
+}
+
+function renderStepDetail(step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number]): string {
+    return `
+        <div class="step-item">
+            <div class="step-item-header">
+                <div class="step-title">${escapeHtml(step.title)}</div>
+                <span class="meta-badge">${escapeHtml(formatDuration(step.durationMs))}</span>
+            </div>
+            <div class="muted">${escapeHtml(step.category ?? HISTORY_TEXT.diagnostics.noCategory)}</div>
+        </div>
+    `
+}
+
+function renderAttachmentDetail(attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number]): string {
+    const href = attachment.url ?? null
+    const location = attachment.url ?? attachment.path ?? HISTORY_TEXT.diagnostics.attachmentLocationMissing
+
+    return `
+        <div class="attachment-item">
+            <div class="attachment-item-header">
+                <div class="attachment-title">${escapeHtml(attachment.name)}</div>
+                ${attachment.contentType ? `<span class="meta-badge">${escapeHtml(attachment.contentType)}</span>` : ''}
+            </div>
+            <div class="mono">${escapeHtml(location)}</div>
+            ${href ? `<div style="margin-top: 8px;"><a class="attachment-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
         </div>
     `
 }

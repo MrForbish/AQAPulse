@@ -52,12 +52,27 @@ export interface ReporterError {
     stack?: string
 }
 
+export interface ReporterAttachment {
+    name?: string
+    contentType?: string
+    path?: string
+    url?: string
+}
+
+export interface ReporterStep {
+    title?: string
+    category?: string
+    durationMs?: number
+}
+
 export interface ReporterAttempt {
     attempt?: number
     status?: string
     durationMs?: number
     startTime?: string
     error?: ReporterError
+    attachments?: ReporterAttachment[]
+    steps?: ReporterStep[]
 }
 
 export interface ReporterTest {

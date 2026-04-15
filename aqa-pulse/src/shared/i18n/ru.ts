@@ -415,6 +415,23 @@ export const ru = {
         actions: {
             jumpToRow: 'Перейти к соответствующей строке в истории',
         },
+        diagnostics: {
+            latestRunTitle: 'Диагностика последнего запуска',
+            latestRunDescription: 'Подробности по попыткам самого свежего найденного прогона: ретраи, шаги и доступные артефакты.',
+            latestUnstableTitle: 'Диагностика последнего нестабильного эпизода',
+            latestUnstableDescription: 'Ближайший нестабильный запуск до текущего состояния. Удобно смотреть, что именно ломалось до восстановления.',
+            attemptTitle: 'Попытка #{attempt}',
+            duration: 'Длительность',
+            startTime: 'Старт',
+            steps: 'Шаги',
+            attachments: 'Артефакты',
+            stepsTitle: 'Шаги попытки',
+            attachmentsTitle: 'Артефакты попытки',
+            emptyAttempt: 'Для этой попытки нет дополнительных шагов, артефактов или текста ошибки.',
+            noCategory: 'Категория не указана',
+            openAttachment: 'Открыть артефакт',
+            attachmentLocationMissing: 'Источник артефакта не указан',
+        },
         labels: {
             error: 'ошибка',
             flaky: 'flaky',

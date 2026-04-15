@@ -473,6 +473,9 @@ export function renderDashboardHtml(
         .tests-browser-card {
             padding: 20px;
             margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            max-height: 75vh;
         }
         .tests-browser-header {
             display: flex;
@@ -526,12 +529,15 @@ export function renderDashboardHtml(
         }
         .tests-browser-panel {
             display: none;
+            flex: 1 1 auto;
+            min-height: 0;
         }
         .tests-browser-panel.is-active {
             display: block;
         }
         .tests-browser-table-container {
-            max-height: 70vh;
+            max-height: 100%;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: auto;
             scrollbar-gutter: stable;
@@ -2652,7 +2658,7 @@ function renderCurrentRunTestsBrowser(summary: DashboardSummary, testDetailsBase
             </div>
             ${groups.map((group, index) => `
                 <div class="tests-browser-panel${index === 0 ? ' is-active' : ''}" data-tests-status-panel="${escapeHtml(group.id)}">
-                    <div class="table-container" style="margin-bottom: 0;">
+                    <div class="table-container tests-browser-table-container" style="margin-bottom: 0;">
                         <table>
                             <thead>
                                 <tr>

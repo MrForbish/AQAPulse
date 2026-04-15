@@ -58,7 +58,7 @@ export const ru = {
             topSlowestTestsP1: 'Топ медленных тестов (P1)',
             phaseBreakdown: 'Разбивка по фазам',
             suiteDuration: 'Длительность по наборам',
-            durationPerBrowser: 'Длительность по браузерам / проектам',
+            durationPerBrowser: 'Runtime-проекты / браузеры',
             leadingPhase: 'Доминирующая фаза',
             flakyTrend: 'Тренд нестабильности',
             clusterDistribution: 'Распределение ошибок по кластерам',
@@ -99,7 +99,7 @@ export const ru = {
             topSlowestTests: 'Самые медленные тесты текущего среза, требующие оптимизации.',
             phaseBreakdown: 'Оценка распределения времени между подготовкой, исполнением тестовых шагов и завершением. Фазы определяются по шагам и служебным названиям в отчёте Playwright.',
             suiteDuration: 'Какие наборы тестов суммарно занимают больше всего времени в текущем срезе. Наборы группируются по префиксу title или по имени spec-файла.',
-            durationPerBrowser: 'Сколько времени занимают браузеры или Playwright-проекты в текущем срезе. Если браузер нельзя выделить по имени проекта, AQA Pulse показывает сам project.',
+            durationPerBrowser: 'Сколько времени занимают runtime-проекты текущего среза. Если из имени project удаётся распознать браузер, AQA Pulse нормализует подпись до браузера; иначе показывает исходный Playwright project.',
             flakyTrend: 'Тренд количества нестабильных тестов по архивным прогонам.',
             clusterList: 'Распределение падений по кластерам ошибок и примеры тестов.',
             problematicTests: 'Тесты с наибольшей долей падений и высокой вероятностью повторных инцидентов.',
@@ -157,7 +157,8 @@ export const ru = {
         performance: {
             phaseBreakdownDescription: 'Фазы считаются эвристически по hook- и step-паттернам Playwright. Остаток времени относится к основному выполнению тестов.',
             suiteDurationDescription: 'Показываются самые тяжёлые наборы текущего среза. Группировка идёт по префиксу названия теста или по имени spec-файла.',
-            durationPerBrowserDescription: 'Если браузер распознаётся из имени project, показывается он. Иначе AQA Pulse оставляет исходный Playwright project как есть.',
+            durationPerBrowserDescription: 'Срез строится по полю Playwright project. Если в имени project есть chromium, chrome, firefox, webkit, safari или edge, подпись нормализуется до браузера.',
+            runtimeBreakdownTitle: 'Срез по runtime-проектам',
             phaseLegendLabel: 'Структура длительности',
         },
         testsBrowser: {

@@ -29,10 +29,21 @@ export function renderDashboardHtml(
     const durationTrendData = serializeForInlineScript(summary.charts.durationTrend)
     const flakyTrendData = serializeForInlineScript(summary.charts.flakyTrend)
     const statusChartData = serializeForInlineScript(summary.charts.statusDistribution)
-    const errorChartData = serializeForInlineScript(summary.charts.errorClusters)
-    const slowestChartData = serializeForInlineScript(summary.charts.slowestTests)
+    const errorChartData = serializeForInlineScript({
+        ...summary.charts.errorClusters,
+        fullLabels: summary.errorClusters.length > 0
+            ? summary.errorClusters.map((cluster) => cluster.message)
+            : summary.charts.errorClusters.labels,
+    })
+    const slowestChartData = serializeForInlineScript({
+        ...summary.charts.slowestTests,
+        fullLabels: summary.performance.slowestTests.length > 0
+            ? summary.performance.slowestTests.map((test) => test.title)
+            : summary.charts.slowestTests.labels,
+    })
     const phaseBreakdownChartData = serializeForInlineScript(toPerformanceChartDataset(summary.performance.phaseBreakdown, {
         labelFormatter: (label) => formatPerformancePhaseLabel(label),
+        fullLabelFormatter: (label) => formatPerformancePhaseLabel(label),
         unit: 'minutes',
     }))
     const suiteDurationChartData = serializeForInlineScript(toPerformanceChartDataset(summary.performance.suiteDuration, {
@@ -48,6 +59,7 @@ export function renderDashboardHtml(
         charts: DASHBOARD_TEXT.charts,
         statusLabels: DASHBOARD_TEXT.statusLabels,
         business: DASHBOARD_TEXT.business,
+        performance: DASHBOARD_TEXT.performance,
         states: DASHBOARD_TEXT.states,
     })
     const businessCostConfigData = serializeForInlineScript({
@@ -291,6 +303,12 @@ export function renderDashboardHtml(
             color: #9fd3ff;
             text-shadow: 0 0 18px rgba(88, 166, 255, 0.12);
             margin-bottom: 8px;
+            min-width: 0;
+        }
+        .kpi-value-text {
+            font-size: 20px;
+            line-height: 1.25;
+            text-shadow: none;
         }
         .trend-neutral {
             color: #8b949e;
@@ -346,6 +364,27 @@ export function renderDashboardHtml(
             color: #c9d1d9;
             font-size: 14px;
             font-weight: 600;
+        }
+        .overflow-text {
+            display: block;
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .overflow-text-inline {
+            display: inline-block;
+            vertical-align: bottom;
+        }
+        .table-cell-text {
+            max-width: 280px;
+        }
+        .table-cell-text-wide {
+            max-width: 420px;
+        }
+        .summary-text {
+            max-width: 100%;
         }
         .manager-summary-card {
             padding: 20px;
@@ -1392,11 +1431,11 @@ export function renderDashboardHtml(
                 </div>
                 <div class="runs-summary-item">
                     <div class="runs-summary-label">${escapeHtml(DASHBOARD_TEXT.history.latestSource)}</div>
-                    <div class="runs-summary-value">${escapeHtml(summary.sourceFile)}</div>
+                    <div class="runs-summary-value">${renderOverflowText(summary.sourceFile, { className: 'summary-text' })}</div>
                 </div>
                 <div class="runs-summary-item">
                     <div class="runs-summary-label">${escapeHtml(DASHBOARD_TEXT.history.currentBranch)}</div>
-                    <div class="runs-summary-value">${escapeHtml(summary.runMetadata.branch ?? '—')} • ${escapeHtml(DASHBOARD_TEXT.commitMeta)}: ${escapeHtml(formatCommit(summary.runMetadata.commit))} • ${escapeHtml(DASHBOARD_TEXT.authorMeta)}: ${escapeHtml(summary.runMetadata.author ?? '—')}</div>
+                    <div class="runs-summary-value">${renderOverflowText(`${summary.runMetadata.branch ?? '—'} • ${DASHBOARD_TEXT.commitMeta}: ${formatCommit(summary.runMetadata.commit)} • ${DASHBOARD_TEXT.authorMeta}: ${summary.runMetadata.author ?? '—'}`, { className: 'summary-text' })}</div>
                 </div>
             </div>
             <div class="table-container">
@@ -1442,12 +1481,12 @@ export function renderDashboardHtml(
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
-                    <div class="kpi-value">${escapeHtml(topBrowser ? topBrowser.label : '—')}</div>
+                    <div class="kpi-value kpi-value-text">${renderOverflowText(topBrowser ? topBrowser.label : '—', { className: 'overflow-text-inline' })}</div>
                     <div class="trend-neutral">${escapeHtml(topBrowser ? `${formatDuration(topBrowser.durationMs)} • ${topBrowser.tests} тестов` : 'Нет данных по браузерам / проектам')}</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-label">${renderMetricHeading(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
-                    <div class="kpi-value">${escapeHtml(topSuite ? shortenChartLabel(topSuite.label, 16) : '—')}</div>
+                    <div class="kpi-value kpi-value-text">${topSuite ? renderOverflowText(topSuite.label, { displayValue: shortenChartLabel(topSuite.label, 20), className: 'overflow-text-inline' }) : '—'}</div>
                     <div class="trend-neutral">${escapeHtml(topSuite ? `${formatDuration(topSuite.durationMs)} • ${topSuite.tests} тестов` : 'Нет данных по наборам')}</div>
                 </div>
                 <div class="kpi-card">
@@ -1482,10 +1521,9 @@ export function renderDashboardHtml(
                 </div>
             </div>
 
-            <div class="table-title" data-tab-section="browser-duration">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
+            <div class="table-title" data-tab-section="browser-duration">${escapeHtml(DASHBOARD_TEXT.performance.runtimeBreakdownTitle)}</div>
             <div class="charts-grid-2">
                 <div class="chart-card">
-                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
                     <div class="chart-subtitle">${escapeHtml(DASHBOARD_TEXT.performance.durationPerBrowserDescription)}</div>
                     <canvas id="browserDurationChart"></canvas>
                 </div>
@@ -2031,7 +2069,7 @@ export function renderDashboardHtml(
                             borderWidth: 2,
                         }],
                     },
-                    options: buildDoughnutChartOptions(),
+                    options: buildDoughnutChartOptions(errorDataset.fullLabels),
                 });
             }
 
@@ -2047,7 +2085,7 @@ export function renderDashboardHtml(
                             borderWidth: 2,
                         }],
                     },
-                    options: buildDoughnutChartOptions(),
+                    options: buildDoughnutChartOptions(phaseBreakdownDataset.fullLabels),
                 });
             }
 
@@ -2063,7 +2101,7 @@ export function renderDashboardHtml(
                             borderRadius: 6,
                         }],
                     },
-                    options: buildBarChartOptions(false),
+                    options: buildBarChartOptions(false, slowestDataset.fullLabels),
                 });
             }
 
@@ -2079,7 +2117,7 @@ export function renderDashboardHtml(
                             borderRadius: 6,
                         }],
                     },
-                    options: buildBarChartOptions(true),
+                    options: buildBarChartOptions(true, suiteDurationDataset.fullLabels),
                 });
             }
 
@@ -2095,7 +2133,7 @@ export function renderDashboardHtml(
                             borderRadius: 6,
                         }],
                     },
-                    options: buildBarChartOptions(true),
+                    options: buildBarChartOptions(true, browserDurationDataset.fullLabels),
                 });
             }
 
@@ -2329,13 +2367,28 @@ export function renderDashboardHtml(
             };
         }
 
-        function buildBarChartOptions(horizontal) {
+        function buildBarChartOptions(horizontal, fullLabels) {
             return {
                 responsive: true,
                 indexAxis: horizontal ? 'y' : 'x',
                 plugins: {
                     legend: {
                         labels: { color: '#c9d1d9' },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function (items) {
+                                const item = items && items[0];
+                                if (!item) {
+                                    return '';
+                                }
+
+                                const dataIndex = typeof item.dataIndex === 'number' ? item.dataIndex : -1;
+                                return Array.isArray(fullLabels) && dataIndex >= 0 && fullLabels[dataIndex]
+                                    ? fullLabels[dataIndex]
+                                    : item.label;
+                            },
+                        },
                     },
                 },
                 scales: {
@@ -2351,13 +2404,28 @@ export function renderDashboardHtml(
             };
         }
 
-        function buildDoughnutChartOptions() {
+        function buildDoughnutChartOptions(fullLabels) {
             return {
                 responsive: true,
                 plugins: {
                     legend: {
                         position: 'right',
                         labels: { color: '#c9d1d9' },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function (items) {
+                                const item = items && items[0];
+                                if (!item) {
+                                    return '';
+                                }
+
+                                const dataIndex = typeof item.dataIndex === 'number' ? item.dataIndex : -1;
+                                return Array.isArray(fullLabels) && dataIndex >= 0 && fullLabels[dataIndex]
+                                    ? fullLabels[dataIndex]
+                                    : item.label;
+                            },
+                        },
                     },
                 },
             };
@@ -2747,13 +2815,13 @@ function renderProblematicTestRow(test: DashboardProblematicTest, filters: Dashb
 
     return `
         <tr>
-            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
-            <td>${escapeHtml(test.file)}</td>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${renderOverflowText(test.title, { className: 'table-cell-text' })}</a></td>
+            <td>${renderOverflowText(test.file, { className: 'table-cell-text' })}</td>
             <td><span class="status-badge ${statusClass}">${escapeHtml(formatStatusLabel(test.status, test.flaky))}</span></td>
             <td>${flakyLabel}</td>
             <td>${escapeHtml(formatPercent(test.failureRate))} (${test.attempts} попыток)</td>
             <td>${escapeHtml(formatDuration(test.durationMs))}</td>
-            <td class="mono">${escapeHtml(test.errorMessage)}</td>
+            <td>${renderOverflowText(test.errorMessage, { className: 'table-cell-text-wide mono' })}</td>
         </tr>
     `
 }
@@ -2767,8 +2835,8 @@ function renderFlakyTestRow(test: DashboardFlakyTestMetric, filters: DashboardSu
 
     return `
         <tr>
-            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
-            <td>${escapeHtml(test.file)}</td>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${renderOverflowText(test.title, { className: 'table-cell-text' })}</a></td>
+            <td>${renderOverflowText(test.file, { className: 'table-cell-text' })}</td>
             <td>${escapeHtml(formatScore(test.flakyScore))}</td>
             <td>${escapeHtml(formatPercent(test.failRate))}</td>
             <td>${escapeHtml(formatNullableDays(test.mtbfDays))}</td>
@@ -2787,12 +2855,12 @@ function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['f
 
     return `
         <tr>
-            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
-            <td>${escapeHtml(test.file)}</td>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${renderOverflowText(test.title, { className: 'table-cell-text' })}</a></td>
+            <td>${renderOverflowText(test.file, { className: 'table-cell-text' })}</td>
             <td><span class="status-badge ${getStatusClass(test.status, test.flaky)}">${escapeHtml(formatStatusLabel(test.status, test.flaky))}</span></td>
             <td>${test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
             <td>${escapeHtml(formatDuration(test.durationMs))}</td>
-            <td class="mono">${escapeHtml(test.errorMessage ?? '—')}</td>
+            <td>${renderOverflowText(test.errorMessage ?? '—', { className: 'table-cell-text-wide mono' })}</td>
         </tr>
     `
 }
@@ -2800,7 +2868,7 @@ function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['f
 function renderDurationBreakdownRow(item: DashboardDurationBreakdownItem): string {
     return `
         <tr>
-            <td>${escapeHtml(item.label)}</td>
+            <td>${renderOverflowText(item.label, { className: 'table-cell-text-wide' })}</td>
             <td>${escapeHtml(formatDuration(item.durationMs))}</td>
             <td>${escapeHtml(formatPercent(item.sharePercent))}</td>
             <td>${item.tests}</td>
@@ -2898,13 +2966,13 @@ function renderCurrentRunTestRow(
 
     return `
         <tr>
-            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
-            <td>${escapeHtml(test.file)}</td>
-            <td>${escapeHtml(test.project)}</td>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${renderOverflowText(test.title, { className: 'table-cell-text' })}</a></td>
+            <td>${renderOverflowText(test.file, { className: 'table-cell-text' })}</td>
+            <td>${renderOverflowText(test.project, { className: 'table-cell-text' })}</td>
             <td><span class="status-badge ${getStatusClass(test.status, test.flaky)}">${escapeHtml(formatStatusLabel(test.status, test.flaky))}</span></td>
             <td>${test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
             <td>${escapeHtml(formatDuration(test.durationMs))}</td>
-            <td class="mono">${escapeHtml(test.errorMessage ?? '—')}</td>
+            <td>${renderOverflowText(test.errorMessage ?? '—', { className: 'table-cell-text-wide mono' })}</td>
         </tr>
     `
 }
@@ -2917,10 +2985,10 @@ function renderHistoryRow(run: DashboardSummary['history']['recentRuns'][number]
             <td>${run.failedTests}</td>
             <td>${run.flakyTests}</td>
             <td>${escapeHtml(formatDuration(run.totalDurationMs))}</td>
-            <td>${escapeHtml(run.branch ?? '—')}</td>
+            <td>${renderOverflowText(run.branch ?? '—', { className: 'table-cell-text' })}</td>
             <td>${escapeHtml(formatCommit(run.commit))}</td>
-            <td>${escapeHtml(run.author ?? '—')}</td>
-            <td>${escapeHtml(run.sourceFile)}</td>
+            <td>${renderOverflowText(run.author ?? '—', { className: 'table-cell-text' })}</td>
+            <td>${renderOverflowText(run.sourceFile, { className: 'table-cell-text-wide' })}</td>
         </tr>
     `
 }
@@ -2960,20 +3028,39 @@ function renderPhaseLegend(items: DashboardPhaseBreakdownItem[]): string {
     `
 }
 
+function renderOverflowText(
+    value: string | null | undefined,
+    options: {
+        displayValue?: string
+        className?: string
+        tagName?: 'span' | 'div'
+    } = {},
+): string {
+    const tagName = options.tagName ?? 'span'
+    const fullValue = typeof value === 'string' && value.length > 0 ? value : '—'
+    const displayValue = options.displayValue ?? fullValue
+    const className = ['overflow-text', options.className].filter(Boolean).join(' ')
+
+    return `<${tagName} class="${escapeHtml(className)}" title="${escapeHtml(fullValue)}">${escapeHtml(displayValue)}</${tagName}>`
+}
+
 function toPerformanceChartDataset<T extends DashboardPhaseBreakdownItem | DashboardDurationBreakdownItem>(
     items: T[],
     options: {
         labelFormatter?: (label: string) => string
+        fullLabelFormatter?: (label: string) => string
         unit?: 'minutes' | 'seconds'
     } = {},
-): { labels: string[]; values: number[] } {
+): { labels: string[]; values: number[]; fullLabels: string[] } {
     const labelFormatter = options.labelFormatter ?? ((label: string) => label)
+    const fullLabelFormatter = options.fullLabelFormatter ?? ((label: string) => label)
     const divisor = options.unit === 'seconds' ? 1000 : 60000
     const normalizedItems = items.filter((item) => item.durationMs > 0)
 
     return {
         labels: normalizedItems.map((item) => labelFormatter(item.label)),
         values: normalizedItems.map((item) => roundChartValue(item.durationMs / divisor)),
+        fullLabels: normalizedItems.map((item) => fullLabelFormatter(item.label)),
     }
 }
 

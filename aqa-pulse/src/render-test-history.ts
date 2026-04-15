@@ -72,11 +72,11 @@ export function renderTestHistoryHtml(
                         branch: normalizedFilters.branch,
                         project: candidate.project,
                         file: candidate.file,
-                    }, normalizedBasePath))}">${escapeHtml(candidate.title)}</a></div>
-                    <div class="muted">${escapeHtml(formatTemplate(HISTORY_TEXT.candidatesMeta, {
+                    }, normalizedBasePath))}">${renderOverflowText(candidate.title, { className: 'candidate-text' })}</a></div>
+                    <div class="muted">${renderOverflowText(formatTemplate(HISTORY_TEXT.candidatesMeta, {
                         project: candidate.project,
                         file: candidate.file,
-                    }))}</div>
+                    }), { className: 'candidate-text' })}</div>
                 </div>
             `).join('')
             : `<div class="muted">${escapeHtml(HISTORY_TEXT.statePages.conflict.candidatesEmpty)}</div>`
@@ -146,6 +146,7 @@ export function renderTestHistoryHtml(
         .page-shell { max-width: 1440px; margin: 0 auto; }
         .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
         .page-title { font-size: 30px; font-weight: 600; color: #ffffff; margin-bottom: 10px; }
+        .page-title-text { max-width: min(100%, 920px); }
         .subtle { color: #8b949e; font-size: 13px; }
         .meta-badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #21262d; color: #c9d1d9; font-size: 12px; margin-right: 8px; margin-top: 8px; }
         .page-actions { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -179,6 +180,10 @@ export function renderTestHistoryHtml(
         .incident-kpi { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: rgba(13, 17, 23, 0.7); }
         .incident-kpi-label { color: #8b949e; font-size: 11px; margin-bottom: 6px; }
         .incident-kpi-value { color: #ffffff; font-size: 15px; font-weight: 600; line-height: 1.4; }
+        .overflow-text { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .candidate-text { max-width: 100%; }
+        .step-title-text, .attachment-title-text { max-width: 420px; }
+        .attachment-location-text { max-width: 100%; }
         .incident-evidence-list { display: grid; gap: 8px; margin-top: 12px; }
         .incident-evidence-item { padding: 10px 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: #c9d1d9; font-size: 12px; line-height: 1.5; }
         .incident-message { margin-top: 12px; }
@@ -255,7 +260,7 @@ export function renderTestHistoryHtml(
         <div class="page-header">
             <div>
                 <div class="subtle" style="margin-bottom: 12px;">${escapeHtml(HISTORY_TEXT.headerEyebrow)}</div>
-                <div class="page-title">${escapeHtml(payload.test.title)}</div>
+                <div class="page-title">${renderOverflowText(payload.test.title, { className: 'page-title-text' })}</div>
                 <div class="subtle">${escapeHtml(HISTORY_TEXT.headerDescription)}</div>
                 <div>
                     <span class="meta-badge">${escapeHtml(HISTORY_TEXT.filters.project)}: ${escapeHtml(payload.test.project)}</span>
@@ -776,6 +781,20 @@ function renderAttemptSteps(
     `
 }
 
+function renderOverflowText(
+    value: string | null | undefined,
+    options: {
+        className?: string
+        displayValue?: string
+    } = {},
+): string {
+    const fullValue = typeof value === 'string' && value.length > 0 ? value : '—'
+    const displayValue = options.displayValue ?? fullValue
+    const className = ['overflow-text', options.className].filter(Boolean).join(' ')
+
+    return `<span class="${escapeHtml(className)}" title="${escapeHtml(fullValue)}">${escapeHtml(displayValue)}</span>`
+}
+
 function renderStepDetail(step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number]): string {
     const statusBadge = step.status
         ? `<span class="status-badge ${getStatusClass(step.status, false)}">${escapeHtml(formatStatusLabel(step.status, false))}</span>`
@@ -787,7 +806,7 @@ function renderStepDetail(step: TestHistoryResponse['history'][number]['attemptD
     return `
         <div class="step-item${step.isFailurePoint ? ' step-item-failure' : ''}">
             <div class="step-item-header">
-                <div class="step-title">${escapeHtml(step.title)}</div>
+                <div class="step-title">${renderOverflowText(step.title, { className: 'step-title-text' })}</div>
                 <div class="attempt-meta">
                     ${statusBadge}
                     <span class="meta-badge">${escapeHtml(formatDuration(step.durationMs))}</span>
@@ -837,10 +856,10 @@ function renderAttachmentDetail(
     return `
         <div class="attachment-item">
             <div class="attachment-item-header">
-                <div class="attachment-title">${escapeHtml(attachment.name)}</div>
+                <div class="attachment-title">${renderOverflowText(attachment.name, { className: 'attachment-title-text' })}</div>
                 ${attachment.contentType ? `<span class="meta-badge">${escapeHtml(attachment.contentType)}</span>` : ''}
             </div>
-            <div class="mono">${escapeHtml(location)}</div>
+            <div class="mono">${renderOverflowText(location, { className: 'attachment-location-text mono' })}</div>
             ${href ? `<div class="attachment-actions"><a class="attachment-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
             ${imagePreviewHtml}
             ${markdownPreviewHtml}

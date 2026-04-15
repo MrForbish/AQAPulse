@@ -21,9 +21,6 @@ export function renderDashboardHtml(
     const dashboardActionPath = normalizedBasePath || '/'
     const testDetailsBasePath = normalizedBasePath ? `${normalizedBasePath}/test` : '/test'
     const previousRunLabel = formatRunLabel(summary.comparison.previousRun)
-    const notesMarkup = summary.notes.length > 0
-        ? summary.notes.map((note) => `<div class="list-item">${escapeHtml(note)}</div>`).join('')
-        : `<div class="list-item">${escapeHtml(DASHBOARD_TEXT.states.notesEmpty)}</div>`
 
     const availableFiltersData = serializeForInlineScript(summary.availableFilters)
     const passRateTrendData = serializeForInlineScript(summary.charts.passRateTrend)
@@ -590,6 +587,29 @@ export function renderDashboardHtml(
             margin-bottom: 12px;
             color: #ffffff;
             font-size: 18px;
+        }
+        .runs-summary-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .runs-summary-item {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+        .runs-summary-label {
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        .runs-summary-value {
+            color: #c9d1d9;
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word;
         }
         .table-container {
             padding: 8px;
@@ -1174,7 +1194,8 @@ export function renderDashboardHtml(
             .comparison-grid,
             .assumptions-grid,
             .business-signal-grid,
-            .formula-grid {
+            .formula-grid,
+            .runs-summary-strip {
                 grid-template-columns: 1fr;
             }
         }
@@ -1325,38 +1346,33 @@ export function renderDashboardHtml(
                 </div>
             </div>
 
-            <div class="charts-grid-2">
-                <div class="chart-card">
-                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
-                    <canvas id="statusChart"></canvas>
-                    ${renderStatusDrilldown(summary)}
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.recentRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
-                    <div class="list">
-                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.totalRuns)}: ${summary.history.totalRuns}</div>
-                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.previousRun)}: ${escapeHtml(previousRunLabel)}</div>
-                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.latestSource)}: ${escapeHtml(summary.sourceFile)}</div>
-                        <div class="list-item">${escapeHtml(DASHBOARD_TEXT.history.currentBranch)}: ${escapeHtml(summary.runMetadata.branch ?? '—')} • ${escapeHtml(DASHBOARD_TEXT.commitMeta)}: ${escapeHtml(formatCommit(summary.runMetadata.commit))}</div>
-                    </div>
-                </div>
+            <div class="chart-card" style="margin-bottom: 24px;">
+                <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
+                <canvas id="statusChart"></canvas>
+                ${renderStatusDrilldown(summary)}
             </div>
 
             ${renderCurrentRunTestsBrowser(summary, testDetailsBasePath)}
 
-            <div class="charts-grid-2">
-                <div class="chart-card">
-                    <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.notes, METRIC_DESCRIPTIONS.notes)}</div>
-                    <div class="list">
-                        ${notesMarkup}
-                    </div>
-                    <div class="muted" style="margin-top: 16px;">
-                        ${escapeHtml(DASHBOARD_TEXT.history.schemaVersion)}: v${summary.schemaVersion ?? '—'} • ${escapeHtml(DASHBOARD_TEXT.runTime)}: ${escapeHtml(formatDate(summary.reportTimestamp))}
-                    </div>
+            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.latestRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
+            <div class="runs-summary-strip">
+                <div class="runs-summary-item">
+                    <div class="runs-summary-label">${escapeHtml(DASHBOARD_TEXT.history.totalRuns)}</div>
+                    <div class="runs-summary-value">${summary.history.totalRuns}</div>
+                </div>
+                <div class="runs-summary-item">
+                    <div class="runs-summary-label">${escapeHtml(DASHBOARD_TEXT.history.previousRun)}</div>
+                    <div class="runs-summary-value">${escapeHtml(previousRunLabel)}</div>
+                </div>
+                <div class="runs-summary-item">
+                    <div class="runs-summary-label">${escapeHtml(DASHBOARD_TEXT.history.latestSource)}</div>
+                    <div class="runs-summary-value">${escapeHtml(summary.sourceFile)}</div>
+                </div>
+                <div class="runs-summary-item">
+                    <div class="runs-summary-label">${escapeHtml(DASHBOARD_TEXT.history.currentBranch)}</div>
+                    <div class="runs-summary-value">${escapeHtml(summary.runMetadata.branch ?? '—')} • ${escapeHtml(DASHBOARD_TEXT.commitMeta)}: ${escapeHtml(formatCommit(summary.runMetadata.commit))} • ${escapeHtml(DASHBOARD_TEXT.authorMeta)}: ${escapeHtml(summary.runMetadata.author ?? '—')}</div>
                 </div>
             </div>
-
-            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.latestRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
             <div class="table-container">
                 <table>
                     <thead>

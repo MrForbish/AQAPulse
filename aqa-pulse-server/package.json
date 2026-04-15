@@ -31,6 +31,7 @@
     "scripts/install-self-hosted.ps1",
     "templates/**/*",
     "README.md",
+    "SELF-HOSTED-DEPLOYMENT.md",
     "SELF-HOSTED-QUICKSTART.md",
     "SELF-HOSTED-INSTALL.md",
     "CLIENT-QUICKSTART.md",

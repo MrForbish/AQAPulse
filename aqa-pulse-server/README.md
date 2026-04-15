@@ -3,6 +3,7 @@
 Внутренний self-hosted server package для AQA Pulse.
 
 Дополнительные инструкции:
+- [`SELF-HOSTED-DEPLOYMENT.md`](./SELF-HOSTED-DEPLOYMENT.md) — единая полная инструкция по развёртке self-hosted
 - [`SELF-HOSTED-QUICKSTART.md`](./SELF-HOSTED-QUICKSTART.md) — короткая версия для быстрого старта на своём сервере
 - [`CLIENT-QUICKSTART.md`](./CLIENT-QUICKSTART.md) — короткая версия для клиента
 - [`SELF-HOSTED-INSTALL.md`](./SELF-HOSTED-INSTALL.md) — как поставить на свой сервер

@@ -1,6 +1,10 @@
 # AQA Pulse — установка на свой сервер
 
-Этот документ описывает, как развернуть `aqa-pulse-server` у себя.
+Основной актуальный guide: [`SELF-HOSTED-DEPLOYMENT.md`](./SELF-HOSTED-DEPLOYMENT.md)
+
+Этот файл теперь оставлен как короткий reference по вариантам установки.
+
+Если тебе нужен один полный пошаговый сценарий, используй только [SELF-HOSTED-DEPLOYMENT.md](./SELF-HOSTED-DEPLOYMENT.md).
 
 ## Что ставить
 
@@ -16,8 +20,6 @@
 
 `aqa-pulse-client` для установки сервера **не нужен** — это только клиентский runtime/rendering package.
 
----
-
 ## Варианты установки
 
 Поддерживаются 3 варианта:
@@ -26,38 +28,36 @@
 2. Node.js server — если хочешь запускать напрямую без Docker.
 3. PowerShell installer — быстрый путь для Windows-сервера.
 
----
-
 ## Требования
 
-### Для Docker-варианта
 - Docker
 - Docker Compose
-
-### Для Node.js-варианта
 - Node.js 22+
 - npm
 
 > Для `sqlite` режима нужен Node 22+, потому что используется `node:sqlite`.
 
----
+## Когда какой вариант использовать
 
-## Важные переменные окружения
+### Docker Compose
 
-| Переменная | Назначение |
-|---|---|
-| `PORT` | порт сервера |
-| `AQA_PULSE_DATA_ROOT` | корневая папка хранения данных |
-| `AQA_PULSE_STORAGE_DRIVER` | `file`, `sqlite` или `postgres` |
-| `AQA_PULSE_SQLITE_PATH` | путь к sqlite-файлу |
-| `AQA_PULSE_POSTGRES_URL` | connection string для Postgres |
-| `AQA_PULSE_ADMIN_TOKEN` | admin token |
-| `AQA_PULSE_JWT_SECRET` | секрет подписи JWT |
-| `AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS` | срок жизни JWT/cookie |
-| `AQA_PULSE_ENABLE_DEV_BOOTSTRAP` | включение/выключение dev bootstrap route |
-| `AQA_PULSE_REQUIRE_WORKSPACE_AUTH` | требовать ли workspace user token для read-routes |
-| `AQA_PULSE_DIST_PATH` | legacy summary/static path |
-| `AQA_PULSE_ARCHIVE_PATH` | legacy archive path |
+Используй по умолчанию.
+
+Это основной и рекомендуемый путь для первого self-hosted запуска.
+
+### Node.js напрямую
+
+Используй, если:
+
+- Docker недоступен;
+- нужен запуск под systemd/pm2/своим supervisor;
+- удобнее управлять процессом напрямую.
+
+### PowerShell installer
+
+Используй на Windows-сервере, когда нужен самый быстрый bootstrap без ручной подготовки env.
+
+## Минимальные env-переменные
 
 Рекомендуемая минимальная конфигурация:
 
@@ -72,250 +72,73 @@ AQA_PULSE_ENABLE_DEV_BOOTSTRAP=false
 AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true
 ```
 
----
+Смысл ключевых переменных:
 
-## Вариант 1. Установка через Docker Compose
+- `AQA_PULSE_DATA_ROOT` — где хранить данные сервера;
+- `AQA_PULSE_STORAGE_DRIVER` — backend storage: `file`, `sqlite`, `postgres`;
+- `AQA_PULSE_SQLITE_PATH` — путь к SQLite БД, если выбран `sqlite`;
+- `AQA_PULSE_POSTGRES_URL` — строка подключения, если выбран `postgres`;
+- `AQA_PULSE_ADMIN_TOKEN` — raw admin token для initial admin login;
+- `AQA_PULSE_JWT_SECRET` — секрет подписи JWT;
+- `AQA_PULSE_REQUIRE_WORKSPACE_AUTH` — нужен ли workspace user token для просмотра dashboard.
 
-Перейди в каталог `aqa-pulse-server` и запусти:
+Подробные комментарии к переменным есть в [.env.example](./.env.example).
+
+## Команды по вариантам установки
+
+### Docker Compose
 
 ```bash
 cd /opt/aqa-pulse-server
 cp .env.example .env
-docker compose up --build
+docker compose up --build -d
 ```
 
-Что использует compose:
-- `aqa-pulse-server/Dockerfile`
-- build context = текущий каталог `aqa-pulse-server`
-- volume `./data:/data`
-- переменные из `.env`
-
-### Что сделать перед запуском
-
-1. Скопировать `.env.example` в рабочий env-файл или отредактировать значения напрямую.
-   Например: `cp .env.example .env`
-2. Обязательно заменить `AQA_PULSE_ADMIN_TOKEN`.
-3. Выбрать storage:
-   - `file` — если хочешь максимально простой запуск;
-   - `sqlite` — если нужен один файл БД и более удобный self-hosted режим.
-
-### Остановка
-
-```bash
-docker compose down
-```
-
----
-
-## Вариант 2. Установка напрямую на Node.js
-
-### Шаг 1. Установка зависимостей и сборка
+### Node.js напрямую
 
 ```bash
 cd /opt/aqa-pulse-server
 npm install
 npm run build
-```
-
-Если `aqa-pulse-server` уже привезён как собранный bundle с заполненной папкой `dist`, этот шаг повторять не нужно: можно сразу переходить к настройке env и запуску.
-
-### Шаг 2. Настройка переменных окружения
-
-Пример для Linux/bash:
-
-```bash
-export AQA_PULSE_DATA_ROOT="/srv/aqa-pulse"
-export AQA_PULSE_STORAGE_DRIVER="sqlite"
-export AQA_PULSE_SQLITE_PATH="/srv/aqa-pulse/aqa-pulse.sqlite"
-export AQA_PULSE_ADMIN_TOKEN="change-me-admin-token"
-export AQA_PULSE_ENABLE_DEV_BOOTSTRAP="false"
-export AQA_PULSE_REQUIRE_WORKSPACE_AUTH="true"
-```
-
-### Шаг 3. Инициализация storage
-
-```bash
 npm run init
-```
-
-### Шаг 4. Запуск сервера
-
-```bash
 npm run start
 ```
 
----
-
-## Вариант 3. Быстрый PowerShell installer
-
-Для Windows-сервера можно использовать готовый installer:
+### PowerShell installer
 
 ```bash
 cd /opt/aqa-pulse-server
 pwsh ./scripts/install-self-hosted.ps1 -DataRoot ./data -AdminToken "change-me-admin-token" -StorageDriver sqlite
-```
-
-После этого в том же терминале:
-
-```bash
 npm run start
 ```
 
----
-
-## Что происходит после запуска
-
-После запуска у тебя есть 3 уровня доступа:
-
-### 1. Admin token
-Используется для:
-- `GET /api/workspaces`
-- `GET /api/workspaces/:slug`
-- `POST /api/workspaces`
-- `POST /api/workspaces/:slug/api-keys`
-- `POST /api/workspaces/:slug/users`
-- `POST /api/dev/bootstrap` (если разрешён)
-
-На runtime admin token сначала меняется на admin JWT через:
-
-```text
-POST /auth/admin/login
-```
-
-### 2. Workspace API key
-Используется как raw provisioning token для получения ingestion JWT:
-
-```text
-POST /auth/workspaces/:slug/api-keys/login
-```
-
-После exchange ingestion JWT используется для:
-- `POST /api/workspaces/:slug/ingestions`
-
-### 3. Workspace user token
-Используется как raw provisioning token для получения workspace JWT/session:
-
-```text
-POST /auth/workspaces/:slug/users/login
-```
-
-После exchange workspace JWT/session используется для чтения dashboard и workspace API, если включён `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`:
-- `GET /w/:slug`
-- `GET /w/:slug/test/:name`
-- `GET /api/workspaces/:slug/*`
-
----
-
-## Первый запуск: минимальный рабочий сценарий
-
-### 1. Получить admin JWT
-
-```bash
-ADMIN_JWT=$(curl --silent --show-error --fail \
-  -X POST "http://127.0.0.1:3000/auth/admin/login" \
-  -H "Content-Type: application/json" \
-  -d '{"token":"change-me-admin-token"}' \
-  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
-```
-
-### 2. Создать workspace
-
-```bash
-curl --silent --show-error --fail \
-  -X POST "http://127.0.0.1:3000/api/workspaces" \
-  -H "Authorization: Bearer $ADMIN_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{"slug":"demo","name":"Demo Workspace","apiKeyLabel":"Primary ingestion key"}'
-```
-
-### 3. Создать workspace user
-
-```bash
-curl --silent --show-error --fail \
-  -X POST "http://127.0.0.1:3000/api/workspaces/demo/users" \
-  -H "Authorization: Bearer $ADMIN_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{"label":"Dashboard viewer","role":"viewer"}'
-```
-
-### 4. Создать ingestion API key
-
-```bash
-curl --silent --show-error --fail \
-  -X POST "http://127.0.0.1:3000/api/workspaces/demo/api-keys" \
-  -H "Authorization: Bearer $ADMIN_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{"label":"Upload key"}'
-```
-
-### 5. Сделать exchange workspace API key → ingestion JWT
-
-```bash
-INGESTION_JWT=$(curl --silent --show-error --fail \
-  -X POST "http://127.0.0.1:3000/auth/workspaces/demo/api-keys/login" \
-  -H "Content-Type: application/json" \
-  -d '{"token":"<workspace-api-key>"}' \
-  | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { process.stdout.write(JSON.parse(body).accessToken); });")
-```
-
-### 6. Загрузить Playwright report
-
-```bash
-node -e "
-const fs = require('fs');
-const report = JSON.parse(fs.readFileSync('./dist/fixtures/sample-llm-report.json', 'utf8'));
-const payload = {
-  report,
-  metadata: {
-    branch: 'main',
-    commit: 'manual-upload',
-    author: 'AQA Pulse'
-  },
-  sourceFile: 'manual://sample.json'
-};
-fs.writeFileSync('/tmp/aqa-pulse-ingestion.json', JSON.stringify(payload));
-"
-
-curl --silent --show-error --fail \
-  -X POST "http://127.0.0.1:3000/api/workspaces/demo/ingestions" \
-  -H "Authorization: Bearer $INGESTION_JWT" \
-  -H "Content-Type: application/json" \
-  --data @/tmp/aqa-pulse-ingestion.json
-```
-
-### 5. Открыть dashboard
-
-```text
-http://127.0.0.1:3000/w/demo
-```
-
-Если включён `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`, сначала сделай exchange `workspace user token -> workspace JWT/session` через `POST /auth/workspaces/:slug/users/login` или HTML форму `GET /w/:slug/login`.
-
----
-
-## Что выбрать: file, sqlite или postgres
+## Storage choice
 
 ### `file`
-Подходит, если:
-- нужен самый простой старт;
-- важна прозрачная структура файлов;
-- хочешь легко смотреть данные руками в каталогах.
+
+Для самого простого старта и ручной инспекции файлов.
 
 ### `sqlite`
-Подходит, если:
-- нужен более собранный self-hosted режим;
-- хочешь один файл БД;
-- удобнее бэкапить/переносить данные одним артефактом.
 
 Для production self-hosted я бы начинал с `sqlite`.
 
 ### `postgres`
-Подходит, если:
-- нужен централизованный storage backend;
-- уже есть управляемый Postgres;
-- ок наличие `psql` в runtime, если используешь текущий postgres adapter.
+
+Если уже есть managed Postgres и нужен централизованный backend.
 
 Важно: текущий Postgres path уже покрыт отдельным smoke-скриптом, но он требует рабочего Docker daemon для локального smoke и доступного `psql` для runtime-команд schema bootstrap.
+
+## Что делать дальше
+
+После любого способа установки не продолжай по этому файлу вручную.
+
+Дальше переходи в [SELF-HOSTED-DEPLOYMENT.md](./SELF-HOSTED-DEPLOYMENT.md):
+
+1. проверить `GET /api/health`;
+2. создать workspace через `bootstrap-workspace`;
+3. сохранить GitLab CI/CD variables;
+4. сделать первый ingestion;
+5. открыть dashboard.
 
 ---
 

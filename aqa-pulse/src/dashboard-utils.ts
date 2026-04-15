@@ -111,6 +111,26 @@ export interface DashboardChartDataset {
     values: number[]
 }
 
+export interface DashboardCurrentRunTest {
+    title: string
+    file: string
+    project: string
+    status: string
+    flaky: boolean
+    durationMs: number
+    errorMessage: string | null
+}
+
+export interface DashboardCurrentRunTests {
+    all: DashboardCurrentRunTest[]
+    passed: DashboardCurrentRunTest[]
+    failed: DashboardCurrentRunTest[]
+    flaky: DashboardCurrentRunTest[]
+    skipped: DashboardCurrentRunTest[]
+    timedOut: DashboardCurrentRunTest[]
+    interrupted: DashboardCurrentRunTest[]
+}
+
 export interface DashboardProblematicTest {
     title: string
     file: string
@@ -308,6 +328,7 @@ export interface DashboardSummary {
     flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics']
     businessMetrics: DashboardAdvancedMetrics['businessMetrics']
     managerSummary: DashboardManagerSummary
+    currentRunTests: DashboardCurrentRunTests
     topProblematicTests: DashboardProblematicTest[]
     errorClusters: DashboardErrorCluster[]
 }
@@ -365,12 +386,14 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
             ...(businessMetrics?.automationRoi ?? {}),
         },
     }
+    const currentRunTests = summary.currentRunTests ?? recoverCurrentRunTestsFromSource(summary.sourceFile)
     const topProblematicTests = summary.topProblematicTests ?? []
     const errorClusters = summary.errorClusters ?? []
 
     return {
         ...summary,
         businessMetrics: normalizedBusinessMetrics,
+        currentRunTests,
         topProblematicTests,
         errorClusters,
         managerSummary: summary.managerSummary ?? buildManagerSummary({
@@ -549,6 +572,7 @@ export function buildDashboardSummary(
         flakyAnalytics: resolvedAdvancedMetrics.flakyAnalytics,
         businessMetrics: resolvedAdvancedMetrics.businessMetrics,
         managerSummary,
+        currentRunTests: collectCurrentRunTests(tests),
         topProblematicTests,
         errorClusters,
     }
@@ -1255,6 +1279,55 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
             percent: null,
             source: 'pendingAssumptions',
         },
+    }
+}
+
+function collectCurrentRunTests(tests: ReporterTest[]): DashboardCurrentRunTests {
+    const normalizedTests = tests
+        .map((test) => ({
+            title: test.title ?? 'Тест без названия',
+            file: test.location?.file ?? 'неизвестно',
+            project: test.project ?? 'неизвестно',
+            status: getFinalStatus(test),
+            flaky: Boolean(test.flaky),
+            durationMs: safeNumber(test.durationMs),
+            errorMessage: extractErrorMessage(test),
+        }))
+        .sort((left, right) => left.title.localeCompare(right.title, 'ru'))
+
+    return {
+        all: normalizedTests,
+        passed: normalizedTests.filter((test) => test.status === 'passed'),
+        failed: normalizedTests.filter((test) => test.status === 'failed'),
+        flaky: normalizedTests.filter((test) => test.flaky),
+        skipped: normalizedTests.filter((test) => test.status === 'skipped'),
+        timedOut: normalizedTests.filter((test) => test.status === 'timedout'),
+        interrupted: normalizedTests.filter((test) => test.status === 'interrupted'),
+    }
+}
+
+function recoverCurrentRunTestsFromSource(sourceFile: string): DashboardCurrentRunTests {
+    try {
+        if (!sourceFile || !fs.existsSync(sourceFile)) {
+            return buildEmptyCurrentRunTests()
+        }
+
+        const report = loadReporterReport(sourceFile)
+        return collectCurrentRunTests(report.tests ?? [])
+    } catch {
+        return buildEmptyCurrentRunTests()
+    }
+}
+
+function buildEmptyCurrentRunTests(): DashboardCurrentRunTests {
+    return {
+        all: [],
+        passed: [],
+        failed: [],
+        flaky: [],
+        skipped: [],
+        timedOut: [],
+        interrupted: [],
     }
 }
 

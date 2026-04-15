@@ -254,7 +254,8 @@ export function renderDashboardHtml(
         .kpi-value {
             font-size: 28px;
             font-weight: 600;
-            color: #ffffff;
+            color: #9fd3ff;
+            text-shadow: 0 0 18px rgba(88, 166, 255, 0.12);
             margin-bottom: 8px;
         }
         .trend-neutral {
@@ -468,8 +469,76 @@ export function renderDashboardHtml(
         .comparison-value {
             font-size: 22px;
             font-weight: 600;
-            color: #ffffff;
+            color: #a9d8ff;
+            text-shadow: 0 0 14px rgba(88, 166, 255, 0.1);
             margin-bottom: 4px;
+        }
+        .tests-browser-card {
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .tests-browser-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .tests-browser-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .tests-browser-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .tests-browser-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 36px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .tests-browser-button.is-active {
+            background: #2f81f7;
+            border-color: #2f81f7;
+            color: #ffffff;
+        }
+        .tests-browser-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            min-height: 24px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: inherit;
+            font-weight: 600;
+        }
+        .tests-browser-panel {
+            display: none;
+        }
+        .tests-browser-panel.is-active {
+            display: block;
+        }
+        .value-accent,
+        .manager-signal-value,
+        .business-signal-value,
+        .business-component-total-value {
+            color: #9fd3ff;
+            text-shadow: 0 0 16px rgba(88, 166, 255, 0.12);
         }
         .meta-badge {
             display: inline-block;
@@ -1110,12 +1179,6 @@ export function renderDashboardHtml(
             </div>
         </div>
 
-        <div class="notice">
-            <strong>${escapeHtml(DASHBOARD_TEXT.notice.doneTitle)}</strong> ${escapeHtml(DASHBOARD_TEXT.notice.doneText)}
-            <br>
-            <strong>${escapeHtml(DASHBOARD_TEXT.notice.nextTitle)}</strong> ${escapeHtml(DASHBOARD_TEXT.notice.nextText)}
-        </div>
-
         <div class="filters-card">
             <div class="filters-header">
                 <div>
@@ -1187,7 +1250,7 @@ export function renderDashboardHtml(
         </div>
 
         <section class="tab-panel is-active" data-tab-panel="overview">
-            ${renderManagerOverview(summary, testDetailsBasePath)}
+            ${renderManagerOverview(summary, dashboardActionPath)}
 
             <div class="charts-grid-2">
                 <div class="chart-card">
@@ -1240,6 +1303,8 @@ export function renderDashboardHtml(
                 </div>
             </div>
 
+            ${renderCurrentRunTestsBrowser(summary, testDetailsBasePath)}
+
             <div class="charts-grid-2">
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.notes, METRIC_DESCRIPTIONS.notes)}</div>
@@ -1289,7 +1354,7 @@ export function renderDashboardHtml(
                 </div>
             </div>
 
-            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topSlowestTestsP1, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
+            <div class="table-title" data-tab-section="slow-tests">${renderMetricHeading(DASHBOARD_TEXT.metrics.topSlowestTestsP1, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1323,7 +1388,7 @@ export function renderDashboardHtml(
                 </div>
             </div>
 
-            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.problematicTests, METRIC_DESCRIPTIONS.problematicTests)}</div>
+            <div class="table-title" data-tab-section="problematic-tests">${renderMetricHeading(DASHBOARD_TEXT.metrics.problematicTests, METRIC_DESCRIPTIONS.problematicTests)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1345,7 +1410,7 @@ export function renderDashboardHtml(
                 </table>
             </div>
 
-            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.topFlakyTests, METRIC_DESCRIPTIONS.topFlakyTests)}</div>
+            <div class="table-title" data-tab-section="flaky-tests">${renderMetricHeading(DASHBOARD_TEXT.metrics.topFlakyTests, METRIC_DESCRIPTIONS.topFlakyTests)}</div>
             ${renderFlakyHistoryInsight(summary)}
             <div class="table-container">
                 <table>
@@ -1368,7 +1433,7 @@ export function renderDashboardHtml(
                 </table>
             </div>
 
-            <div class="table-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.errorClusters, METRIC_DESCRIPTIONS.clusterList)}</div>
+            <div class="table-title" data-tab-section="error-clusters">${renderMetricHeading(DASHBOARD_TEXT.metrics.errorClusters, METRIC_DESCRIPTIONS.clusterList)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1688,6 +1753,8 @@ export function renderDashboardHtml(
 
         const tabButtons = Array.from(document.querySelectorAll('[data-tab-button]'));
         const tabPanels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+        const testStatusButtons = Array.from(document.querySelectorAll('[data-tests-status-button]'));
+        const testStatusPanels = Array.from(document.querySelectorAll('[data-tests-status-panel]'));
         const chartInstances = {};
         const chartTabs = {
             overview: ['passRateTrendChart', 'statusChart'],
@@ -1841,7 +1908,49 @@ export function renderDashboardHtml(
             });
         };
 
-        const activateTab = function (tabId) {
+        const activateTestsStatus = function (statusId) {
+            testStatusButtons.forEach(function (button) {
+                button.classList.toggle('is-active', button.dataset.testsStatusButton === statusId);
+            });
+
+            testStatusPanels.forEach(function (panel) {
+                panel.classList.toggle('is-active', panel.dataset.testsStatusPanel === statusId);
+            });
+        };
+
+        const scrollToTabSection = function (sectionId) {
+            if (!sectionId) {
+                return;
+            }
+
+            const target = Array.from(document.querySelectorAll('[data-tab-section]')).find(function (element) {
+                return element.getAttribute('data-tab-section') === sectionId;
+            });
+
+            if (target) {
+                target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
+        };
+
+        const parseHashRoute = function (hashValue) {
+            const normalizedHash = String(hashValue || '').replace('#', '');
+
+            if (!normalizedHash) {
+                return { tabId: 'overview', sectionId: '' };
+            }
+
+            const parts = normalizedHash.split(':');
+            const tabId = parts[0];
+            const sectionId = parts[1] || '';
+
+            if (Object.prototype.hasOwnProperty.call(chartTabs, tabId)) {
+                return { tabId: tabId, sectionId: sectionId };
+            }
+
+            return { tabId: 'overview', sectionId: '' };
+        };
+
+        const activateTab = function (tabId, sectionId) {
             tabButtons.forEach(function (button) {
                 const isActive = button.dataset.tabButton === tabId;
                 button.classList.toggle('is-active', isActive);
@@ -1853,21 +1962,36 @@ export function renderDashboardHtml(
             });
 
             ensureChartsForTab(tabId);
-            const nextHash = '#' + tabId;
+            const nextHash = '#' + tabId + (sectionId ? ':' + sectionId : '');
             if (window.location.hash !== nextHash) {
                 history.replaceState(null, '', nextHash);
+            }
+
+            if (sectionId) {
+                window.setTimeout(function () {
+                    scrollToTabSection(sectionId);
+                }, 0);
             }
         };
 
         tabButtons.forEach(function (button) {
             button.addEventListener('click', function () {
-                activateTab(button.dataset.tabButton || 'overview');
+                activateTab(button.dataset.tabButton || 'overview', '');
             });
         });
 
-        const initialHash = window.location.hash.replace('#', '');
-        const initialTab = Object.prototype.hasOwnProperty.call(chartTabs, initialHash) ? initialHash : 'overview';
-        activateTab(initialTab);
+        testStatusButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                activateTestsStatus(button.dataset.testsStatusButton || 'all');
+            });
+        });
+
+        if (testStatusButtons.length > 0) {
+            activateTestsStatus(testStatusButtons[0].getAttribute('data-tests-status-button') || 'all');
+        }
+
+        const initialRoute = parseHashRoute(window.location.hash);
+        activateTab(initialRoute.tabId, initialRoute.sectionId);
 
         const businessCostStorageKey = 'aqa-pulse.cost-assumptions.v1';
         const assumptionInputs = {
@@ -2430,6 +2554,85 @@ function renderSlowTestRow(test: DashboardSlowTest, filters: DashboardSummary['f
     `
 }
 
+function renderCurrentRunTestsBrowser(summary: DashboardSummary, testDetailsBasePath: string): string {
+    const groups = [
+        { id: 'all', label: DASHBOARD_TEXT.testsBrowser.all, tests: summary.currentRunTests.all },
+        { id: 'passed', label: DASHBOARD_TEXT.testsBrowser.passed, tests: summary.currentRunTests.passed },
+        { id: 'failed', label: DASHBOARD_TEXT.testsBrowser.failed, tests: summary.currentRunTests.failed },
+        { id: 'flaky', label: DASHBOARD_TEXT.testsBrowser.flaky, tests: summary.currentRunTests.flaky },
+        { id: 'skipped', label: DASHBOARD_TEXT.testsBrowser.skipped, tests: summary.currentRunTests.skipped },
+        { id: 'timedOut', label: DASHBOARD_TEXT.testsBrowser.timedOut, tests: summary.currentRunTests.timedOut },
+        { id: 'interrupted', label: DASHBOARD_TEXT.testsBrowser.interrupted, tests: summary.currentRunTests.interrupted },
+    ]
+
+    return `
+        <div class="chart-card tests-browser-card" data-tab-section="current-run-tests">
+            <div class="tests-browser-header">
+                <div>
+                    <div class="tests-browser-title">${escapeHtml(DASHBOARD_TEXT.testsBrowser.title)}</div>
+                    <div class="muted">${escapeHtml(DASHBOARD_TEXT.testsBrowser.description)}</div>
+                </div>
+            </div>
+            <div class="tests-browser-nav">
+                ${groups.map((group, index) => `
+                    <button class="tests-browser-button${index === 0 ? ' is-active' : ''}" type="button" data-tests-status-button="${escapeHtml(group.id)}">
+                        <span>${escapeHtml(group.label)}</span>
+                        <span class="tests-browser-count">${group.tests.length}</span>
+                    </button>
+                `).join('')}
+            </div>
+            ${groups.map((group, index) => `
+                <div class="tests-browser-panel${index === 0 ? ' is-active' : ''}" data-tests-status-panel="${escapeHtml(group.id)}">
+                    <div class="table-container" style="margin-bottom: 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.tables.test)}</th>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.tables.file)}</th>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.filters.project)}</th>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.tables.status)}</th>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.tables.flaky)}</th>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.tables.duration)}</th>
+                                    <th>${escapeHtml(DASHBOARD_TEXT.tables.lastError)}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${group.tests.length > 0
+                                    ? group.tests.map((test) => renderCurrentRunTestRow(test, summary.filters, testDetailsBasePath)).join('')
+                                    : `<tr><td colspan="7">${escapeHtml(DASHBOARD_TEXT.testsBrowser.empty)}</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `
+}
+
+function renderCurrentRunTestRow(
+    test: DashboardSummary['currentRunTests']['all'][number],
+    filters: DashboardSummary['filters'],
+    testDetailsBasePath: string,
+): string {
+    const testHref = buildTestHistoryHref(test.title, {
+        branch: filters.branch,
+        project: test.project,
+        file: test.file,
+    }, testDetailsBasePath)
+
+    return `
+        <tr>
+            <td><a class="test-link" href="${escapeHtml(testHref)}">${escapeHtml(test.title)}</a></td>
+            <td>${escapeHtml(test.file)}</td>
+            <td>${escapeHtml(test.project)}</td>
+            <td><span class="status-badge ${getStatusClass(test.status, test.flaky)}">${escapeHtml(formatStatusLabel(test.status, test.flaky))}</span></td>
+            <td>${test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
+            <td>${escapeHtml(formatDuration(test.durationMs))}</td>
+            <td class="mono">${escapeHtml(test.errorMessage ?? '—')}</td>
+        </tr>
+    `
+}
+
 function renderHistoryRow(run: DashboardSummary['history']['recentRuns'][number]): string {
     return `
         <tr>
@@ -2639,7 +2842,7 @@ function formatAssumptionValue(value: number | null, unit: string): string {
     return `${value} ${unit}`
 }
 
-function renderManagerOverview(summary: DashboardSummary, testDetailsBasePath: string): string {
+function renderManagerOverview(summary: DashboardSummary, dashboardActionPath: string): string {
     return `
         <div class="manager-summary-card">
             <div class="manager-summary-header">
@@ -2677,7 +2880,7 @@ function renderManagerOverview(summary: DashboardSummary, testDetailsBasePath: s
                 <div class="muted">${escapeHtml(DASHBOARD_TEXT.manager.blockersDescription)}</div>
                 <div class="manager-blocker-list">
                     ${summary.managerSummary.blockers.length > 0
-                        ? summary.managerSummary.blockers.map((blocker) => renderManagerBlocker(blocker, summary.filters, testDetailsBasePath)).join('')
+                        ? summary.managerSummary.blockers.map((blocker) => renderManagerBlocker(blocker, summary.filters, dashboardActionPath)).join('')
                         : `<div class="manager-blocker-item"><div class="manager-blocker-body">${escapeHtml(DASHBOARD_TEXT.manager.noBlockers)}</div></div>`}
                 </div>
             </div>
@@ -2710,15 +2913,9 @@ function renderManagerSignalCard(label: string, signal: DashboardSummary['manage
 function renderManagerBlocker(
     blocker: DashboardSummary['managerSummary']['blockers'][number],
     filters: DashboardSummary['filters'],
-    testDetailsBasePath: string,
+    dashboardActionPath: string,
 ): string {
-    const blockerHref = blocker.testTitle
-        ? buildTestHistoryHref(blocker.testTitle, {
-            branch: filters.branch,
-            project: blocker.project ?? filters.project,
-            file: blocker.file ?? filters.file,
-        }, testDetailsBasePath)
-        : null
+    const blockerHref = getManagerBlockerHref(blocker, filters, dashboardActionPath)
 
     return `
         <div class="manager-blocker-item">
@@ -2749,6 +2946,30 @@ function renderManagerChange(change: DashboardSummary['managerSummary']['changes
 
 function getManagerSignalClass(level: DashboardSummary['managerSummary']['releaseReadiness']['level']): string {
     return `manager-status-${level}`
+}
+
+function getManagerBlockerHref(
+    blocker: DashboardSummary['managerSummary']['blockers'][number],
+    filters: DashboardSummary['filters'],
+    dashboardActionPath: string,
+): string | null {
+    if (blocker.kind === 'problematic-test') {
+        return buildDashboardTabHref(dashboardActionPath, filters, 'flaky', 'problematic-tests')
+    }
+
+    if (blocker.kind === 'duration') {
+        return buildDashboardTabHref(dashboardActionPath, filters, 'performance', 'slow-tests')
+    }
+
+    if (blocker.kind === 'flaky') {
+        return buildDashboardTabHref(dashboardActionPath, filters, 'flaky', 'flaky-tests')
+    }
+
+    if (blocker.kind === 'error-cluster') {
+        return buildDashboardTabHref(dashboardActionPath, filters, 'flaky', 'error-clusters')
+    }
+
+    return null
 }
 
 function getManagerReadinessLabel(level: DashboardSummary['managerSummary']['releaseReadiness']['level']): string {
@@ -3222,6 +3443,17 @@ function normalizeDashboardBasePath(basePath: string | undefined): string {
     }
 
     return trimmedValue.endsWith('/') ? trimmedValue.slice(0, -1) : trimmedValue
+}
+
+function buildDashboardTabHref(
+    dashboardActionPath: string,
+    filters: { branch?: string | null; project?: string | null; file?: string | null },
+    tabId: string,
+    sectionId?: string,
+): string {
+    const query = buildQueryString(filters)
+    const hash = sectionId ? `#${tabId}:${sectionId}` : `#${tabId}`
+    return query ? `${dashboardActionPath}?${query}${hash}` : `${dashboardActionPath}${hash}`
 }
 
 function buildQueryString(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {

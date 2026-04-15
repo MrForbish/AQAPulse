@@ -623,6 +623,14 @@ export AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE="10"
 
 Теперь `data.json` можно генерировать через основной `Playwright/playwright.config.ts`: reporter `@clipboard-health/playwright-reporter-llm` подключается автоматически, если задан `PW_LLM_REPORT`.
 
+Для drill-down diagnostics поддерживаются и расширенные optional-поля шагов внутри `attempts[].steps[]`:
+
+- `status` — статус конкретного шага;
+- `error.message` — текст ошибки именно на шаге;
+- `failed` — явный marker, что тест упал на этом шаге.
+
+Также на уровне `attempt` можно передавать `failedStepIndex` или `failedStepTitle`, если reporter знает точную точку падения, но не вкладывает ошибку прямо в объект шага.
+
 Что нужно, чтобы этот запуск реально сработал:
 
 - установленные зависимости в `Playwright`;

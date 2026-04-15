@@ -462,6 +462,7 @@ export const ru = {
             retriesHint: 'Повторы — это дополнительные перезапуски после первой попытки. Попытки — общее число запусков теста внутри одного прогона, включая самую первую попытку.',
             emptyAttempt: 'Для этой попытки нет дополнительных шагов, артефактов или текста ошибки.',
             noCategory: 'Категория не указана',
+            failedStepBadge: 'Падение на этом шаге',
             openAttachment: 'Открыть артефакт',
             inlineImagePreview: 'Показать изображение внутри diagnostics',
             inlineMarkdownPreview: 'Показать markdown внутри diagnostics',

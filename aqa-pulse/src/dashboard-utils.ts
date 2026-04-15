@@ -63,6 +63,9 @@ export interface ReporterStep {
     title?: string
     category?: string
     durationMs?: number
+    status?: string
+    failed?: boolean
+    error?: ReporterError
 }
 
 export interface ReporterAttempt {
@@ -73,6 +76,8 @@ export interface ReporterAttempt {
     error?: ReporterError
     attachments?: ReporterAttachment[]
     steps?: ReporterStep[]
+    failedStepIndex?: number
+    failedStepTitle?: string
 }
 
 export interface ReporterTest {

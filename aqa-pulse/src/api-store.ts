@@ -68,6 +68,9 @@ export interface TestHistoryStep {
     title: string
     category: string | null
     durationMs: number
+    status: string | null
+    errorMessage: string | null
+    isFailurePoint: boolean
 }
 
 export interface TestHistoryAttemptDetail {
@@ -696,7 +699,7 @@ function normalizeAttemptDetails(test: ReporterTest): TestHistoryAttemptDetail[]
             ? attempt.error.message.trim()
             : null,
         attachments: normalizeAttemptAttachments(attempt.attachments),
-        steps: normalizeAttemptSteps(attempt.steps),
+        steps: normalizeAttemptSteps(attempt.steps, attempt.failedStepIndex, attempt.failedStepTitle),
     }))
 }
 
@@ -715,17 +718,45 @@ function normalizeAttemptAttachments(attachments: ReporterAttachment[] | undefin
         .filter((attachment) => attachment.path !== null || attachment.url !== null)
 }
 
-function normalizeAttemptSteps(steps: ReporterStep[] | undefined): TestHistoryStep[] {
+function normalizeAttemptSteps(
+    steps: ReporterStep[] | undefined,
+    failedStepIndex?: number,
+    failedStepTitle?: string,
+): TestHistoryStep[] {
     if (!Array.isArray(steps)) {
         return []
     }
 
+    const normalizedFailedTitle = typeof failedStepTitle === 'string' && failedStepTitle.trim().length > 0
+        ? failedStepTitle.trim().toLowerCase()
+        : null
+
     return steps
-        .map((step) => ({
-            title: typeof step.title === 'string' && step.title.trim().length > 0 ? step.title.trim() : 'step',
-            category: typeof step.category === 'string' && step.category.trim().length > 0 ? step.category.trim() : null,
-            durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
-        }))
+        .map((step, index) => {
+            const title = typeof step.title === 'string' && step.title.trim().length > 0 ? step.title.trim() : 'step'
+            const errorMessage = typeof step.error?.message === 'string' && step.error.message.trim().length > 0
+                ? step.error.message.trim()
+                : null
+            const normalizedStatus = typeof step.status === 'string' && step.status.trim().length > 0
+                ? normalizeStatus(step.status)
+                : null
+            const isFailurePoint = step.failed === true
+                || Boolean(errorMessage)
+                || normalizedStatus === 'failed'
+                || normalizedStatus === 'timedout'
+                || normalizedStatus === 'interrupted'
+                || (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex === index)
+                || (normalizedFailedTitle !== null && title.toLowerCase() === normalizedFailedTitle)
+
+            return {
+                title,
+                category: typeof step.category === 'string' && step.category.trim().length > 0 ? step.category.trim() : null,
+                durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
+                status: normalizedStatus,
+                errorMessage,
+                isFailurePoint,
+            }
+        })
 }
 
 function buildCandidateIdentity(test: ReporterTest): { title: string; file: string; project: string } | null {

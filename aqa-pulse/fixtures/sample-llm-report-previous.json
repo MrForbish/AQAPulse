@@ -43,8 +43,8 @@
       "retries": 1,
       "errors": [],
       "attempts": [
-        { "attempt": 1, "status": "failed", "durationMs": 17600, "startTime": "2026-04-13T09:10:30.000Z", "steps": [{ "title": "Submit payment", "category": "test.step", "durationMs": 8100 }], "attachments": [{ "name": "gateway-timeout.har", "contentType": "application/json", "path": "artifacts/gateway-timeout.har" }], "error": { "message": "Timeout 30000ms while waiting for payment gateway response" } },
-        { "attempt": 2, "status": "passed", "durationMs": 16500, "startTime": "2026-04-13T09:10:48.000Z", "steps": [{ "title": "Retry payment", "category": "test.step", "durationMs": 5200 }] }
+        { "attempt": 1, "status": "failed", "durationMs": 17600, "startTime": "2026-04-13T09:10:30.000Z", "failedStepIndex": 0, "steps": [{ "title": "Submit payment", "category": "test.step", "durationMs": 8100, "status": "failed", "failed": true, "error": { "message": "Timeout 30000ms while waiting for payment gateway response" } }], "attachments": [{ "name": "gateway-timeout.har", "contentType": "application/json", "path": "artifacts/gateway-timeout.har" }], "error": { "message": "Timeout 30000ms while waiting for payment gateway response" } },
+        { "attempt": 2, "status": "passed", "durationMs": 16500, "startTime": "2026-04-13T09:10:48.000Z", "steps": [{ "title": "Retry payment", "category": "test.step", "durationMs": 5200, "status": "passed" }] }
       ]
     },
     {
@@ -58,7 +58,7 @@
       "retries": 1,
       "errors": [{ "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" }],
       "attempts": [
-        { "attempt": 1, "status": "failed", "durationMs": 11900, "startTime": "2026-04-13T09:11:00.000Z", "steps": [{ "title": "Apply category filter", "category": "pw:api", "durationMs": 1100 }], "error": { "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" } },
+        { "attempt": 1, "status": "failed", "durationMs": 11900, "startTime": "2026-04-13T09:11:00.000Z", "failedStepIndex": 0, "steps": [{ "title": "Apply category filter", "category": "pw:api", "durationMs": 1100, "status": "failed", "failed": true, "error": { "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" } }], "error": { "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" } },
         { "attempt": 2, "status": "failed", "durationMs": 12800, "startTime": "2026-04-13T09:11:12.000Z", "attachments": [{ "name": "filter-state.png", "contentType": "image/png", "path": "artifacts/filter-state.png" }], "error": { "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" } }
       ]
     },

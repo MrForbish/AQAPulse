@@ -1,6 +1,7 @@
 import {
     buildAdvancedMetricsFromArchivedRuns,
     buildDashboardSummary,
+    collectCurrentRunTests,
     type DashboardAvailableFilters,
     type DashboardFilters,
     normalizeDashboardSummary,
@@ -95,7 +96,31 @@ export class ApiStore {
     }
 
     getSummary(): DashboardSummary {
-        return normalizeDashboardSummary(this.storage.readSummary())
+        const summary = normalizeDashboardSummary(this.storage.readSummary())
+
+        if (summary.currentRunTests.all.length > 0) {
+            return summary
+        }
+
+        const history = this.getHistory()
+        const latestRun = summary.comparison.currentRun ?? history.runs[history.runs.length - 1] ?? null
+
+        if (!latestRun) {
+            return summary
+        }
+
+        const runDirectory = this.storage.findArchivedRunDirectory(latestRun.id)
+
+        if (!runDirectory) {
+            return summary
+        }
+
+        const archivedRun = this.storage.readArchivedRunRecord(runDirectory)
+
+        return {
+            ...summary,
+            currentRunTests: collectCurrentRunTests(archivedRun.data.tests ?? []),
+        }
     }
 
     getFilteredSummary(filters: ApiFilters = {}): DashboardSummary {

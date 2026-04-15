@@ -533,6 +533,35 @@ export function renderDashboardHtml(
         .tests-browser-panel.is-active {
             display: block;
         }
+        .status-drilldown-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .status-drilldown-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 40px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+            cursor: pointer;
+            text-align: left;
+            font-size: 12px;
+        }
+        .status-drilldown-button:hover {
+            border-color: rgba(88, 166, 255, 0.45);
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.12);
+        }
+        .status-drilldown-count {
+            color: #9fd3ff;
+            font-weight: 600;
+        }
         .value-accent,
         .manager-signal-value,
         .business-signal-value,
@@ -1151,6 +1180,9 @@ export function renderDashboardHtml(
             .comparison-grid {
                 grid-template-columns: 1fr;
             }
+            .status-drilldown-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -1291,6 +1323,7 @@ export function renderDashboardHtml(
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
                     <canvas id="statusChart"></canvas>
+                    ${renderStatusDrilldown(summary)}
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.recentRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
@@ -1755,6 +1788,7 @@ export function renderDashboardHtml(
         const tabPanels = Array.from(document.querySelectorAll('[data-tab-panel]'));
         const testStatusButtons = Array.from(document.querySelectorAll('[data-tests-status-button]'));
         const testStatusPanels = Array.from(document.querySelectorAll('[data-tests-status-panel]'));
+        const statusDrilldownButtons = Array.from(document.querySelectorAll('[data-open-tests-status]'));
         const chartInstances = {};
         const chartTabs = {
             overview: ['passRateTrendChart', 'statusChart'],
@@ -1986,12 +2020,25 @@ export function renderDashboardHtml(
             });
         });
 
+        statusDrilldownButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                const targetStatus = button.getAttribute('data-open-tests-status') || 'all';
+                activateTab('overview', 'current-run-tests');
+                activateTestsStatus(targetStatus);
+            });
+        });
+
         if (testStatusButtons.length > 0) {
             activateTestsStatus(testStatusButtons[0].getAttribute('data-tests-status-button') || 'all');
         }
 
         const initialRoute = parseHashRoute(window.location.hash);
         activateTab(initialRoute.tabId, initialRoute.sectionId);
+
+        window.addEventListener('hashchange', function () {
+            const route = parseHashRoute(window.location.hash);
+            activateTab(route.tabId, route.sectionId);
+        });
 
         const businessCostStorageKey = 'aqa-pulse.cost-assumptions.v1';
         const assumptionInputs = {
@@ -2604,6 +2651,28 @@ function renderCurrentRunTestsBrowser(summary: DashboardSummary, testDetailsBase
                         </table>
                     </div>
                 </div>
+            `).join('')}
+        </div>
+    `
+}
+
+function renderStatusDrilldown(summary: DashboardSummary): string {
+    const items = [
+        { id: 'passed', label: DASHBOARD_TEXT.testsBrowser.passed, count: summary.currentRunTests.passed.length },
+        { id: 'failed', label: DASHBOARD_TEXT.testsBrowser.failed, count: summary.currentRunTests.failed.length },
+        { id: 'flaky', label: DASHBOARD_TEXT.testsBrowser.flaky, count: summary.currentRunTests.flaky.length },
+        { id: 'skipped', label: DASHBOARD_TEXT.testsBrowser.skipped, count: summary.currentRunTests.skipped.length },
+        { id: 'timedOut', label: DASHBOARD_TEXT.testsBrowser.timedOut, count: summary.currentRunTests.timedOut.length },
+        { id: 'interrupted', label: DASHBOARD_TEXT.testsBrowser.interrupted, count: summary.currentRunTests.interrupted.length },
+    ]
+
+    return `
+        <div class="status-drilldown-grid">
+            ${items.map((item) => `
+                <button class="status-drilldown-button" type="button" data-open-tests-status="${escapeHtml(item.id)}">
+                    <span>${escapeHtml(item.label)}</span>
+                    <span class="status-drilldown-count">${item.count}</span>
+                </button>
             `).join('')}
         </div>
     `

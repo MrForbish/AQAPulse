@@ -1282,7 +1282,7 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
     }
 }
 
-function collectCurrentRunTests(tests: ReporterTest[]): DashboardCurrentRunTests {
+export function collectCurrentRunTests(tests: ReporterTest[]): DashboardCurrentRunTests {
     const normalizedTests = tests
         .map((test) => ({
             title: test.title ?? 'Тест без названия',

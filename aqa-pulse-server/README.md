@@ -1,84 +1,73 @@
 # aqa-pulse-server
 
-Внутренний self-hosted server package для AQA Pulse.
+Self-hosted server package для AQA Pulse.
 
-Дополнительные инструкции:
-- [`SELF-HOSTED-DEPLOYMENT.md`](./SELF-HOSTED-DEPLOYMENT.md) — единая полная инструкция по развёртке self-hosted
-- [`SELF-HOSTED-QUICKSTART.md`](./SELF-HOSTED-QUICKSTART.md) — короткая версия для быстрого старта на своём сервере
-- [`CLIENT-QUICKSTART.md`](./CLIENT-QUICKSTART.md) — короткая версия для клиента
-- [`SELF-HOSTED-INSTALL.md`](./SELF-HOSTED-INSTALL.md) — как поставить на свой сервер
-- [`CLIENT-ONBOARDING.md`](./CLIENT-ONBOARDING.md) — что передавать клиенту и что он должен установить
-- [`GITLAB-CI-INTEGRATION.md`](./GITLAB-CI-INTEGRATION.md) — как поднять сервер отдельно и отправлять отчёты из GitLab CI
+В этом пакете есть:
 
-Что входит:
-- `createSaasApp(...)`
-- file/sqlite/postgres storage abstraction для workspace/registry/dashboard read-model
-- auth middleware и UI flow для admin, workspace API key и workspace user token
-- CLI: `aqa-pulse-server start`
-- CLI: `aqa-pulse-server init`
-- CLI: `aqa-pulse-server bootstrap-workspace`
-- CLI: `aqa-pulse-server bootstrap-demo`
-- CLI: `aqa-pulse-server sqlite-migrate`
-- CLI: `aqa-pulse-server sqlite-backup`
+- server runtime и HTML dashboard;
+- storage для `file`, `sqlite`, `postgres`;
+- auth для admin, workspace API key и workspace user token;
+- Dockerfile и Docker Compose;
+- setup/update scripts для короткого server lifecycle;
+- GitLab upload template.
 
-## Быстрый self-hosted запуск
+## Куда смотреть
 
-```bash
-npm install
-npm run build
+- [`SELF-HOSTED-DEPLOYMENT.md`](./SELF-HOSTED-DEPLOYMENT.md) — основной и единственный полный guide по self-hosted развёртке.
+- [`SELF-HOSTED-QUICKSTART.md`](./SELF-HOSTED-QUICKSTART.md) — короткий checklist для первого запуска.
+- [`SELF-HOSTED-INSTALL.md`](./SELF-HOSTED-INSTALL.md) — reference по вариантам установки.
+- [`GITLAB-CI-INTEGRATION.md`](./GITLAB-CI-INTEGRATION.md) — только про upload из GitLab CI.
 
-export AQA_PULSE_DATA_ROOT="/srv/aqa-pulse"
-export AQA_PULSE_STORAGE_DRIVER="file"
-export AQA_PULSE_SQLITE_PATH="/srv/aqa-pulse/aqa-pulse.sqlite"
-export AQA_PULSE_POSTGRES_URL="postgresql://postgres:postgres@127.0.0.1:5432/aqa_pulse"
-export AQA_PULSE_ADMIN_TOKEN="local-admin-token"
-export AQA_PULSE_JWT_SECRET="change-me-jwt-secret"
-export AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS="28800"
-export AQA_PULSE_ENABLE_DEV_BOOTSTRAP="false"
-export AQA_PULSE_REQUIRE_WORKSPACE_AUTH="true"
+## Рекомендуемый старт
 
-node ./bin/aqa-pulse-server.js init
-node ./bin/aqa-pulse-server.js start
-```
+Все команды выполняй из директории `aqa-pulse-server`.
 
-## PowerShell installer
+Самый короткий путь:
 
 ```bash
-cd /opt/aqa-pulse-server
-pwsh ./scripts/install-self-hosted.ps1 -DataRoot ./data -AdminToken "change-me-admin-token" -StorageDriver sqlite
+npm run setup:docker -- --workspace-name "Autotests main" --workspace-slug autotests-main --public-host aqa-pulse.example.com
 ```
 
-## Docker Compose
+Эта команда:
+
+- генерирует `.env`;
+- поднимает `docker compose up --build -d`;
+- ждёт локальный health-check;
+- создаёт первый workspace;
+- печатает токены и GitLab variables;
+- при `--public-host` пишет Nginx snippet в `./.generated/nginx/<host>.conf`.
+
+## Операционные команды
 
 ```bash
-cd /opt/aqa-pulse-server
-cp .env.example .env
-docker compose up --build
+npm run update:docker
+npm run docker:restart
 ```
 
-`docker-compose.yml` использует:
+- `update:docker` — backup SQLite, rebuild Docker image, restart container, wait for health-check.
+- `docker:restart` — restart контейнера без rebuild образа и без backup.
 
-- локальный build context текущего пакета;
-- `Dockerfile` из `aqa-pulse-server` bundle;
-- volume `./data:/data`;
-- настройки из `.env` (обычно создаётся копированием `.env.example`).
+Если сервер запускается не из готового bundle, а из исходников этого workspace:
 
-## Что входит в аккуратную self-hosted поставку
+```bash
+npm run update:docker -- --build-package
+```
 
-`aqa-pulse-server` можно везти как отдельный runtime bundle без соседней папки `aqa-pulse`, если пакет уже собран (`dist/**/*`).
+## Bundle состав
 
-В bundle уже включены:
+Готовый bundle можно везти без соседней папки `aqa-pulse`, если `dist/**/*` уже собран.
 
-- runtime `dist/**/*`;
-- CLI `bin/**/*`;
+В поставку входят:
+
+- `dist/**/*`;
+- `bin/**/*`;
 - `Dockerfile`, `docker-compose.yml`, `.env.example`;
-- install/onboarding docs;
-- PowerShell installer;
-- GitLab CI template `templates/gitlab/aqa-pulse-upload.gitlab-ci.yml`.
+- `scripts/setup-self-hosted.js`;
+- `scripts/update-self-hosted.js`;
+- `scripts/install-self-hosted.ps1`;
+- docs и `template/gitlab/aqa-pulse-upload.gitlab-ci.yml`.
 
-Соседний `aqa-pulse` нужен только на этапе локальной сборки `npm run build`, потому что `aqa-pulse-server` собирает runtime из `../aqa-pulse/dist-ts`.
-
-## Команды CLI
+## CLI
 
 - `aqa-pulse-server start`
 - `aqa-pulse-server init`
@@ -86,111 +75,4 @@ docker compose up --build
 - `aqa-pulse-server bootstrap-demo`
 - `aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]`
 - `aqa-pulse-server sqlite-backup [backupDirectory]`
-
-## Быстрый bootstrap workspace под GitLab CI
-
-Если сервер уже поднят и storage инициализирован, можно не делать provisioning руками через admin UI/API, а сразу создать workspace и получить нужные секреты одной командой:
-
-```bash
-cd /opt/aqa-pulse-server
-npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com
-```
-
-Команда:
-
-- создаёт workspace;
-- создаёт ingestion `workspace API key`;
-- если `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`, создаёт ещё и `workspace user token` для login в dashboard;
-- печатает готовый блок переменных для GitLab CI/CD.
-
-Если сервер запущен в Docker Compose, можно сделать то же самое внутри контейнера:
-
-```bash
-cd /opt/aqa-pulse-server
-docker compose exec aqa-pulse-server npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com
-```
-
-Для автоматизации можно получить JSON:
-
-```bash
-npm run bootstrap:workspace -- --name "Autotests main" --slug autotests-main --base-url https://aqa-pulse.example.com --json
-```
-
-## Важные env
-
-- `PORT`
-- `AQA_PULSE_DATA_ROOT`
-- `AQA_PULSE_STORAGE_DRIVER`
-- `AQA_PULSE_SQLITE_PATH`
-- `AQA_PULSE_POSTGRES_URL`
-- `AQA_PULSE_DIST_PATH`
-- `AQA_PULSE_ARCHIVE_PATH`
-- `AQA_PULSE_ADMIN_TOKEN`
-- `AQA_PULSE_JWT_SECRET`
-- `AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS`
-- `AQA_PULSE_ENABLE_DEV_BOOTSTRAP`
-- `AQA_PULSE_REQUIRE_WORKSPACE_AUTH`
-
-## Workspace access model
-
-- admin routes (`/admin`, `/api/workspaces*`) — через admin JWT / session cookie, полученные exchange-ом из `AQA_PULSE_ADMIN_TOKEN`;
-- ingestion routes — через ingestion JWT, полученный exchange-ом из workspace API key;
-- workspace read routes (`/w/:slug`, `/api/workspaces/:slug/*`) — через workspace JWT / session cookie, полученные exchange-ом из workspace user token, если включён `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`.
-
-## Практический flow токенов
-
-1. Открыть `GET /admin/login` или вызвать `POST /auth/admin/login` и получить admin JWT.
-2. Создать workspace, workspace user и workspace API key через admin routes.
-3. Для CI/ingestion сделать exchange:
-
-```text
-POST /auth/workspaces/:slug/api-keys/login
-```
-
-4. Для dashboard/UI сделать exchange:
-
-```text
-POST /auth/workspaces/:slug/users/login
-```
-
-5. Использовать уже не raw provisioning token, а выданный JWT.
-
-## Сколько токенов реально нужно
-
-Практически схема такая:
-
-- **для GitLab CI upload** нужен ровно **один долгоживущий секрет** — `workspace API key`;
-- **admin token** в CI хранить не нужно: он нужен только для provisioning/admin-операций;
-- **ingestion JWT** в CI хранить не нужно: `Playwright/scripts/upload-aqa-pulse-report.js` получает его сам через exchange `workspace API key -> ingestion JWT` на каждый job run;
-- **workspace user token** нужен только если ты хочешь закрыть dashboard/read-routes (`AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`).
-
-То есть:
-
-- минимальный приватный setup для **CI ingestion без закрытого dashboard** = `admin token` для первоначальной настройки + `workspace API key` для GitLab;
-- минимальный приватный setup для **CI ingestion + закрытый dashboard** = `admin token` + `workspace API key` + `workspace user token`.
-
-Отдельные raw token'ы для ingestion и read-доступа здесь оправданы scope-разделением:
-
-- `workspace API key` даёт только `workspace:ingest`;
-- `workspace user token` даёт только `workspace:read`;
-- admin token даёт только `admin`.
-
-Объединить всё в один raw token теоретически можно только ценой отказа от разделения прав. Для production/self-hosted сценария это хуже по безопасности и сейчас в runtime-модели не требуется.
-
-## Интеграция с Playwright CI
-
-В текущем репозитории совместимый отчёт генерируется основным `Playwright/playwright.config.ts`: reporter `@clipboard-health/playwright-reporter-llm` подключается автоматически, если задан `PW_LLM_REPORT`.
-
-Ожидаемый файл:
-
-```text
-Playwright/test-results/dashboard/data.json
-```
-
-Рекомендуемый CI flow:
-
-1. тестовая job генерирует `data.json`;
-2. отдельный post-step делает exchange `workspace API key -> ingestion JWT`;
-3. этот же step отправляет `POST /api/workspaces/:slug/ingestions` с payload `{ report, metadata, sourceFile }`;
-4. dashboard открывается по `https://<host>/w/<slug>`.
 

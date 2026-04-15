@@ -9,7 +9,7 @@
 #
 # Пример подключения:
 # include:
-#   - local: '/aqa-pulse-server/templates/gitlab/aqa-pulse-upload.gitlab-ci.yml'
+#   - local: '/aqa-pulse-server/template/gitlab/aqa-pulse-upload.gitlab-ci.yml'
 #
 # aqa pulse upload api:
 #   extends: .aqa_pulse_upload_job

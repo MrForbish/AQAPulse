@@ -360,9 +360,125 @@ export function renderTestHistoryHtml(
         .attachment-preview-summary { padding: 10px 12px; cursor: pointer; list-style: none; color: #c9d1d9; font-size: 12px; font-weight: 500; }
         .attachment-preview-summary::-webkit-details-marker { display: none; }
         .attachment-preview-body { padding: 0 12px 12px; }
-        .attachment-image-preview { display: block; width: 100%; max-width: 100%; max-height: min(420px, 52vh); object-fit: contain; border-radius: 8px; border: 1px solid #21262d; background: #010409; }
+        .attachment-image-trigger {
+            display: block;
+            width: 100%;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: zoom-in;
+            text-align: left;
+        }
+        .attachment-image-trigger:focus-visible {
+            outline: 2px solid #58a6ff;
+            outline-offset: 4px;
+            border-radius: 10px;
+        }
+        .attachment-image-preview {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            max-height: min(420px, 52vh);
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid #21262d;
+            background: #010409;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+        .attachment-image-trigger:hover .attachment-image-preview {
+            border-color: rgba(88, 166, 255, 0.45);
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.18);
+            transform: translateY(-1px);
+        }
+        .attachment-image-hint {
+            margin-top: 8px;
+            color: #8b949e;
+            font-size: 11px;
+            line-height: 1.4;
+        }
         .attachment-markdown-preview { max-height: min(360px, 42vh); overflow: auto; padding: 12px; border-radius: 8px; border: 1px solid #21262d; background: #010409; color: #c9d1d9; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
         .attachment-preview-loading, .attachment-preview-error { padding: 10px 12px; border-radius: 8px; border: 1px solid #21262d; background: #010409; color: #8b949e; font-size: 12px; line-height: 1.5; }
+        .image-lightbox[hidden] { display: none; }
+        .image-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .image-lightbox-backdrop {
+            position: absolute;
+            inset: 0;
+            border: 0;
+            background: rgba(1, 4, 9, 0.86);
+            cursor: zoom-out;
+        }
+        .image-lightbox-dialog {
+            position: relative;
+            z-index: 1;
+            width: min(96vw, 1480px);
+            max-height: calc(100vh - 48px);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 12px;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+        }
+        .image-lightbox-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .image-lightbox-title {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .image-lightbox-close {
+            flex: none;
+            min-width: 40px;
+            min-height: 40px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            background: #161b22;
+            color: #c9d1d9;
+            cursor: pointer;
+            font-size: 22px;
+            line-height: 1;
+        }
+        .image-lightbox-close:hover { border-color: #58a6ff; color: #ffffff; }
+        .image-lightbox-close:focus-visible {
+            outline: 2px solid #58a6ff;
+            outline-offset: 2px;
+        }
+        .image-lightbox-body {
+            min-height: 0;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            scrollbar-gutter: stable;
+        }
+        .image-lightbox-image {
+            display: block;
+            max-width: 100%;
+            max-height: calc(100vh - 170px);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 1px solid #21262d;
+            background: #010409;
+        }
         ${METRIC_INFO_STYLES}
         .inline-heading { font-size: 13px; color: #ffffff; margin-bottom: 10px; }
         .notice-inline { padding: 14px 16px; margin-bottom: 24px; }
@@ -492,9 +608,26 @@ export function renderTestHistoryHtml(
             </table>
         </div>
     </div>
+    <div class="image-lightbox" data-image-lightbox hidden>
+        <button type="button" class="image-lightbox-backdrop" data-image-lightbox-close aria-label="${escapeHtml(HISTORY_TEXT.diagnostics.closeImageLightbox)}"></button>
+        <div class="image-lightbox-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(HISTORY_TEXT.diagnostics.imageLightboxTitle)}">
+            <div class="image-lightbox-header">
+                <div class="image-lightbox-title" data-image-lightbox-title>${escapeHtml(HISTORY_TEXT.diagnostics.imageLightboxTitle)}</div>
+                <button type="button" class="image-lightbox-close" data-image-lightbox-close aria-label="${escapeHtml(HISTORY_TEXT.diagnostics.closeImageLightbox)}">×</button>
+            </div>
+            <div class="image-lightbox-body">
+                <img class="image-lightbox-image" data-image-lightbox-image alt="" loading="eager">
+            </div>
+        </div>
+    </div>
     <script>
         (() => {
             const markdownPreviews = document.querySelectorAll('[data-markdown-preview]')
+            const imageLightbox = document.querySelector('[data-image-lightbox]')
+            const imageLightboxImage = imageLightbox?.querySelector('[data-image-lightbox-image]')
+            const imageLightboxTitle = imageLightbox?.querySelector('[data-image-lightbox-title]')
+            const imageLightboxCloseButton = imageLightbox?.querySelector('.image-lightbox-close')
+            let previousActiveElement = null
 
             async function loadMarkdownPreview(container) {
                 if (!(container instanceof HTMLElement)) {
@@ -545,6 +678,74 @@ export function renderTestHistoryHtml(
                         void loadMarkdownPreview(preview)
                     }
                 })
+            })
+
+            function openImageLightbox(src, title) {
+                if (!(imageLightbox instanceof HTMLElement) || !(imageLightboxImage instanceof HTMLImageElement) || !(imageLightboxTitle instanceof HTMLElement) || !src) {
+                    return
+                }
+
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
+                imageLightboxImage.src = src
+                imageLightboxImage.alt = title || ''
+                imageLightboxTitle.textContent = title || '${escapeHtml(HISTORY_TEXT.diagnostics.imageLightboxTitle)}'
+                imageLightbox.hidden = false
+                document.body.style.overflow = 'hidden'
+
+                if (imageLightboxCloseButton instanceof HTMLElement) {
+                    imageLightboxCloseButton.focus()
+                }
+            }
+
+            function closeImageLightbox() {
+                if (!(imageLightbox instanceof HTMLElement) || !(imageLightboxImage instanceof HTMLImageElement) || !(imageLightboxTitle instanceof HTMLElement)) {
+                    return
+                }
+
+                if (imageLightbox.hidden) {
+                    return
+                }
+
+                imageLightbox.hidden = true
+                imageLightboxImage.removeAttribute('src')
+                imageLightboxImage.alt = ''
+                imageLightboxTitle.textContent = '${escapeHtml(HISTORY_TEXT.diagnostics.imageLightboxTitle)}'
+                document.body.style.overflow = ''
+
+                if (previousActiveElement instanceof HTMLElement) {
+                    previousActiveElement.focus()
+                }
+
+                previousActiveElement = null
+            }
+
+            document.addEventListener('click', (event) => {
+                const eventTarget = event.target
+
+                if (!(eventTarget instanceof Element)) {
+                    return
+                }
+
+                const trigger = eventTarget.closest('[data-image-lightbox-trigger]')
+
+                if (trigger instanceof HTMLElement) {
+                    event.preventDefault()
+                    openImageLightbox(trigger.dataset.imageLightboxSrc || '', trigger.dataset.imageLightboxTitle || '')
+                    return
+                }
+
+                const closeTrigger = eventTarget.closest('[data-image-lightbox-close]')
+
+                if (closeTrigger instanceof HTMLElement) {
+                    event.preventDefault()
+                    closeImageLightbox()
+                }
+            })
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeImageLightbox()
+                }
             })
 
             function revealHashTarget() {
@@ -1123,7 +1324,17 @@ function renderAttachmentDetail(
             <details class="attachment-preview">
                 <summary class="attachment-preview-summary">${escapeHtml(HISTORY_TEXT.diagnostics.inlineImagePreview)}</summary>
                 <div class="attachment-preview-body">
-                    <img class="attachment-image-preview" src="${escapeHtml(href)}" alt="${escapeHtml(attachment.name)}" loading="lazy">
+                    <button
+                        type="button"
+                        class="attachment-image-trigger"
+                        data-image-lightbox-trigger
+                        data-image-lightbox-src="${escapeHtml(href)}"
+                        data-image-lightbox-title="${escapeHtml(attachment.name)}"
+                        aria-label="${escapeHtml(HISTORY_TEXT.diagnostics.expandImageHint)}"
+                    >
+                        <img class="attachment-image-preview" src="${escapeHtml(href)}" alt="${escapeHtml(attachment.name)}" loading="lazy">
+                    </button>
+                    <div class="attachment-image-hint">${escapeHtml(HISTORY_TEXT.diagnostics.expandImageHint)}</div>
                 </div>
             </details>
         `

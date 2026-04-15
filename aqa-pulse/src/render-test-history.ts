@@ -448,6 +448,7 @@ function renderIncidentSummary(incidentSummary: TestHistoryResponse['incidentSum
                 <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.latestSeenLabel)}: ${escapeHtml(incidentSummary.latestSeenAt ? formatDate(incidentSummary.latestSeenAt) : '—')}</span>
                 <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.recoveryLabel)}: ${escapeHtml(incidentSummary.latestRecoveryAt ? formatDate(incidentSummary.latestRecoveryAt) : '—')}</span>
                 <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.attemptsLabel)}: ${incidentSummary.affectedAttempts}</span>
+                ${incidentSummary.failureStepTitle ? `<span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.failureStepLabel)}: ${escapeHtml(incidentSummary.failureStepTitle)}</span>` : ''}
             </div>
             ${incidentSummary.latestErrorMessage ? `<div class="incident-message mono">${escapeHtml(incidentSummary.latestErrorMessage)}</div>` : ''}
             <div class="incident-evidence-list">

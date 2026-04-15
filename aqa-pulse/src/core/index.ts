@@ -2,6 +2,7 @@ export {
     buildAdvancedMetrics,
     buildAdvancedMetricsFromArchivedRuns,
     buildDashboardSummary,
+    enrichReporterReport,
     formatDate,
     formatDuration,
     formatPercent,

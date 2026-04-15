@@ -232,6 +232,8 @@ curl --silent --show-error --fail \
 Playwright/test-results/dashboard/data.json
 ```
 
+Если reporter пока не отдаёт точный failing step явно, это не блокер: при ingestion `aqa-pulse` сам пытается восстановить точку падения по `steps`, `step.error`, `step.status` и статусу попытки. Но если ты сможешь добавить в отчёт `step.failed`, `step.error.message`, `failedStepIndex` или `failedStepTitle`, root cause summary будет заметно точнее.
+
 ## Практический CI-подход
 
 ### Рекомендуемый вариант

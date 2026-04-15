@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import {
     buildAdvancedMetrics,
     buildDashboardSummary,
+    enrichReporterReport,
     type DashboardRunMetadata,
     type ReporterAttachment,
     type ReporterRoot,
@@ -24,6 +25,7 @@ export function ingestReporterRun(options: {
     sourceFile?: string
     artifactsPath?: string
 }): IngestionResult {
+    const enrichedReport = enrichReporterReport(options.report)
     const runMetadata: DashboardRunMetadata = {
         branch: normalizeOptionalText(options.metadata?.branch),
         commit: normalizeOptionalText(options.metadata?.commit),
@@ -31,9 +33,9 @@ export function ingestReporterRun(options: {
     }
     const sourceFile = options.sourceFile
         ? options.sourceFile
-        : buildDefaultSourceFile(options.workspace.slug, options.report)
+        : buildDefaultSourceFile(options.workspace.slug, enrichedReport)
 
-    const summaryWithoutHistory = buildDashboardSummary(options.report, sourceFile, [], runMetadata)
+    const summaryWithoutHistory = buildDashboardSummary(enrichedReport, sourceFile, [], runMetadata)
     const nextHistoryEntry = {
         id: buildHistoryEntryId(summaryWithoutHistory.reportTimestamp, sourceFile),
         reportTimestamp: summaryWithoutHistory.reportTimestamp,
@@ -57,7 +59,7 @@ export function ingestReporterRun(options: {
     }
 
     const reportWithArtifacts = materializeReportArtifacts({
-        report: options.report,
+        report: enrichedReport,
         runId: nextHistoryEntry.id,
         sourceFile,
         artifactsPath: options.artifactsPath ?? options.storage.paths.artifactsPath,

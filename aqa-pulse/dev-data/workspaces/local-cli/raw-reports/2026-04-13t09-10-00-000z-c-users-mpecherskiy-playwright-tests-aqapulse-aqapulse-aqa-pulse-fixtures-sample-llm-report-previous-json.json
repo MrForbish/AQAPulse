@@ -88,7 +88,8 @@
           ],
           "error": {
             "message": "Timeout 30000ms while waiting for payment gateway response"
-          }
+          },
+          "failedStepTitle": "Submit payment"
         },
         {
           "attempt": 2,
@@ -145,7 +146,8 @@
           ],
           "error": {
             "message": "strict mode violation: locator('.filter-option') resolved to 2 elements"
-          }
+          },
+          "failedStepTitle": "Apply category filter"
         },
         {
           "attempt": 2,

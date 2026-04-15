@@ -427,6 +427,7 @@ export const ru = {
             latestSeenLabel: 'Последний сигнал',
             recoveryLabel: 'Последнее восстановление',
             attemptsLabel: 'Проблемных попыток',
+            failureStepLabel: 'Точка падения',
             severity: {
                 active: 'Активно',
                 monitoring: 'Нужно наблюдать',

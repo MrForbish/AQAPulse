@@ -102,6 +102,9 @@ export interface TestHistoryIncidentSummary {
     latestSeenAt: string | null
     latestRecoveryAt: string | null
     latestErrorMessage: string | null
+    failureStepTitle: string | null
+    failureStepCategory: string | null
+    failureStepErrorMessage: string | null
 }
 
 interface IncidentSignalBundle {
@@ -109,10 +112,14 @@ interface IncidentSignalBundle {
     normalizedErrorMessages: string[]
     stepCategories: string[]
     stepTitles: string[]
+    failureStepCategories: string[]
+    failureStepTitles: string[]
+    failureStepErrorMessages: string[]
     attachmentHints: string[]
     hasContextAttachment: boolean
     hasTraceAttachment: boolean
     hasHarAttachment: boolean
+    hasExactFailureStep: boolean
     signalSources: number
 }
 
@@ -869,6 +876,9 @@ function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncid
         latestSeenAt: getItemTimestamp(latestUnstable),
         latestRecoveryAt: latestRecovery ? getItemTimestamp(latestRecovery) : null,
         latestErrorMessage,
+        failureStepTitle: latestSignals.failureStepTitles[0] ?? null,
+        failureStepCategory: latestSignals.failureStepCategories[0] ?? null,
+        failureStepErrorMessage: latestSignals.failureStepErrorMessages[0] ?? null,
     }
 }
 
@@ -887,6 +897,9 @@ function buildIncidentNarrative(
     const recurrence = matchingRunsCount > 1
         ? ` Паттерн повторялся ${matchingRunsCount} раза.`
         : ' Пока это выглядит как единичный эпизод.'
+    const failingStepPart = latestSignals.failureStepTitles[0]
+        ? ` Точка падения: ${latestSignals.failureStepTitles[0]}.`
+        : ''
     const evidenceHint = latestSignals.hasContextAttachment
         ? ' Есть `error-context.md` с дополнительным контекстом.'
         : latestSignals.hasTraceAttachment
@@ -896,7 +909,7 @@ function buildIncidentNarrative(
         ? ` Основной сигнал: ${latestSignals.normalizedErrorMessages[0]}.`
         : ''
 
-    return `${statePrefix} Вероятная причина: ${categoryLabel}.${recurrence}${messagePart}${evidenceHint}`
+    return `${statePrefix} Вероятная причина: ${categoryLabel}.${recurrence}${failingStepPart}${messagePart}${evidenceHint}`
 }
 
 function buildIncidentEvidence(input: {
@@ -910,6 +923,16 @@ function buildIncidentEvidence(input: {
 
     if (input.latestSignals.normalizedErrorMessages[0]) {
         evidence.push(`Последний сигнал: ${input.latestSignals.normalizedErrorMessages[0]}`)
+    }
+
+    if (input.latestSignals.failureStepTitles[0]) {
+        const failureCategory = input.latestSignals.failureStepCategories[0]
+        const categorySuffix = failureCategory ? ` (${failureCategory})` : ''
+        evidence.push(`Точная точка падения: ${input.latestSignals.failureStepTitles[0]}${categorySuffix}.`)
+    }
+
+    if (input.latestSignals.failureStepErrorMessages[0]) {
+        evidence.push(`Ошибка на шаге: ${input.latestSignals.failureStepErrorMessages[0]}`)
     }
 
     evidence.push(`В последнем нестабильном запуске задеты попытки: ${input.affectedAttempts} из ${input.latestUnstable.attempts}.`)
@@ -943,11 +966,15 @@ function getIncidentConfidence(
     affectedAttempts: number,
     latestSignals: IncidentSignalBundle,
 ): TestHistoryIncidentConfidence {
+    if (latestSignals.hasExactFailureStep && category !== 'unknown' && latestSignals.signalSources >= 2) {
+        return 'high'
+    }
+
     if (category !== 'unknown' && ((matchingRunsCount >= 2 || affectedAttempts >= 2) && latestSignals.signalSources >= 2)) {
         return 'high'
     }
 
-    if (category !== 'unknown' || latestSignals.normalizedErrorMessages.length > 0 || latestSignals.attachmentHints.length > 0) {
+    if (category !== 'unknown' || latestSignals.normalizedErrorMessages.length > 0 || latestSignals.attachmentHints.length > 0 || latestSignals.hasExactFailureStep) {
         return 'medium'
     }
 
@@ -956,30 +983,36 @@ function getIncidentConfidence(
 
 function classifyIncidentCategory(signals: IncidentSignalBundle): TestHistoryIncidentCategory {
     const message = signals.corpus
-    const errorCorpus = signals.normalizedErrorMessages.join(' ').toLowerCase()
+    const targetedMessage = [
+        ...signals.failureStepErrorMessages,
+        ...signals.failureStepCategories,
+        ...signals.failureStepTitles,
+    ].join(' ').toLowerCase()
+    const categoryCorpus = targetedMessage || message
+    const errorCorpus = [...signals.normalizedErrorMessages, ...signals.failureStepErrorMessages].join(' ').toLowerCase()
     const attachmentCorpus = signals.attachmentHints.join(' ').toLowerCase()
 
     if (!message) {
         return 'unknown'
     }
 
-    if (/strict mode violation|locator|selector|resolved to \d+ elements|not attached/i.test(message)) {
+    if (/strict mode violation|locator|selector|resolved to \d+ elements|not attached/i.test(categoryCorpus)) {
         return 'selector'
     }
 
-    if (/err_connection|econn|socket|gateway|network|fetch|dns|enotfound|eai_again|reset|har|response status/i.test(message)) {
+    if (/err_connection|econn|socket|gateway|network|fetch|dns|enotfound|eai_again|reset|har|response status/i.test(categoryCorpus)) {
         return 'network'
     }
 
-    if (/timeout|timed out|waiting for|exceeded|slow/i.test(message)) {
+    if (/timeout|timed out|waiting for|exceeded|slow/i.test(categoryCorpus)) {
         return 'timeout'
     }
 
-    if (/expect\(|tobe|tohave|assert|mismatch|received:/i.test(message)) {
+    if (/expect\(|tobe|tohave|assert|mismatch|received:/i.test(categoryCorpus)) {
         return 'assertion'
     }
 
-    if (/browser has been closed|target page, context or browser has been closed|worker process|sigterm|enomem|epipe|crash|detached/i.test(message)) {
+    if (/browser has been closed|target page, context or browser has been closed|worker process|sigterm|enomem|epipe|crash|detached/i.test(categoryCorpus)) {
         return 'infrastructure'
     }
 
@@ -999,6 +1032,7 @@ function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {
             .filter((message): message is string => typeof message === 'string' && message.trim().length > 0)
             .map(normalizeIncidentMessage),
     )
+    const failureSteps = item.attemptDetails.flatMap((attempt) => attempt.steps.filter((step) => step.isFailurePoint))
     const stepCategories = unique(
         item.attemptDetails
             .flatMap((attempt) => attempt.steps)
@@ -1013,6 +1047,24 @@ function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {
             .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
             .map((value) => value.trim()),
     )
+    const failureStepCategories = unique(
+        failureSteps
+            .map((step) => step.category ?? step.title)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map((value) => value.trim()),
+    )
+    const failureStepTitles = unique(
+        failureSteps
+            .map((step) => step.title)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map((value) => value.trim()),
+    )
+    const failureStepErrorMessages = unique(
+        failureSteps
+            .map((step) => step.errorMessage)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map(normalizeIncidentMessage),
+    )
     const attachmentHints = unique(
         item.attemptDetails
             .flatMap((attempt) => attempt.attachments)
@@ -1024,10 +1076,14 @@ function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {
     const hasContextAttachment = lowerAttachmentHints.some((hint) => hint.includes('error-context.md'))
     const hasTraceAttachment = lowerAttachmentHints.some((hint) => hint.includes('trace') || hint.includes('screenshot') || hint.includes('video'))
     const hasHarAttachment = lowerAttachmentHints.some((hint) => hint.includes('.har') || hint.includes('har'))
-    const sourceCount = Number(normalizedErrorMessages.length > 0) + Number(stepCategories.length > 0 || stepTitles.length > 0) + Number(attachmentHints.length > 0)
+    const hasExactFailureStep = failureStepTitles.length > 0 || failureStepErrorMessages.length > 0
+    const sourceCount = Number(normalizedErrorMessages.length > 0) + Number(hasExactFailureStep) + Number(stepCategories.length > 0 || stepTitles.length > 0) + Number(attachmentHints.length > 0)
 
     return {
         corpus: [
+            ...failureStepErrorMessages,
+            ...failureStepCategories,
+            ...failureStepTitles,
             ...normalizedErrorMessages,
             ...stepCategories,
             ...stepTitles,
@@ -1036,10 +1092,14 @@ function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {
         normalizedErrorMessages,
         stepCategories,
         stepTitles,
+        failureStepCategories,
+        failureStepTitles,
+        failureStepErrorMessages,
         attachmentHints,
         hasContextAttachment,
         hasTraceAttachment,
         hasHarAttachment,
+        hasExactFailureStep,
         signalSources: sourceCount,
     }
 }

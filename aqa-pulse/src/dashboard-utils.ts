@@ -362,7 +362,113 @@ export function loadReporterReport(reportPath: string): ReporterRoot {
         throw new Error(`В файле \"${reportPath}\" отсутствует массив tests. Ожидался JSON в формате playwright-reporter-llm.`)
     }
 
-    return report
+    return enrichReporterReport(report)
+}
+
+export function enrichReporterReport(report: ReporterRoot): ReporterRoot {
+    if (!Array.isArray(report.tests)) {
+        return report
+    }
+
+    return {
+        ...report,
+        tests: report.tests.map((test) => ({
+            ...test,
+            attempts: Array.isArray(test.attempts)
+                ? test.attempts.map((attempt) => enrichReporterAttempt(attempt))
+                : test.attempts,
+        })),
+    }
+}
+
+function enrichReporterAttempt(attempt: ReporterAttempt): ReporterAttempt {
+    const steps = Array.isArray(attempt.steps) ? attempt.steps : []
+
+    if (steps.length === 0) {
+        return attempt
+    }
+
+    const failureIndex = resolveReporterFailedStepIndex(attempt, steps)
+
+    if (failureIndex === null) {
+        return attempt
+    }
+
+    const inferredAttemptStatus = normalizeReporterStatus(attempt.status)
+    const enrichedSteps = steps.map((step, index) => {
+        if (index !== failureIndex) {
+            return step
+        }
+
+        return {
+            ...step,
+            failed: true,
+            status: typeof step.status === 'string' && step.status.trim().length > 0
+                ? step.status
+                : (isReporterUnstableStatus(inferredAttemptStatus) ? inferredAttemptStatus : step.status),
+            error: hasReporterErrorMessage(step.error)
+                ? step.error
+                : (hasReporterErrorMessage(attempt.error) ? attempt.error : step.error),
+        }
+    })
+
+    const inferredTitle = typeof steps[failureIndex]?.title === 'string' && steps[failureIndex].title?.trim().length
+        ? steps[failureIndex].title?.trim()
+        : undefined
+
+    return {
+        ...attempt,
+        failedStepIndex: typeof attempt.failedStepIndex === 'number' && attempt.failedStepIndex >= 0 && attempt.failedStepIndex < steps.length
+            ? attempt.failedStepIndex
+            : failureIndex,
+        failedStepTitle: typeof attempt.failedStepTitle === 'string' && attempt.failedStepTitle.trim().length > 0
+            ? attempt.failedStepTitle.trim()
+            : inferredTitle,
+        steps: enrichedSteps,
+    }
+}
+
+function resolveReporterFailedStepIndex(attempt: ReporterAttempt, steps: ReporterStep[]): number | null {
+    if (typeof attempt.failedStepIndex === 'number' && attempt.failedStepIndex >= 0 && attempt.failedStepIndex < steps.length) {
+        return attempt.failedStepIndex
+    }
+
+    const normalizedFailedTitle = typeof attempt.failedStepTitle === 'string' && attempt.failedStepTitle.trim().length > 0
+        ? attempt.failedStepTitle.trim().toLowerCase()
+        : null
+
+    if (normalizedFailedTitle) {
+        const titledIndex = steps.findIndex((step) => typeof step.title === 'string' && step.title.trim().toLowerCase() === normalizedFailedTitle)
+
+        if (titledIndex >= 0) {
+            return titledIndex
+        }
+    }
+
+    const explicitIndex = steps.findIndex((step) => step.failed === true || hasReporterErrorMessage(step.error) || isReporterUnstableStatus(normalizeReporterStatus(step.status)))
+
+    if (explicitIndex >= 0) {
+        return explicitIndex
+    }
+
+    if (isReporterUnstableStatus(normalizeReporterStatus(attempt.status)) && steps.length > 0) {
+        return steps.length - 1
+    }
+
+    return null
+}
+
+function hasReporterErrorMessage(error: ReporterError | undefined): boolean {
+    return typeof error?.message === 'string' && error.message.trim().length > 0
+}
+
+function normalizeReporterStatus(status: string | undefined): string {
+    const normalized = (status ?? '').trim().toLowerCase()
+    return normalized === 'timed out' ? 'timedout' : normalized
+}
+
+function isReporterUnstableStatus(status: string): boolean {
+    return status === 'failed' || status === 'timedout' || status === 'interrupted'
 }
 
 export function readDashboardSummary(summaryPath: string): DashboardSummary {

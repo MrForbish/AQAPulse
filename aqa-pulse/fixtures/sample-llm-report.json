@@ -32,6 +32,7 @@
         "column": 5
       },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [],
       "attempts": [
@@ -55,6 +56,7 @@
         "column": 5
       },
       "project": "ui",
+      "browser": "chromium",
       "retries": 1,
       "errors": [],
       "attempts": [
@@ -126,6 +128,7 @@
         "column": 5
       },
       "project": "ui",
+      "browser": "chromium",
       "retries": 1,
       "errors": [
         {
@@ -190,6 +193,7 @@
         "column": 5
       },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [
         {
@@ -220,6 +224,7 @@
         "column": 5
       },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [],
       "attempts": [
@@ -243,6 +248,7 @@
         "column": 5
       },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [],
       "attempts": [

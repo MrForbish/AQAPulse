@@ -91,6 +91,7 @@ export interface ReporterTest {
     durationMs?: number
     location?: ReporterLocation
     project?: string
+    browser?: string
     retries?: number
     errors?: ReporterError[]
     attempts?: ReporterAttempt[]
@@ -1121,7 +1122,7 @@ function buildDurationPerBrowser(tests: ReporterTest[], totalDurationMs: number)
     const durationsByBrowser = new Map<string, { durationMs: number; tests: number }>()
 
     for (const test of tests) {
-        const label = resolveBrowserDimensionLabel(test.project)
+        const label = resolveBrowserDimensionLabel(test.browser)
         const currentEntry = durationsByBrowser.get(label) ?? { durationMs: 0, tests: 0 }
 
         currentEntry.durationMs += getObservedTestDurationMs(test)
@@ -1202,27 +1203,12 @@ function resolveSuiteLabel(test: ReporterTest): string {
     return 'Набор без названия'
 }
 
-function resolveBrowserDimensionLabel(project: string | undefined): string {
-    const normalizedProject = typeof project === 'string' && project.trim().length > 0 ? project.trim() : 'неизвестно'
-    const loweredProject = normalizedProject.toLowerCase()
-
-    if (/(chromium|chrome)/.test(loweredProject)) {
-        return 'Chromium'
+function resolveBrowserDimensionLabel(browser: string | undefined): string {
+    if (typeof browser === 'string' && browser.trim().length > 0) {
+        return browser.trim()
     }
 
-    if (/firefox/.test(loweredProject)) {
-        return 'Firefox'
-    }
-
-    if (/(webkit|safari)/.test(loweredProject)) {
-        return 'WebKit'
-    }
-
-    if (/edge/.test(loweredProject)) {
-        return 'Edge'
-    }
-
-    return normalizedProject
+    return 'Chrome'
 }
 
 function collectFlakyCandidates(archivedRuns: Array<{ run: DashboardHistoryEntry; report: ReporterRoot }>): DashboardFlakyTestMetric[] {

@@ -28,6 +28,7 @@
       "durationMs": 12800,
       "location": { "file": "tests/UI/checkout/checkout.spec.ts", "line": 18, "column": 5 },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [],
       "attempts": [{ "attempt": 1, "status": "passed", "durationMs": 12800, "startTime": "2026-04-13T09:10:00.000Z" }]
@@ -40,6 +41,7 @@
       "durationMs": 34100,
       "location": { "file": "tests/UI/checkout/payment.spec.ts", "line": 44, "column": 5 },
       "project": "ui",
+      "browser": "chromium",
       "retries": 1,
       "errors": [],
       "attempts": [
@@ -55,6 +57,7 @@
       "durationMs": 24700,
       "location": { "file": "tests/UI/catalog/filters.spec.ts", "line": 27, "column": 5 },
       "project": "ui",
+      "browser": "chromium",
       "retries": 1,
       "errors": [{ "message": "strict mode violation: locator('.filter-option') resolved to 2 elements" }],
       "attempts": [
@@ -70,6 +73,7 @@
       "durationMs": 22300,
       "location": { "file": "tests/UI/auth/session.spec.ts", "line": 35, "column": 5 },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [{ "message": "net::ERR_CONNECTION_RESET while fetching /session" }],
       "attempts": [
@@ -84,6 +88,7 @@
       "durationMs": 36100,
       "location": { "file": "tests/UI/orders/create-order.spec.ts", "line": 14, "column": 5 },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [{ "message": "expect(received).toBeVisible() failed" }],
       "attempts": [
@@ -98,6 +103,7 @@
       "durationMs": 0,
       "location": { "file": "tests/UI/profile/avatar.spec.ts", "line": 11, "column": 5 },
       "project": "ui",
+      "browser": "chromium",
       "retries": 0,
       "errors": [],
       "attempts": [{ "attempt": 1, "status": "skipped", "durationMs": 0, "startTime": "2026-04-13T09:12:30.000Z" }]

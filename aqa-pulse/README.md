@@ -24,6 +24,43 @@
 - использует общий helper `src/render-metric-info.ts` для tooltip'ов и заголовков метрик в dashboard и на drill-down странице теста;
 - поддерживает каскадные фильтры `branch -> project -> file` в UI и query params.
 
+## Минимальная схема теста в upload JSON
+
+Для runtime-метрики AQA Pulse теперь поддерживает явное поле `browser` на уровне теста.
+Если `browser` передан, метрика `Runtime-проекты / браузеры` использует его.
+Если `browser` отсутствует, AQA Pulse использует `Chrome` по умолчанию.
+
+Пример минимального объекта теста:
+
+```json
+{
+  "id": "T-1",
+  "title": "Checkout > completes order with saved card",
+  "status": "passed",
+  "flaky": false,
+  "durationMs": 11400,
+  "location": {
+    "file": "tests/UI/checkout/checkout.spec.ts",
+    "line": 18,
+    "column": 5
+  },
+  "project": "ui",
+  "browser": "chromium",
+  "retries": 0,
+  "errors": [],
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "passed",
+      "durationMs": 11400,
+      "startTime": "2026-04-14T12:34:00.000Z"
+    }
+  ]
+}
+```
+
+Поле `browser` опционально. Если его не передать, для runtime-метрики будет использован `Chrome`. Если передать, AQA Pulse покажет значение этого поля как есть.
+
 ## Что уже реализовано из первых P1-метрик
 
 На текущих данных уже считаются и отображаются:
@@ -165,6 +202,8 @@ INGESTION_JWT=$(curl --silent --show-error --fail \
 node -e "
 const fs = require('fs');
 const report = JSON.parse(fs.readFileSync('./fixtures/sample-llm-report.json', 'utf8'));
+// Если хочешь явно разделять runtime по браузерам,
+// передавай report.tests[*].browser, например: chromium.
 const payload = {
   report,
   metadata: {

@@ -99,7 +99,7 @@ export const ru = {
             topSlowestTests: 'Самые медленные тесты текущего среза, требующие оптимизации.',
             phaseBreakdown: 'Оценка распределения времени между подготовкой, исполнением тестовых шагов и завершением. Фазы определяются по шагам и служебным названиям в отчёте Playwright.',
             suiteDuration: 'Какие наборы тестов суммарно занимают больше всего времени в текущем срезе. Наборы группируются по префиксу title или по имени spec-файла.',
-            durationPerBrowser: 'Сколько времени занимают runtime-проекты текущего среза. Если из имени project удаётся распознать браузер, AQA Pulse нормализует подпись до браузера; иначе показывает исходный Playwright project.',
+            durationPerBrowser: 'Сколько времени занимают браузеры текущего среза. Если в отчёте есть поле browser, AQA Pulse использует его как есть. Если поля нет, по умолчанию используется Chrome.',
             flakyTrend: 'Тренд количества нестабильных тестов по архивным прогонам.',
             clusterList: 'Распределение падений по кластерам ошибок и примеры тестов.',
             problematicTests: 'Тесты с наибольшей долей падений и высокой вероятностью повторных инцидентов.',
@@ -157,8 +157,8 @@ export const ru = {
         performance: {
             phaseBreakdownDescription: 'Фазы считаются эвристически по hook- и step-паттернам Playwright. Остаток времени относится к основному выполнению тестов.',
             suiteDurationDescription: 'Показываются самые тяжёлые наборы текущего среза. Группировка идёт по префиксу названия теста или по имени spec-файла.',
-            durationPerBrowserDescription: 'Срез строится по полю Playwright project. Если в имени project есть chromium, chrome, firefox, webkit, safari или edge, подпись нормализуется до браузера.',
-            runtimeBreakdownTitle: 'Срез по runtime-проектам',
+            durationPerBrowserDescription: 'Срез строится по полю browser из репорта. Если browser не передан, AQA Pulse подставляет Chrome по умолчанию.',
+            runtimeBreakdownTitle: 'Срез по браузерам',
             phaseLegendLabel: 'Структура длительности',
         },
         testsBrowser: {

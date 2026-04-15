@@ -101,7 +101,7 @@ export function renderTestHistoryHtml(
         file: payload.test.file,
     }, normalizedApiBasePath)
     const latestStatusClass = payload.latestRun ? getStatusClass(payload.latestRun.status, payload.latestRun.flaky) : 'status-unknown'
-    const incidentSummaryHtml = renderIncidentSummary(payload.incidentSummary)
+    const incidentSummaryHtml = renderIncidentSummary(payload.incidentSummary, payload.history)
     const latestUnstableEventHtml = renderLatestUnstableEvent(payload.history)
     const previousUnstableEventsHtml = renderPreviousUnstableEvents(payload.history)
     const latestStableRecoveryHtml = renderLatestStableRecovery(payload.history)
@@ -165,6 +165,33 @@ export function renderTestHistoryHtml(
         .event-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
         .event-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
         .event-body { color: #c9d1d9; font-size: 13px; line-height: 1.5; }
+        .incident-summary-stack { display: grid; gap: 10px; margin-bottom: 14px; }
+        .incident-summary-lead {
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            background: rgba(88, 166, 255, 0.08);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        .incident-summary-list {
+            display: grid;
+            gap: 8px;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .incident-summary-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+            font-size: 13px;
+            line-height: 1.5;
+        }
         .event-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
         .event-link { color: #58a6ff; text-decoration: none; font-size: 12px; }
         .event-link:hover { text-decoration: underline; }
@@ -172,20 +199,127 @@ export function renderTestHistoryHtml(
         .event-list-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
         .event-list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
         .event-list-description { color: #c9d1d9; font-size: 12px; line-height: 1.45; }
-        .incident-card { padding: 16px; margin-bottom: 24px; background: linear-gradient(180deg, rgba(88, 166, 255, 0.08) 0%, #161b22 100%); }
-        .incident-card.is-active { border-color: rgba(248, 81, 73, 0.42); background: linear-gradient(180deg, rgba(248, 81, 73, 0.12) 0%, #161b22 100%); }
-        .incident-card.is-monitoring { border-color: rgba(210, 153, 34, 0.42); background: linear-gradient(180deg, rgba(210, 153, 34, 0.12) 0%, #161b22 100%); }
-        .incident-card.is-resolved { border-color: rgba(63, 185, 80, 0.42); background: linear-gradient(180deg, rgba(63, 185, 80, 0.12) 0%, #161b22 100%); }
+        .incident-card {
+            --incident-accent-rgb: 88, 166, 255;
+            --incident-accent-solid: #58a6ff;
+            padding: 16px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(var(--incident-accent-rgb), 0.12) 0%, #161b22 100%);
+        }
+        .incident-card::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: var(--incident-accent-solid);
+        }
+        .incident-card.is-active {
+            --incident-accent-rgb: 248, 81, 73;
+            --incident-accent-solid: #f85149;
+            border-color: rgba(248, 81, 73, 0.42);
+        }
+        .incident-card.is-monitoring {
+            --incident-accent-rgb: 210, 153, 34;
+            --incident-accent-solid: #d29922;
+            border-color: rgba(210, 153, 34, 0.42);
+        }
+        .incident-card.is-resolved {
+            --incident-accent-rgb: 63, 185, 80;
+            --incident-accent-solid: #3fb950;
+            border-color: rgba(63, 185, 80, 0.42);
+        }
+        .incident-status-banner {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(var(--incident-accent-rgb), 0.26);
+            background: rgba(var(--incident-accent-rgb), 0.1);
+        }
+        .incident-status-copy { display: grid; gap: 4px; }
+        .incident-status-label {
+            color: var(--incident-accent-solid);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .incident-status-text {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
+        }
         .incident-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
         .incident-kpi { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: rgba(13, 17, 23, 0.7); }
+        .incident-card .incident-kpi { border-color: rgba(var(--incident-accent-rgb), 0.18); }
         .incident-kpi-label { color: #8b949e; font-size: 11px; margin-bottom: 6px; }
         .incident-kpi-value { color: #ffffff; font-size: 15px; font-weight: 600; line-height: 1.4; }
         .overflow-text { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .candidate-text { max-width: 100%; }
         .step-title-text, .attachment-title-text { max-width: 420px; }
         .attachment-location-text { max-width: 100%; }
+        .incident-section-title {
+            color: #c9d1d9;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            margin: 0 0 10px;
+        }
+        .incident-insights-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .incident-insight-card {
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(var(--incident-accent-rgb), 0.2);
+            background: rgba(13, 17, 23, 0.82);
+            display: grid;
+            gap: 8px;
+        }
+        .incident-insight-label {
+            color: #8b949e;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .incident-insight-value {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .incident-insight-action { margin-top: 4px; }
+        .incident-insight-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--incident-accent-solid);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .incident-insight-link:hover { text-decoration: underline; }
+        .incident-insight-card.is-empty .incident-insight-value {
+            color: #8b949e;
+            font-weight: 500;
+        }
         .incident-evidence-list { display: grid; gap: 8px; margin-top: 12px; }
-        .incident-evidence-item { padding: 10px 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: #c9d1d9; font-size: 12px; line-height: 1.5; }
+        .incident-evidence-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(var(--incident-accent-rgb), 0.18);
+            background: #0d1117;
+            color: #c9d1d9;
+            font-size: 12px;
+            line-height: 1.5;
+        }
         .incident-message { margin-top: 12px; }
         .diagnostics-shell { display: grid; gap: 12px; margin-bottom: 24px; }
         .diagnostics-card { padding: 16px; }
@@ -251,8 +385,8 @@ export function renderTestHistoryHtml(
         .test-link:hover { text-decoration: underline; }
         .candidate-list { display: grid; gap: 12px; }
         .candidate-item { padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; }
-        @media (max-width: 1100px) { .summary-grid, .incident-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (max-width: 768px) { .summary-grid, .incident-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1100px) { .summary-grid, .incident-grid, .incident-insights-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 768px) { .summary-grid, .incident-grid, .incident-insights-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -319,6 +453,8 @@ export function renderTestHistoryHtml(
 
         ${incidentSummaryHtml}
 
+        ${attemptDiagnosticsHtml}
+
         ${latestUnstableEventHtml}
 
         ${previousUnstableEventsHtml}
@@ -328,8 +464,6 @@ export function renderTestHistoryHtml(
         ${currentStabilityStreakHtml}
 
         ${unstableStreakBeforeRecoveryHtml}
-
-        ${attemptDiagnosticsHtml}
 
         ${missingRunsHtml}
 
@@ -412,16 +546,53 @@ export function renderTestHistoryHtml(
                     }
                 })
             })
+
+            function revealHashTarget() {
+                const hash = window.location.hash
+
+                if (!hash || hash.length < 2) {
+                    return
+                }
+
+                const target = document.getElementById(hash.slice(1))
+
+                if (!(target instanceof HTMLElement)) {
+                    return
+                }
+
+                let parent = target.parentElement
+
+                while (parent) {
+                    if (parent instanceof HTMLDetailsElement) {
+                        parent.open = true
+                    }
+
+                    parent = parent.parentElement
+                }
+            }
+
+            revealHashTarget()
+            window.addEventListener('hashchange', revealHashTarget)
         })()
     </script>
 </body>
 </html>`
 }
 
-function renderIncidentSummary(incidentSummary: TestHistoryResponse['incidentSummary']): string {
+function renderIncidentSummary(
+    incidentSummary: TestHistoryResponse['incidentSummary'],
+    history: TestHistoryResponse['history'],
+): string {
     if (!incidentSummary) {
         return ''
     }
+
+    const formattedSummary = renderIncidentNarrative(incidentSummary.summary)
+    const failureStepAnchor = findIncidentStepAnchor(history, incidentSummary.failureStepTitle)
+    const insightsHtml = renderIncidentInsights(incidentSummary, failureStepAnchor)
+    const severityDescription = HISTORY_TEXT.incident.severityDescription[incidentSummary.severity]
+    const primarySignal = incidentSummary.failureStepErrorMessage ?? incidentSummary.latestErrorMessage ?? null
+    const shouldRenderMessageBlock = Boolean(incidentSummary.latestErrorMessage && incidentSummary.latestErrorMessage !== primarySignal)
 
     return `
         <div class="notice-inline incident-card is-${escapeHtml(incidentSummary.severity)}">
@@ -429,7 +600,15 @@ function renderIncidentSummary(incidentSummary: TestHistoryResponse['incidentSum
                 ${renderMetricHeading(HISTORY_TEXT.incident.title, HISTORY_TEXT.incident.tooltip, { className: 'inline-heading', tagName: 'div' })}
                 <span class="status-badge ${getIncidentStatusClass(incidentSummary.severity)}">${escapeHtml(HISTORY_TEXT.incident.severity[incidentSummary.severity])}</span>
             </div>
-            <div class="event-body">${escapeHtml(incidentSummary.summary)}</div>
+            <div class="incident-status-banner">
+                <div class="incident-status-copy">
+                    <div class="incident-status-label">${escapeHtml(HISTORY_TEXT.incident.severityLabel)}</div>
+                    <div class="incident-status-text">${escapeHtml(severityDescription)}</div>
+                </div>
+            </div>
+            ${formattedSummary}
+            <div class="incident-section-title">${escapeHtml(HISTORY_TEXT.incident.detailsTitle)}</div>
+            ${insightsHtml}
             <div class="incident-grid">
                 <div class="incident-kpi">
                     <div class="incident-kpi-label">${escapeHtml(HISTORY_TEXT.incident.categoryLabel)}</div>
@@ -455,10 +634,68 @@ function renderIncidentSummary(incidentSummary: TestHistoryResponse['incidentSum
                 <span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.attemptsLabel)}: ${incidentSummary.affectedAttempts}</span>
                 ${incidentSummary.failureStepTitle ? `<span class="meta-badge">${escapeHtml(HISTORY_TEXT.incident.failureStepLabel)}: ${escapeHtml(incidentSummary.failureStepTitle)}</span>` : ''}
             </div>
-            ${incidentSummary.latestErrorMessage ? `<div class="incident-message mono">${escapeHtml(incidentSummary.latestErrorMessage)}</div>` : ''}
+            ${shouldRenderMessageBlock ? `<div class="incident-message mono">${escapeHtml(incidentSummary.latestErrorMessage ?? '')}</div>` : ''}
+            <div class="incident-section-title">${escapeHtml(HISTORY_TEXT.incident.evidenceTitle)}</div>
             <div class="incident-evidence-list">
                 ${incidentSummary.evidence.map((item) => `<div class="incident-evidence-item">${escapeHtml(item)}</div>`).join('')}
             </div>
+        </div>
+    `
+}
+
+function renderIncidentNarrative(summary: string): string {
+    const parts = summary
+        .split(/\.\s+/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0)
+        .map((part) => part.endsWith('.') ? part : `${part}.`)
+
+    if (parts.length === 0) {
+        return ''
+    }
+
+    const [lead] = parts
+
+    return `
+        <div class="incident-summary-stack">
+            <div class="incident-summary-lead">${escapeHtml(lead)}</div>
+        </div>
+    `
+}
+
+function renderIncidentInsights(
+    incidentSummary: NonNullable<TestHistoryResponse['incidentSummary']>,
+    failureStepAnchor: string | null,
+): string {
+    const cards = [
+        {
+            label: HISTORY_TEXT.incident.categoryLabel,
+            value: HISTORY_TEXT.incident.category[incidentSummary.category],
+        },
+        {
+            label: HISTORY_TEXT.incident.failureStepLabel,
+            value: incidentSummary.failureStepTitle ?? incidentSummary.failureStepCategory ?? HISTORY_TEXT.incident.notCaptured,
+            empty: !incidentSummary.failureStepTitle && !incidentSummary.failureStepCategory,
+            action: failureStepAnchor
+                ? `<div class="incident-insight-action"><a class="incident-insight-link" href="#${escapeHtml(failureStepAnchor)}">${escapeHtml(HISTORY_TEXT.incident.jumpToFailureStep)}</a></div>`
+                : '',
+        },
+        {
+            label: HISTORY_TEXT.incident.primarySignalLabel,
+            value: incidentSummary.failureStepErrorMessage ?? incidentSummary.latestErrorMessage ?? HISTORY_TEXT.incident.notCaptured,
+            empty: !incidentSummary.failureStepErrorMessage && !incidentSummary.latestErrorMessage,
+        },
+    ]
+
+    return `
+        <div class="incident-insights-grid">
+            ${cards.map((card) => `
+                <div class="incident-insight-card${card.empty ? ' is-empty' : ''}">
+                    <div class="incident-insight-label">${escapeHtml(card.label)}</div>
+                    <div class="incident-insight-value">${escapeHtml(card.value)}</div>
+                    ${card.action ?? ''}
+                </div>
+            `).join('')}
         </div>
     `
 }
@@ -749,7 +986,7 @@ function renderAttemptDetail(
                     <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.startTime)}: ${escapeHtml(attempt.startTime ? formatDate(attempt.startTime) : '—')}</span>
                 </div>
                 ${attempt.errorMessage ? `<div class="attempt-error mono">${escapeHtml(attempt.errorMessage)}</div>` : ''}
-                ${hasSteps ? renderAttemptSteps(attempt.steps, Boolean(attempt.errorMessage)) : ''}
+                ${hasSteps ? renderAttemptSteps(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
                 ${hasAttachments ? `
                     <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
                     <div class="attachment-list">
@@ -763,6 +1000,8 @@ function renderAttemptDetail(
 }
 
 function renderAttemptSteps(
+    runId: string,
+    attemptNumber: number,
     steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
     isOpenByDefault: boolean,
 ): string {
@@ -774,7 +1013,7 @@ function renderAttemptSteps(
             </summary>
             <div class="attempt-step-body">
                 <div class="step-list">
-                    ${steps.map((step) => renderStepDetail(step)).join('')}
+                    ${steps.map((step, index) => renderStepDetail(runId, attemptNumber, index, step)).join('')}
                 </div>
             </div>
         </details>
@@ -795,16 +1034,22 @@ function renderOverflowText(
     return `<span class="${escapeHtml(className)}" title="${escapeHtml(fullValue)}">${escapeHtml(displayValue)}</span>`
 }
 
-function renderStepDetail(step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number]): string {
+function renderStepDetail(
+    runId: string,
+    attemptNumber: number,
+    stepIndex: number,
+    step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number],
+): string {
     const statusBadge = step.status
         ? `<span class="status-badge ${getStatusClass(step.status, false)}">${escapeHtml(formatStatusLabel(step.status, false))}</span>`
         : ''
     const failureBadge = step.isFailurePoint
         ? `<span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.failedStepBadge)}</span>`
         : ''
+    const stepAnchor = buildStepAnchor(runId, attemptNumber, stepIndex)
 
     return `
-        <div class="step-item${step.isFailurePoint ? ' step-item-failure' : ''}">
+        <div id="${escapeHtml(stepAnchor)}" class="step-item${step.isFailurePoint ? ' step-item-failure' : ''}">
             <div class="step-item-header">
                 <div class="step-title">${renderOverflowText(step.title, { className: 'step-title-text' })}</div>
                 <div class="attempt-meta">
@@ -821,6 +1066,49 @@ function renderStepDetail(step: TestHistoryResponse['history'][number]['attemptD
             ${step.errorMessage ? `<div class="step-error mono">${escapeHtml(step.errorMessage)}</div>` : ''}
         </div>
     `
+}
+
+function findIncidentStepAnchor(
+    history: TestHistoryResponse['history'],
+    failureStepTitle: string | null,
+): string | null {
+    const normalizedTarget = normalizeAnchorLookupValue(failureStepTitle)
+
+    if (!normalizedTarget) {
+        return null
+    }
+
+    const latestRun = history[0]
+    const latestUnstable = getUnstableHistoryItems(history)[0]
+    const candidates = [latestRun, latestUnstable].filter((item, index, collection): item is NonNullable<typeof item> => Boolean(item) && collection.findIndex((candidate) => candidate?.runId === item?.runId) === index)
+
+    for (const item of candidates) {
+        for (const attempt of item.attemptDetails) {
+            for (const [stepIndex, step] of attempt.steps.entries()) {
+                const normalizedStepTitle = normalizeAnchorLookupValue(step.title)
+
+                if (normalizedStepTitle === normalizedTarget) {
+                    return buildStepAnchor(item.runId, attempt.attempt, stepIndex)
+                }
+            }
+        }
+    }
+
+    return null
+}
+
+function normalizeAnchorLookupValue(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') {
+        return null
+    }
+
+    const normalized = value.trim().replace(/\s+/g, ' ').toLowerCase()
+    return normalized.length > 0 ? normalized : null
+}
+
+function buildStepAnchor(runId: string, attemptNumber: number, stepIndex: number): string {
+    const runSlug = runId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'run'
+    return `step-${runSlug}-a${attemptNumber}-s${stepIndex + 1}`
 }
 
 function renderAttachmentDetail(

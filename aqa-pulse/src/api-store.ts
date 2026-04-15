@@ -167,13 +167,20 @@ export class ApiStore {
 
     getSummary(): DashboardSummary {
         const summary = normalizeDashboardSummary(this.storage.readSummary())
+        const history = this.getHistory()
+        const latestRun = summary.comparison.currentRun ?? history.runs[history.runs.length - 1] ?? null
+
+        if (latestRun && shouldRebuildSummaryFromArchives(summary, history)) {
+            const rebuiltSummary = this.rebuildSummaryFromArchives(history, latestRun)
+
+            if (rebuiltSummary) {
+                return rebuiltSummary
+            }
+        }
 
         if (summary.currentRunTests.all.length > 0) {
             return summary
         }
-
-        const history = this.getHistory()
-        const latestRun = summary.comparison.currentRun ?? history.runs[history.runs.length - 1] ?? null
 
         if (!latestRun) {
             return summary
@@ -191,6 +198,47 @@ export class ApiStore {
             ...summary,
             currentRunTests: collectCurrentRunTests(archivedRun.data.tests ?? []),
         }
+    }
+
+    private rebuildSummaryFromArchives(history: DashboardHistory, latestRun: DashboardHistoryEntry): DashboardSummary | null {
+        const archivedRuns = history.runs
+            .map((run) => {
+                const archivedDirectory = this.storage.findArchivedRunDirectory(run.id)
+
+                if (!archivedDirectory) {
+                    return null
+                }
+
+                return {
+                    run,
+                    archivedRun: this.storage.readArchivedRunRecord(archivedDirectory),
+                }
+            })
+            .filter((value): value is { run: DashboardHistoryEntry; archivedRun: ReturnType<DashboardReadStorage['readArchivedRunRecord']> } => value !== null)
+
+        const latestArchivedRun = archivedRuns.find((item) => item.run.id === latestRun.id) ?? archivedRuns[archivedRuns.length - 1] ?? null
+
+        if (!latestArchivedRun) {
+            return null
+        }
+
+        const advancedMetrics = buildAdvancedMetricsFromArchivedRuns(
+            latestArchivedRun.archivedRun.data,
+            history.runs,
+            archivedRuns.map((item) => ({ run: item.run, report: item.archivedRun.data })),
+        )
+
+        return buildDashboardSummary(
+            latestArchivedRun.archivedRun.data,
+            latestRun.sourceFile,
+            history.runs,
+            {
+                branch: latestRun.branch,
+                commit: latestRun.commit,
+                author: latestRun.author,
+            },
+            advancedMetrics,
+        )
     }
 
     getFilteredSummary(filters: ApiFilters = {}): DashboardSummary {
@@ -491,6 +539,18 @@ function normalizeFilters(filters: ApiFilters): DashboardFilters {
 
 function normalizeString(value: string | undefined): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function shouldRebuildSummaryFromArchives(summary: DashboardSummary, history: DashboardHistory): boolean {
+    if (history.runs.length === 0) {
+        return false
+    }
+
+    if (summary.currentRunTests.all.length === 0) {
+        return true
+    }
+
+    return summary.flakyAnalytics.topFlakyTests.length === 0 && history.runs.length > 1
 }
 
 function filterReport(report: ReporterRoot, filters: DashboardFilters): ReporterRoot {

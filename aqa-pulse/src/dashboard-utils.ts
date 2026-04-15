@@ -232,6 +232,37 @@ export interface DashboardAdvancedMetrics {
     }
 }
 
+export interface DashboardManagerSignal {
+    score: number
+    level: 'healthy' | 'warning' | 'critical'
+}
+
+export interface DashboardManagerBlocker {
+    kind: 'release-confidence' | 'problematic-test' | 'flaky' | 'duration' | 'error-cluster' | 'history-coverage'
+    severity: 'critical' | 'warning' | 'info'
+    title: string
+    value: string
+    details: string
+    testTitle: string | null
+    project: string | null
+    file: string | null
+}
+
+export interface DashboardManagerChange {
+    label: string
+    value: string
+    details: string
+    direction: 'improving' | 'regressing' | 'stable'
+}
+
+export interface DashboardManagerSummary {
+    releaseReadiness: DashboardManagerSignal
+    qualityRisk: DashboardManagerSignal
+    deliveryRisk: DashboardManagerSignal
+    blockers: DashboardManagerBlocker[]
+    changes: DashboardManagerChange[]
+}
+
 export interface DashboardSummary {
     generatedAt: string
     sourceFile: string
@@ -276,6 +307,7 @@ export interface DashboardSummary {
     performance: DashboardAdvancedMetrics['performance']
     flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics']
     businessMetrics: DashboardAdvancedMetrics['businessMetrics']
+    managerSummary: DashboardManagerSummary
     topProblematicTests: DashboardProblematicTest[]
     errorClusters: DashboardErrorCluster[]
 }
@@ -305,37 +337,52 @@ export function readDashboardSummary(summaryPath: string): DashboardSummary {
 export function normalizeDashboardSummary(summary: DashboardSummary): DashboardSummary {
     const fallbackBusinessMetrics = buildEmptyBusinessMetrics()
     const businessMetrics = summary.businessMetrics
+    const normalizedBusinessMetrics = {
+        ...fallbackBusinessMetrics,
+        ...businessMetrics,
+        timeToDetect: {
+            ...fallbackBusinessMetrics.timeToDetect,
+            ...(businessMetrics?.timeToDetect ?? {}),
+        },
+        timeToFixFlaky: {
+            ...fallbackBusinessMetrics.timeToFixFlaky,
+            ...(businessMetrics?.timeToFixFlaky ?? {}),
+        },
+        costOfFlakiness: {
+            ...fallbackBusinessMetrics.costOfFlakiness,
+            ...(businessMetrics?.costOfFlakiness ?? {}),
+            assumptions: {
+                ...fallbackBusinessMetrics.costOfFlakiness.assumptions,
+                ...(businessMetrics?.costOfFlakiness?.assumptions ?? {}),
+            },
+        },
+        developerFriction: {
+            ...fallbackBusinessMetrics.developerFriction,
+            ...(businessMetrics?.developerFriction ?? {}),
+        },
+        automationRoi: {
+            ...fallbackBusinessMetrics.automationRoi,
+            ...(businessMetrics?.automationRoi ?? {}),
+        },
+    }
+    const topProblematicTests = summary.topProblematicTests ?? []
+    const errorClusters = summary.errorClusters ?? []
 
     return {
         ...summary,
-        businessMetrics: {
-            ...fallbackBusinessMetrics,
-            ...businessMetrics,
-            timeToDetect: {
-                ...fallbackBusinessMetrics.timeToDetect,
-                ...(businessMetrics?.timeToDetect ?? {}),
-            },
-            timeToFixFlaky: {
-                ...fallbackBusinessMetrics.timeToFixFlaky,
-                ...(businessMetrics?.timeToFixFlaky ?? {}),
-            },
-            costOfFlakiness: {
-                ...fallbackBusinessMetrics.costOfFlakiness,
-                ...(businessMetrics?.costOfFlakiness ?? {}),
-                assumptions: {
-                    ...fallbackBusinessMetrics.costOfFlakiness.assumptions,
-                    ...(businessMetrics?.costOfFlakiness?.assumptions ?? {}),
-                },
-            },
-            developerFriction: {
-                ...fallbackBusinessMetrics.developerFriction,
-                ...(businessMetrics?.developerFriction ?? {}),
-            },
-            automationRoi: {
-                ...fallbackBusinessMetrics.automationRoi,
-                ...(businessMetrics?.automationRoi ?? {}),
-            },
-        },
+        businessMetrics: normalizedBusinessMetrics,
+        topProblematicTests,
+        errorClusters,
+        managerSummary: summary.managerSummary ?? buildManagerSummary({
+            kpis: summary.kpis,
+            trend: summary.trend,
+            historyTotalRuns: summary.history.totalRuns,
+            performance: summary.performance,
+            flakyAnalytics: summary.flakyAnalytics,
+            businessMetrics: normalizedBusinessMetrics,
+            topProblematicTests,
+            errorClusters,
+        }),
     }
 }
 
@@ -387,6 +434,36 @@ export function buildDashboardSummary(
     const currentRun = recentRuns.length > 0 ? recentRuns[recentRuns.length - 1] : null
     const previousRun = recentRuns.length > 1 ? recentRuns[recentRuns.length - 2] : null
     const resolvedAdvancedMetrics = advancedMetrics ?? buildFallbackAdvancedMetrics(tests, historyRuns, passRate, flakyTests, totalDurationMs)
+    const topProblematicTests = collectTopProblematicTests(tests)
+    const managerSummary = buildManagerSummary({
+        kpis: {
+            totalTests,
+            passedTests,
+            failedTests,
+            flakyTests,
+            skippedTests,
+            timedOutTests,
+            interruptedTests,
+            passRate,
+            flakyRatio,
+            totalDurationMs,
+            medianDurationMs,
+            errorClusterCount: errorClusters.length,
+        },
+        trend: {
+            previousRun,
+            passRateDelta: previousRun ? roundToOneDigit(passRate - previousRun.passRate) : null,
+            failedTestsDelta: previousRun ? failedTests - previousRun.failedTests : null,
+            flakyTestsDelta: previousRun ? flakyTests - previousRun.flakyTests : null,
+            durationMsDelta: previousRun ? totalDurationMs - previousRun.totalDurationMs : null,
+        },
+        historyTotalRuns: historyRuns.length,
+        performance: resolvedAdvancedMetrics.performance,
+        flakyAnalytics: resolvedAdvancedMetrics.flakyAnalytics,
+        businessMetrics: resolvedAdvancedMetrics.businessMetrics,
+        topProblematicTests,
+        errorClusters,
+    })
 
     return {
         generatedAt: new Date().toISOString(),
@@ -471,7 +548,8 @@ export function buildDashboardSummary(
         performance: resolvedAdvancedMetrics.performance,
         flakyAnalytics: resolvedAdvancedMetrics.flakyAnalytics,
         businessMetrics: resolvedAdvancedMetrics.businessMetrics,
-        topProblematicTests: collectTopProblematicTests(tests),
+        managerSummary,
+        topProblematicTests,
         errorClusters,
     }
 }
@@ -1178,6 +1256,258 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
             source: 'pendingAssumptions',
         },
     }
+}
+
+function buildManagerSummary(input: {
+    kpis: DashboardKpis
+    trend: DashboardSummary['trend']
+    historyTotalRuns: number
+    performance: DashboardAdvancedMetrics['performance']
+    flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics']
+    businessMetrics: DashboardAdvancedMetrics['businessMetrics']
+    topProblematicTests: DashboardProblematicTest[]
+    errorClusters: DashboardErrorCluster[]
+}): DashboardManagerSummary {
+    const releaseReadinessScore = clampScore(
+        input.businessMetrics.releaseConfidenceScore
+        - (input.kpis.failedTests > 0 ? Math.min(25, input.kpis.failedTests * 2.5) : 0)
+        - (input.trend.passRateDelta !== null && input.trend.passRateDelta < 0 ? Math.min(15, Math.abs(input.trend.passRateDelta) * 2) : 0),
+    )
+    const qualityRiskScore = clampScore(
+        ((100 - input.kpis.passRate) * 0.45)
+        + (input.kpis.flakyRatio * 0.25)
+        + (Math.min(100, input.kpis.errorClusterCount * 12) * 0.15)
+        + ((input.flakyAnalytics.averageFlakyScore ?? (input.kpis.flakyTests > 0 ? 60 : 0)) * 0.15),
+    )
+    const slowestTest = input.performance.slowestTests[0] ?? null
+    const slowestDurationSeconds = slowestTest ? safeNumber(slowestTest.durationMs) / 1000 : 0
+    const durationDeltaPercent = Math.max(input.performance.durationTrend.deltaPercent ?? 0, 0)
+    const deliveryRiskScore = clampScore(
+        (Math.min(100, durationDeltaPercent) * 0.35)
+        + (Math.min(100, input.businessMetrics.developerFriction.rerunProxyPerActiveDay * 18) * 0.25)
+        + (Math.min(100, slowestDurationSeconds * 1.5) * 0.25)
+        + (Math.min(100, Math.max(input.trend.flakyTestsDelta ?? 0, 0) * 20) * 0.15),
+    )
+
+    const blockers: DashboardManagerBlocker[] = []
+    const primaryProblematicTest = input.topProblematicTests[0] ?? null
+    const primaryFlakyTest = input.flakyAnalytics.topFlakyTests[0] ?? null
+    const dominantCluster = input.errorClusters[0] ?? null
+
+    if (input.historyTotalRuns < 3) {
+        blockers.push({
+            kind: 'history-coverage',
+            severity: input.historyTotalRuns === 0 ? 'warning' : 'info',
+            title: 'Истории пока мало для уверенного тренда',
+            value: `${input.historyTotalRuns} прогонов`,
+            details: 'Для управленческого сигнала лучше иметь хотя бы 3-5 архивных запусков.',
+            testTitle: null,
+            project: null,
+            file: null,
+        })
+    }
+
+    if (releaseReadinessScore < 75 || input.kpis.failedTests > 0 || (input.trend.passRateDelta ?? 0) < 0) {
+        blockers.push({
+            kind: 'release-confidence',
+            severity: releaseReadinessScore < 55 ? 'critical' : 'warning',
+            title: 'Релизный сигнал просел',
+            value: `${roundToOneDigit(releaseReadinessScore)} / 100`,
+            details: `Pass Rate ${formatPercent(input.kpis.passRate)}, flaky ${formatPercent(input.kpis.flakyRatio)}, failed ${input.kpis.failedTests}.`,
+            testTitle: null,
+            project: null,
+            file: null,
+        })
+    }
+
+    if (primaryProblematicTest) {
+        blockers.push({
+            kind: 'problematic-test',
+            severity: primaryProblematicTest.status === 'failed' || primaryProblematicTest.status === 'timedout' || primaryProblematicTest.status === 'interrupted' || primaryProblematicTest.failureRate >= 50
+                ? 'critical'
+                : 'warning',
+            title: `Проблемный тест: ${shorten(primaryProblematicTest.title, 48)}`,
+            value: `${roundToOneDigit(primaryProblematicTest.failureRate)}% падений`,
+            details: `${primaryProblematicTest.project} • ${shorten(primaryProblematicTest.errorMessage, 96)}`,
+            testTitle: primaryProblematicTest.title,
+            project: primaryProblematicTest.project,
+            file: primaryProblematicTest.file,
+        })
+    }
+
+    if (primaryFlakyTest && (primaryFlakyTest.flakyScore >= 45 || input.kpis.flakyTests > 0)) {
+        blockers.push({
+            kind: 'flaky',
+            severity: primaryFlakyTest.flakyScore >= 70 ? 'critical' : 'warning',
+            title: `Нестабильность держится в истории: ${shorten(primaryFlakyTest.title, 44)}`,
+            value: `${roundToOneDigit(primaryFlakyTest.flakyScore)} / 100`,
+            details: `MTBF ${primaryFlakyTest.mtbfDays === null ? '—' : `${primaryFlakyTest.mtbfDays.toFixed(2)} дн`} • нестабильных прогонов ${primaryFlakyTest.unstableRuns}.`,
+            testTitle: primaryFlakyTest.title,
+            project: primaryFlakyTest.project,
+            file: primaryFlakyTest.file,
+        })
+    }
+
+    if (slowestTest && (durationDeltaPercent >= 10 || slowestDurationSeconds >= 45)) {
+        blockers.push({
+            kind: 'duration',
+            severity: durationDeltaPercent >= 25 || slowestDurationSeconds >= 90 ? 'critical' : 'warning',
+            title: 'Пайплайн теряет скорость',
+            value: durationDeltaPercent > 0
+                ? `${roundToOneDigit(durationDeltaPercent)}% к прошлому прогону`
+                : formatDuration(slowestTest.durationMs),
+            details: `Самый медленный тест: ${shorten(slowestTest.title, 44)} • ${formatDuration(slowestTest.durationMs)}.`,
+            testTitle: slowestTest.title,
+            project: slowestTest.project,
+            file: slowestTest.file,
+        })
+    }
+
+    if (dominantCluster && dominantCluster.count >= 2) {
+        blockers.push({
+            kind: 'error-cluster',
+            severity: dominantCluster.count >= 4 ? 'critical' : 'warning',
+            title: 'Ошибки повторяются сериями',
+            value: `${dominantCluster.count} инцидентов`,
+            details: shorten(dominantCluster.message, 110),
+            testTitle: dominantCluster.tests[0] ?? null,
+            project: null,
+            file: null,
+        })
+    }
+
+    return {
+        releaseReadiness: {
+            score: roundToOneDigit(releaseReadinessScore),
+            level: getManagerPositiveSignalLevel(releaseReadinessScore),
+        },
+        qualityRisk: {
+            score: roundToOneDigit(qualityRiskScore),
+            level: getManagerRiskSignalLevel(qualityRiskScore),
+        },
+        deliveryRisk: {
+            score: roundToOneDigit(deliveryRiskScore),
+            level: getManagerRiskSignalLevel(deliveryRiskScore),
+        },
+        blockers: blockers
+            .sort((left, right) => getManagerBlockerPriority(right) - getManagerBlockerPriority(left))
+            .slice(0, 3),
+        changes: buildManagerChanges(input),
+    }
+}
+
+function buildManagerChanges(input: {
+    kpis: DashboardKpis
+    trend: DashboardSummary['trend']
+    performance: DashboardAdvancedMetrics['performance']
+}): DashboardManagerChange[] {
+    if (
+        input.trend.passRateDelta === null
+        && input.trend.failedTestsDelta === null
+        && input.trend.flakyTestsDelta === null
+        && input.trend.durationMsDelta === null
+    ) {
+        return []
+    }
+
+    return [
+        {
+            label: 'Pass Rate',
+            value: formatManagerDelta(input.trend.passRateDelta, 'pp'),
+            details: `Сейчас ${formatPercent(input.kpis.passRate)}.`,
+            direction: getManagerDirection(input.trend.passRateDelta, false),
+        },
+        {
+            label: 'Падения',
+            value: formatManagerDelta(input.trend.failedTestsDelta, 'count'),
+            details: `Сейчас ${input.kpis.failedTests} тестов с финальным неуспешным статусом.`,
+            direction: getManagerDirection(input.trend.failedTestsDelta, true),
+        },
+        {
+            label: 'Flaky',
+            value: formatManagerDelta(input.trend.flakyTestsDelta, 'count'),
+            details: `Сейчас ${input.kpis.flakyTests} нестабильных тестов в текущем прогоне.`,
+            direction: getManagerDirection(input.trend.flakyTestsDelta, true),
+        },
+        {
+            label: 'Длительность',
+            value: formatManagerDelta(input.performance.durationTrend.deltaPercent, 'percent'),
+            details: `Сейчас ${formatDuration(input.kpis.totalDurationMs)}.`,
+            direction: getManagerDirection(input.performance.durationTrend.deltaPercent, true),
+        },
+    ]
+}
+
+function getManagerPositiveSignalLevel(score: number): DashboardManagerSignal['level'] {
+    if (score >= 75) {
+        return 'healthy'
+    }
+
+    if (score >= 55) {
+        return 'warning'
+    }
+
+    return 'critical'
+}
+
+function getManagerRiskSignalLevel(score: number): DashboardManagerSignal['level'] {
+    if (score < 30) {
+        return 'healthy'
+    }
+
+    if (score < 60) {
+        return 'warning'
+    }
+
+    return 'critical'
+}
+
+function getManagerBlockerPriority(blocker: DashboardManagerBlocker): number {
+    const severityScore = blocker.severity === 'critical' ? 300 : blocker.severity === 'warning' ? 200 : 100
+    const kindScore = blocker.kind === 'release-confidence'
+        ? 50
+        : blocker.kind === 'problematic-test'
+            ? 40
+            : blocker.kind === 'flaky'
+                ? 30
+                : blocker.kind === 'duration'
+                    ? 20
+                    : blocker.kind === 'error-cluster'
+                        ? 10
+                        : 0
+
+    return severityScore + kindScore
+}
+
+function getManagerDirection(delta: number | null, inverted: boolean): DashboardManagerChange['direction'] {
+    if (delta === null || delta === 0) {
+        return 'stable'
+    }
+
+    if (inverted) {
+        return delta < 0 ? 'improving' : 'regressing'
+    }
+
+    return delta > 0 ? 'improving' : 'regressing'
+}
+
+function formatManagerDelta(delta: number | null, kind: 'pp' | 'count' | 'percent'): string {
+    if (delta === null || delta === 0) {
+        return 'Без изменений'
+    }
+
+    const sign = delta > 0 ? '+' : '-'
+    const absoluteDelta = Math.abs(delta)
+
+    if (kind === 'count') {
+        return `${sign}${absoluteDelta}`
+    }
+
+    if (kind === 'percent') {
+        return `${sign}${roundToOneDigit(absoluteDelta)}%`
+    }
+
+    return `${sign}${roundToOneDigit(absoluteDelta)} п.п.`
 }
 
 function getAttemptsCount(test: ReporterTest): number {

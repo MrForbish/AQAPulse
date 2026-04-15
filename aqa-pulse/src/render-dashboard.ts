@@ -289,6 +289,171 @@ export function renderDashboardHtml(
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
         }
+        .manager-summary-card {
+            padding: 20px;
+            margin-bottom: 24px;
+            background:
+                radial-gradient(circle at top right, rgba(47, 129, 247, 0.16), transparent 28%),
+                linear-gradient(180deg, rgba(88, 166, 255, 0.06) 0%, #161b22 100%);
+            border: 1px solid #30363d;
+            border-radius: 8px;
+        }
+        .manager-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .manager-summary-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .manager-summary-description {
+            max-width: 860px;
+            color: #8b949e;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .manager-status-pill,
+        .manager-item-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #30363d;
+            font-size: 12px;
+            font-weight: 600;
+            background: #21262d;
+            color: #c9d1d9;
+        }
+        .manager-status-pill::before,
+        .manager-item-pill::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: currentColor;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .manager-status-healthy,
+        .manager-item-healthy,
+        .manager-item-improving,
+        .manager-item-info {
+            color: #3fb950;
+            border-color: rgba(63, 185, 80, 0.35);
+            background: rgba(63, 185, 80, 0.12);
+        }
+        .manager-status-warning,
+        .manager-item-warning,
+        .manager-item-stable {
+            color: #d29922;
+            border-color: rgba(210, 153, 34, 0.35);
+            background: rgba(210, 153, 34, 0.12);
+        }
+        .manager-status-critical,
+        .manager-item-critical,
+        .manager-item-regressing {
+            color: #f85149;
+            border-color: rgba(248, 81, 73, 0.35);
+            background: rgba(248, 81, 73, 0.12);
+        }
+        .manager-signal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .manager-signal-card {
+            background: rgba(13, 17, 23, 0.72);
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .manager-signal-label {
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .manager-signal-value {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .manager-signal-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .manager-signal-hint {
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+        .manager-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .manager-blocker-list,
+        .manager-change-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .manager-blocker-item,
+        .manager-change-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .manager-blocker-head,
+        .manager-change-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .manager-blocker-title,
+        .manager-change-title {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .manager-blocker-value,
+        .manager-change-value {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .manager-blocker-body,
+        .manager-change-body {
+            color: #8b949e;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .manager-blocker-link {
+            display: inline-flex;
+            margin-top: 10px;
+            color: #58a6ff;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        .manager-blocker-link:hover {
+            text-decoration: underline;
+        }
         .comparison-item {
             background: #0d1117;
             border: 1px solid #30363d;
@@ -1022,6 +1187,8 @@ export function renderDashboardHtml(
         </div>
 
         <section class="tab-panel is-active" data-tab-panel="overview">
+            ${renderManagerOverview(summary, testDetailsBasePath)}
+
             <div class="charts-grid-2">
                 <div class="chart-card">
                     <div class="chart-title">${renderMetricHeading(DASHBOARD_TEXT.metrics.latestVsPrevious, METRIC_DESCRIPTIONS.latestVsPrevious)}</div>
@@ -2470,6 +2637,158 @@ function formatAssumptionValue(value: number | null, unit: string): string {
     }
 
     return `${value} ${unit}`
+}
+
+function renderManagerOverview(summary: DashboardSummary, testDetailsBasePath: string): string {
+    return `
+        <div class="manager-summary-card">
+            <div class="manager-summary-header">
+                <div>
+                    <div class="manager-summary-title">${escapeHtml(DASHBOARD_TEXT.manager.summaryTitle)}</div>
+                    <div class="manager-summary-description">${escapeHtml(DASHBOARD_TEXT.manager.summaryDescription)}</div>
+                </div>
+                <div class="manager-status-pill ${escapeHtml(getManagerSignalClass(summary.managerSummary.releaseReadiness.level))}">${escapeHtml(getManagerReadinessLabel(summary.managerSummary.releaseReadiness.level))}</div>
+            </div>
+            <div class="manager-signal-grid">
+                ${renderManagerSignalCard(
+                    DASHBOARD_TEXT.manager.releaseReadiness,
+                    summary.managerSummary.releaseReadiness,
+                    getManagerReadinessLabel(summary.managerSummary.releaseReadiness.level),
+                    'Рассчитано из release confidence, failed tests и динамики pass rate.',
+                )}
+                ${renderManagerSignalCard(
+                    DASHBOARD_TEXT.manager.qualityRisk,
+                    summary.managerSummary.qualityRisk,
+                    getManagerRiskLabel(summary.managerSummary.qualityRisk.level),
+                    'Учитывает pass rate, flaky ratio, кластеры ошибок и историческую нестабильность.',
+                )}
+                ${renderManagerSignalCard(
+                    DASHBOARD_TEXT.manager.deliveryRisk,
+                    summary.managerSummary.deliveryRisk,
+                    getManagerRiskLabel(summary.managerSummary.deliveryRisk.level),
+                    'Учитывает деградацию длительности, самые медленные тесты и трение команды от rerun/retry.',
+                )}
+            </div>
+        </div>
+
+        <div class="manager-detail-grid">
+            <div class="chart-card">
+                <div class="chart-title">${escapeHtml(DASHBOARD_TEXT.manager.blockersTitle)}</div>
+                <div class="muted">${escapeHtml(DASHBOARD_TEXT.manager.blockersDescription)}</div>
+                <div class="manager-blocker-list">
+                    ${summary.managerSummary.blockers.length > 0
+                        ? summary.managerSummary.blockers.map((blocker) => renderManagerBlocker(blocker, summary.filters, testDetailsBasePath)).join('')
+                        : `<div class="manager-blocker-item"><div class="manager-blocker-body">${escapeHtml(DASHBOARD_TEXT.manager.noBlockers)}</div></div>`}
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">${escapeHtml(DASHBOARD_TEXT.manager.changesTitle)}</div>
+                <div class="muted">${escapeHtml(DASHBOARD_TEXT.manager.changesDescription)}</div>
+                <div class="manager-change-list">
+                    ${summary.managerSummary.changes.length > 0
+                        ? summary.managerSummary.changes.map((change) => renderManagerChange(change)).join('')
+                        : `<div class="manager-change-item"><div class="manager-change-body">${escapeHtml(DASHBOARD_TEXT.manager.noChanges)}</div></div>`}
+                </div>
+            </div>
+        </div>
+    `
+}
+
+function renderManagerSignalCard(label: string, signal: DashboardSummary['managerSummary']['releaseReadiness'], levelLabel: string, hint: string): string {
+    return `
+        <div class="manager-signal-card">
+            <div class="manager-signal-label">${escapeHtml(label)}</div>
+            <div class="manager-signal-value">${escapeHtml(formatScore(signal.score))}</div>
+            <div class="manager-signal-meta">
+                <span class="manager-item-pill ${escapeHtml(getManagerSignalClass(signal.level))}">${escapeHtml(levelLabel)}</span>
+            </div>
+            <div class="manager-signal-hint">${escapeHtml(hint)}</div>
+        </div>
+    `
+}
+
+function renderManagerBlocker(
+    blocker: DashboardSummary['managerSummary']['blockers'][number],
+    filters: DashboardSummary['filters'],
+    testDetailsBasePath: string,
+): string {
+    const blockerHref = blocker.testTitle
+        ? buildTestHistoryHref(blocker.testTitle, {
+            branch: filters.branch,
+            project: blocker.project ?? filters.project,
+            file: blocker.file ?? filters.file,
+        }, testDetailsBasePath)
+        : null
+
+    return `
+        <div class="manager-blocker-item">
+            <div class="manager-blocker-head">
+                <div class="manager-blocker-title">${escapeHtml(blocker.title)}</div>
+                <div class="manager-item-pill manager-item-${escapeHtml(blocker.severity)}">${escapeHtml(blocker.value)}</div>
+            </div>
+            <div class="manager-blocker-body">${escapeHtml(blocker.details)}</div>
+            ${blockerHref
+                ? `<a class="manager-blocker-link" href="${escapeHtml(blockerHref)}">${escapeHtml(DASHBOARD_TEXT.manager.blockerAction)}</a>`
+                : ''}
+        </div>
+    `
+}
+
+function renderManagerChange(change: DashboardSummary['managerSummary']['changes'][number]): string {
+    return `
+        <div class="manager-change-item">
+            <div class="manager-change-head">
+                <div class="manager-change-title">${escapeHtml(change.label)}</div>
+                <div class="manager-change-value">${escapeHtml(change.value)}</div>
+            </div>
+            <div class="manager-change-body">${escapeHtml(change.details)}</div>
+            <div style="margin-top: 10px;"><span class="manager-item-pill manager-item-${escapeHtml(getManagerChangeClass(change.direction))}">${escapeHtml(getManagerChangeLabel(change.direction))}</span></div>
+        </div>
+    `
+}
+
+function getManagerSignalClass(level: DashboardSummary['managerSummary']['releaseReadiness']['level']): string {
+    return `manager-status-${level}`
+}
+
+function getManagerReadinessLabel(level: DashboardSummary['managerSummary']['releaseReadiness']['level']): string {
+    if (level === 'healthy') {
+        return DASHBOARD_TEXT.manager.readinessHealthy
+    }
+
+    if (level === 'warning') {
+        return DASHBOARD_TEXT.manager.readinessWarning
+    }
+
+    return DASHBOARD_TEXT.manager.readinessCritical
+}
+
+function getManagerRiskLabel(level: DashboardSummary['managerSummary']['qualityRisk']['level']): string {
+    if (level === 'healthy') {
+        return DASHBOARD_TEXT.manager.riskHealthy
+    }
+
+    if (level === 'warning') {
+        return DASHBOARD_TEXT.manager.riskWarning
+    }
+
+    return DASHBOARD_TEXT.manager.riskCritical
+}
+
+function getManagerChangeClass(direction: DashboardSummary['managerSummary']['changes'][number]['direction']): 'improving' | 'regressing' | 'stable' {
+    return direction
+}
+
+function getManagerChangeLabel(direction: DashboardSummary['managerSummary']['changes'][number]['direction']): string {
+    if (direction === 'improving') {
+        return 'Улучшается'
+    }
+
+    if (direction === 'regressing') {
+        return 'Деградирует'
+    }
+
+    return 'Без сдвига'
 }
 
 function renderFlakyHistoryInsight(summary: DashboardSummary): string {

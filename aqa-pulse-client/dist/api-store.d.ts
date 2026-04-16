@@ -44,6 +44,7 @@ export interface TestHistoryAttachment {
 export interface TestHistoryStep {
     title: string;
     category: string | null;
+    depth: 1 | 2;
     durationMs: number;
     status: string | null;
     errorMessage: string | null;

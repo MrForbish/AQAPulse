@@ -5,10 +5,10 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const packageRoot = path.resolve(__dirname, '..')
-const sourceRoot = path.resolve(packageRoot, '..', 'aqa-pulse', 'dist-ts')
+const sourceRoot = path.resolve(packageRoot, '..', 'aqa-pulse', 'dist-ts-legacy')
 const distRoot = path.resolve(packageRoot, 'dist')
 
-const runtimeFiles = [
+const runtimeEntryFiles = [
     'render-dashboard.js',
     'render-test-history.js',
     'render-metric-info.js',
@@ -16,7 +16,7 @@ const runtimeFiles = [
     path.join('shared', 'i18n', 'ru.js'),
 ]
 
-const declarationFiles = [
+const declarationEntryFiles = [
     'render-dashboard.d.ts',
     'render-test-history.d.ts',
     'render-metric-info.d.ts',
@@ -44,15 +44,17 @@ const forbiddenRuntimePatterns = [
     'express',
 ]
 
+const copiedRuntimeFiles = new Set()
+const copiedDeclarationFiles = new Set()
+
 cleanDir(distRoot)
 
-for (const filePath of runtimeFiles) {
-    copyFileFromSource(filePath)
-    assertNoForbiddenRuntimeImports(path.resolve(distRoot, filePath))
+for (const filePath of runtimeEntryFiles) {
+    copyRuntimeModuleGraph(filePath)
 }
 
-for (const filePath of declarationFiles) {
-    copyFileFromSource(filePath)
+for (const filePath of declarationEntryFiles) {
+    copyDeclarationModuleGraph(filePath)
 }
 
 writeFile(path.resolve(distRoot, 'index.js'), generatedIndexJs)
@@ -72,6 +74,92 @@ function copyFileFromSource(relativePath) {
 
     fs.mkdirSync(path.dirname(targetPath), { recursive: true })
     fs.copyFileSync(sourcePath, targetPath)
+}
+
+function copyRuntimeModuleGraph(relativePath) {
+    if (copiedRuntimeFiles.has(relativePath)) {
+        return
+    }
+
+    copyFileFromSource(relativePath)
+    copiedRuntimeFiles.add(relativePath)
+
+    const targetPath = path.resolve(distRoot, relativePath)
+    assertNoForbiddenRuntimeImports(targetPath)
+
+    const content = fs.readFileSync(targetPath, 'utf8')
+
+    for (const dependencyPath of collectRuntimeDependencies(relativePath, content)) {
+        copyRuntimeModuleGraph(dependencyPath)
+    }
+}
+
+function copyDeclarationModuleGraph(relativePath) {
+    if (copiedDeclarationFiles.has(relativePath)) {
+        return
+    }
+
+    copyFileFromSource(relativePath)
+    copiedDeclarationFiles.add(relativePath)
+
+    const targetPath = path.resolve(distRoot, relativePath)
+    const content = fs.readFileSync(targetPath, 'utf8')
+
+    for (const dependencyPath of collectDeclarationDependencies(relativePath, content)) {
+        copyDeclarationModuleGraph(dependencyPath)
+    }
+}
+
+function collectRuntimeDependencies(relativePath, content) {
+    const dependencies = new Set()
+    const requirePattern = /require\((['"])(\.[^'"]+)\1\)/g
+
+    for (const match of content.matchAll(requirePattern)) {
+        const importPath = match[2]
+        const resolvedPath = resolveRelativeModulePath(relativePath, importPath, ['.js'])
+
+        if (resolvedPath) {
+            dependencies.add(resolvedPath)
+        }
+    }
+
+    return [...dependencies]
+}
+
+function collectDeclarationDependencies(relativePath, content) {
+    const dependencies = new Set()
+    const importPattern = /(?:import|export)\s+(?:type\s+)?(?:[^'"\n]+?from\s+)?(['"])(\.[^'"]+)\1/g
+
+    for (const match of content.matchAll(importPattern)) {
+        const importPath = match[2]
+        const resolvedPath = resolveRelativeModulePath(relativePath, importPath, ['.d.ts'])
+
+        if (resolvedPath) {
+            dependencies.add(resolvedPath)
+        }
+    }
+
+    return [...dependencies]
+}
+
+function resolveRelativeModulePath(fromRelativePath, importPath, extensions) {
+    const basePath = path.resolve(path.dirname(path.resolve(sourceRoot, fromRelativePath)), importPath)
+
+    for (const extension of extensions) {
+        const filePath = `${basePath}${extension}`
+
+        if (fs.existsSync(filePath)) {
+            return path.relative(sourceRoot, filePath)
+        }
+
+        const indexFilePath = path.join(basePath, `index${extension}`)
+
+        if (fs.existsSync(indexFilePath)) {
+            return path.relative(sourceRoot, indexFilePath)
+        }
+    }
+
+    return null
 }
 
 function writeFile(filePath, content) {

@@ -2,12 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderDashboardHtml = renderDashboardHtml;
 const render_metric_info_1 = require("./render-metric-info");
+const render_dashboard_legacy_only_1 = require("./render-dashboard-legacy-only");
+const dashboard_metric_info_1 = require("./shared/dashboard-metric-info");
 const formatting_1 = require("./shared/formatting");
 const ru_1 = require("./shared/i18n/ru");
 const text_utils_1 = require("./shared/text-utils");
 const render_dashboard_sections_1 = require("./render-dashboard-sections");
 const DASHBOARD_TEXT = ru_1.ru.dashboard;
-const METRIC_DESCRIPTIONS = DASHBOARD_TEXT.tooltips;
 function renderDashboardHtml(summary, options = {}) {
     const normalizedBasePath = (0, render_dashboard_sections_1.normalizeDashboardBasePath)(options.basePath);
     const dashboardActionPath = normalizedBasePath || '/';
@@ -1344,36 +1345,36 @@ function renderDashboardHtml(summary, options = {}) {
 
         <div class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.passRate, METRIC_DESCRIPTIONS.passRate)}</div>
+                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.passRate, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.passRate)}</div>
                 <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatPercent)(summary.kpis.passRate))}</div>
                 <div class="trend-neutral">${summary.kpis.passedTests} / ${summary.kpis.totalTests} тестов прошли</div>
                 <div class="${(0, render_dashboard_sections_1.getTrendClass)(summary.trend.passRateDelta, false)}">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatPassRateDelta)(summary.trend.passRateDelta))}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.failedTests, METRIC_DESCRIPTIONS.failedTests)}</div>
+                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.failedTests, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.failedTests)}</div>
                 <div class="kpi-value">${summary.kpis.failedTests}</div>
                 <div class="trend-neutral">Таймауты: ${summary.kpis.timedOutTests} • Прерванные: ${summary.kpis.interruptedTests}</div>
                 <div class="${(0, render_dashboard_sections_1.getTrendClass)(summary.trend.failedTestsDelta, true)}">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatCountDelta)('к прошлому прогону', summary.trend.failedTestsDelta))}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.flakyTests, METRIC_DESCRIPTIONS.flakyTests)}</div>
+                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.flakyTests, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.flakyTests)}</div>
                 <div class="kpi-value">${summary.kpis.flakyTests}</div>
                 <div class="trend-neutral">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatPercent)(summary.kpis.flakyRatio))} от общего количества</div>
                 <div class="${(0, render_dashboard_sections_1.getTrendClass)(summary.trend.flakyTestsDelta, true)}">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatCountDelta)('к прошлому прогону', summary.trend.flakyTestsDelta))}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.runDuration, `${METRIC_DESCRIPTIONS.runDuration} ${METRIC_DESCRIPTIONS.medianDuration}`)}</div>
+                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.runDuration, `${dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.runDuration} ${dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.medianDuration}`)}</div>
                 <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatDuration)(summary.kpis.totalDurationMs))}</div>
                 <div class="trend-neutral">Медиана: ${(0, text_utils_1.escapeHtml)((0, formatting_1.formatDuration)(summary.kpis.medianDurationMs))}</div>
                 <div class="${(0, render_dashboard_sections_1.getTrendClass)(summary.trend.durationMsDelta, true)}">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatDurationDelta)(summary.trend.durationMsDelta))}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.errorClusters, METRIC_DESCRIPTIONS.errorClusters)}</div>
+                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.errorClusters, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.errorClusters)}</div>
                 <div class="kpi-value">${summary.kpis.errorClusterCount}</div>
                 <div class="trend-neutral">Уникальные группы падений</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.environment, METRIC_DESCRIPTIONS.environment)}</div>
+                <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.environment, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.environment)}</div>
                 <div class="kpi-value">${(0, text_utils_1.escapeHtml)(summary.environment.os)}</div>
                 <div class="trend-neutral">PW ${(0, text_utils_1.escapeHtml)(summary.environment.playwrightVersion)} • Node ${(0, text_utils_1.escapeHtml)(summary.environment.nodeVersion)}</div>
             </div>
@@ -1394,12 +1395,12 @@ function renderDashboardHtml(summary, options = {}) {
 
             <div class="charts-grid-2">
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.passRateTrend, METRIC_DESCRIPTIONS.passRateTrend)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.passRateTrend, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.passRateTrend)}</div>
                     <canvas id="passRateTrendChart"></canvas>
                 </div>
 
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.statusDistribution, METRIC_DESCRIPTIONS.statusDistribution)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.statusDistribution, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.statusDistribution)}</div>
                     <canvas id="statusChart"></canvas>
                     ${(0, render_dashboard_sections_1.renderStatusDrilldown)(summary)}
                 </div>
@@ -1407,7 +1408,7 @@ function renderDashboardHtml(summary, options = {}) {
 
             ${(0, render_dashboard_sections_1.renderCurrentRunTestsBrowser)(summary, testDetailsBasePath)}
 
-            <div class="table-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.latestRuns, METRIC_DESCRIPTIONS.recentRuns)}</div>
+            <div class="table-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.latestRuns, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.recentRuns)}</div>
             <div class="runs-summary-strip">
                 <div class="runs-summary-item">
                     <div class="runs-summary-label">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.history.totalRuns)}</div>
@@ -1453,32 +1454,32 @@ function renderDashboardHtml(summary, options = {}) {
         <section class="tab-panel" data-tab-panel="performance">
             <div class="kpi-grid">
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.p95Duration, METRIC_DESCRIPTIONS.p95Duration)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.p95Duration, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.p95Duration)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatDuration)(summary.performance.p95DurationMs))}</div>
                     <div class="trend-neutral">95% тестов укладываются в это значение или быстрее</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.p99Duration, METRIC_DESCRIPTIONS.p99Duration)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.p99Duration, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.p99Duration)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatDuration)(summary.performance.p99DurationMs))}</div>
                     <div class="trend-neutral">Хвост самых долгих 1% тестов текущего среза</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.leadingPhase, METRIC_DESCRIPTIONS.phaseBreakdown)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.leadingPhase, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)(leadingPhase ? (0, render_dashboard_sections_1.formatPerformancePhaseLabel)(leadingPhase.label) : '—')}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(leadingPhase ? `${(0, formatting_1.formatPercent)(leadingPhase.sharePercent)} от длительности прогона` : 'Нет данных по фазам')}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.durationPerBrowser, METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.durationPerBrowser, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.durationPerBrowser)}</div>
                     <div class="kpi-value kpi-value-text">${(0, render_dashboard_sections_1.renderOverflowText)(topBrowser ? topBrowser.label : '—', { className: 'overflow-text-inline' })}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(topBrowser ? `${(0, formatting_1.formatDuration)(topBrowser.durationMs)} • ${topBrowser.tests} тестов` : 'Нет данных по браузерам / проектам')}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.suiteDuration, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration)}</div>
                     <div class="kpi-value kpi-value-text">${topSuite ? (0, render_dashboard_sections_1.renderOverflowText)(topSuite.label, { displayValue: (0, render_dashboard_sections_1.shortenChartLabel)(topSuite.label, 20), className: 'overflow-text-inline' }) : '—'}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(topSuite ? `${(0, formatting_1.formatDuration)(topSuite.durationMs)} • ${topSuite.tests} тестов` : 'Нет данных по наборам')}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.durationTrend, METRIC_DESCRIPTIONS.durationTrend)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.durationTrend, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.durationTrend)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatDuration)(summary.performance.durationTrend.currentDurationMs))}</div>
                     <div class="${summary.performance.durationTrend.deltaPercent === null ? 'trend-neutral' : summary.performance.durationTrend.deltaPercent <= 0 ? 'trend-up' : 'trend-down'}">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatDurationDelta)(summary.performance.durationTrend.deltaPercent))}</div>
                 </div>
@@ -1486,24 +1487,24 @@ function renderDashboardHtml(summary, options = {}) {
 
             <div class="charts-grid-2">
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.durationTrend, METRIC_DESCRIPTIONS.durationTrend)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.durationTrend, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.durationTrend)}</div>
                     <canvas id="durationTrendChart"></canvas>
                 </div>
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.topSlowestTests, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.topSlowestTests, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests)}</div>
                     <canvas id="slowestChart"></canvas>
                 </div>
             </div>
 
             <div class="charts-grid-2">
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.phaseBreakdown, METRIC_DESCRIPTIONS.phaseBreakdown)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.phaseBreakdown, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown)}</div>
                     <div class="chart-subtitle">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.performance.phaseBreakdownDescription)}</div>
                     <canvas id="phaseBreakdownChart"></canvas>
                     ${(0, render_dashboard_sections_1.renderPhaseLegend)(summary.performance.phaseBreakdown)}
                 </div>
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.suiteDuration, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration)}</div>
                     <div class="chart-subtitle">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.performance.suiteDurationDescription)}</div>
                     <canvas id="suiteDurationChart"></canvas>
                 </div>
@@ -1534,7 +1535,7 @@ function renderDashboardHtml(summary, options = {}) {
                 </div>
             </div>
 
-            <div class="table-title" data-tab-section="suite-duration">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.suiteDuration, METRIC_DESCRIPTIONS.suiteDuration)}</div>
+            <div class="table-title" data-tab-section="suite-duration">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.suiteDuration, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1553,7 +1554,7 @@ function renderDashboardHtml(summary, options = {}) {
                 </table>
             </div>
 
-            <div class="table-title" data-tab-section="slow-tests">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.topSlowestTestsP1, METRIC_DESCRIPTIONS.topSlowestTests)}</div>
+            <div class="table-title" data-tab-section="slow-tests">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.topSlowestTestsP1, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1578,16 +1579,16 @@ function renderDashboardHtml(summary, options = {}) {
         <section class="tab-panel" data-tab-panel="flaky">
             <div class="charts-grid-2">
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.flakyTrend, METRIC_DESCRIPTIONS.flakyTrend)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.flakyTrend, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.flakyTrend)}</div>
                     <canvas id="flakyTrendChart"></canvas>
                 </div>
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.clusterDistribution, METRIC_DESCRIPTIONS.clusterList)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.clusterDistribution, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.clusterList)}</div>
                     <canvas id="clusterChart"></canvas>
                 </div>
             </div>
 
-            <div class="table-title" data-tab-section="problematic-tests">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.problematicTests, METRIC_DESCRIPTIONS.problematicTests)}</div>
+            <div class="table-title" data-tab-section="problematic-tests">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.problematicTests, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.problematicTests)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1596,7 +1597,7 @@ function renderDashboardHtml(summary, options = {}) {
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.file)}</th>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.status)}</th>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.flaky)}</th>
-                            <th>${(0, render_metric_info_1.renderMetricHeading)('Доля падений', METRIC_DESCRIPTIONS.failureRate)}</th>
+                            <th>${(0, render_metric_info_1.renderMetricHeading)('Доля падений', dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.failureRate)}</th>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.duration)}</th>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.reason)}</th>
                         </tr>
@@ -1609,7 +1610,7 @@ function renderDashboardHtml(summary, options = {}) {
                 </table>
             </div>
 
-            <div class="table-title" data-tab-section="flaky-tests">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.topFlakyTests, METRIC_DESCRIPTIONS.topFlakyTests)}</div>
+            <div class="table-title" data-tab-section="flaky-tests">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.topFlakyTests, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests)}</div>
             ${(0, render_dashboard_sections_1.renderFlakyHistoryInsight)(summary)}
             <div class="table-container">
                 <table>
@@ -1617,10 +1618,10 @@ function renderDashboardHtml(summary, options = {}) {
                         <tr>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.test)}</th>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.tables.file)}</th>
-                            <th>${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.flakyScore, METRIC_DESCRIPTIONS.flakyScore)}</th>
-                            <th>${(0, render_metric_info_1.renderMetricHeading)('Доля падений', METRIC_DESCRIPTIONS.failureRate)}</th>
-                            <th>${(0, render_metric_info_1.renderMetricHeading)('MTBF', METRIC_DESCRIPTIONS.mtbf)}</th>
-                            <th>${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.unstableRuns, METRIC_DESCRIPTIONS.unstableRuns)}</th>
+                            <th>${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.flakyScore, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.flakyScore)}</th>
+                            <th>${(0, render_metric_info_1.renderMetricHeading)('Доля падений', dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.failureRate)}</th>
+                            <th>${(0, render_metric_info_1.renderMetricHeading)('MTBF', dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.mtbf)}</th>
+                            <th>${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.unstableRuns, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.unstableRuns)}</th>
                             <th>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.metrics.lastStatus)}</th>
                         </tr>
                     </thead>
@@ -1632,7 +1633,7 @@ function renderDashboardHtml(summary, options = {}) {
                 </table>
             </div>
 
-            <div class="table-title" data-tab-section="error-clusters">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.errorClusters, METRIC_DESCRIPTIONS.clusterList)}</div>
+            <div class="table-title" data-tab-section="error-clusters">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.errorClusters, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.clusterList)}</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1658,7 +1659,7 @@ function renderDashboardHtml(summary, options = {}) {
         </section>
 
         <section class="tab-panel" data-tab-panel="code-quality">
-            ${(0, render_dashboard_sections_1.renderPlaceholderPanel)(DASHBOARD_TEXT.metrics.codeQuality, METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
+            ${(0, render_dashboard_legacy_only_1.renderLegacyPlaceholderPanel)(DASHBOARD_TEXT.metrics.codeQuality, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
         </section>
 
         <section class="tab-panel" data-tab-panel="business">
@@ -1676,17 +1677,17 @@ function renderDashboardHtml(summary, options = {}) {
                 </div>
                 <div class="business-signal-grid">
                     <div class="business-signal-card">
-                        <div class="business-signal-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToDetect, METRIC_DESCRIPTIONS.timeToDetect)}</div>
+                        <div class="business-signal-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToDetect, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.timeToDetect)}</div>
                         <div class="business-signal-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatNullableMinutes)(summary.businessMetrics.timeToDetect.minutes))}</div>
                         <div class="business-signal-hint">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.timeToDetectHint)}</div>
                     </div>
                     <div class="business-signal-card">
-                        <div class="business-signal-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToFixFlaky, METRIC_DESCRIPTIONS.timeToFixFlaky)}</div>
+                        <div class="business-signal-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToFixFlaky, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky)}</div>
                         <div class="business-signal-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatNullableDays)(summary.businessMetrics.timeToFixFlaky.averageDays))}</div>
                         <div class="business-signal-hint">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.timeToFixHintPrefix)}: ${summary.businessMetrics.timeToFixFlaky.resolvedIncidents}</div>
                     </div>
                     <div class="business-signal-card">
-                        <div class="business-signal-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.releaseConfidenceScore, METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
+                        <div class="business-signal-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.releaseConfidenceScore, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
                         <div class="business-signal-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatScore)(summary.businessMetrics.releaseConfidenceScore))}</div>
                         <div class="business-signal-hint">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.releaseConfidenceHint)}</div>
                     </div>
@@ -1710,38 +1711,38 @@ function renderDashboardHtml(summary, options = {}) {
             <div class="muted" style="margin-bottom: 16px;">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.businessOverviewDescription)}</div>
             <div class="kpi-grid business-kpi-grid">
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToDetect, METRIC_DESCRIPTIONS.timeToDetect)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToDetect, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.timeToDetect)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatNullableMinutes)(summary.businessMetrics.timeToDetect.minutes))}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.timeToDetectPending)}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.timeToDetectHint)}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToFixFlaky, METRIC_DESCRIPTIONS.timeToFixFlaky)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.timeToFixFlaky, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatNullableDays)(summary.businessMetrics.timeToFixFlaky.averageDays))}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.timeToFixHintPrefix)}: ${summary.businessMetrics.timeToFixFlaky.resolvedIncidents}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(summary.businessMetrics.timeToFixFlaky.averageDays === null ? DASHBOARD_TEXT.business.timeToFixPending : 'Среднее по восстановленным flaky-инцидентам из истории.')}</div>
                 </div>
                 <div class="kpi-card cost-kpi-card ${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.getBusinessImpactClass)(summary.businessMetrics.costOfFlakiness.totalRub, summary.businessMetrics.costOfFlakiness.costPerActiveDayRub))}" data-cost-kpi-card>
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.costOfFlakiness, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.costOfFlakiness, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
                     <div class="kpi-value" data-cost-total>${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatCurrency)(summary.businessMetrics.costOfFlakiness.totalRub))}</div>
                     <div class="trend-neutral" data-cost-breakdown>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.ciBreakdown)}: ${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatCurrency)(summary.businessMetrics.costOfFlakiness.ciCostRub))} • ${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.developerBreakdown)}: ${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatCurrency)(summary.businessMetrics.costOfFlakiness.developerCostRub))}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.extraRetryTime)}: ${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatMinutes)(summary.businessMetrics.costOfFlakiness.extraRetryMinutes))} • ${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.unstableRuns)}: ${summary.businessMetrics.costOfFlakiness.unstableRuns}</div>
                     <div class="trend-neutral" data-cost-assumptions-summary>${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatCostAssumptions)(summary))}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.developerFriction, METRIC_DESCRIPTIONS.developerFriction)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.developerFriction, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.developerFriction)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatDailyRatio)(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay))}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.extraRetries)}: ${summary.businessMetrics.developerFriction.extraRetries} • ${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.unstableRuns)}: ${summary.businessMetrics.developerFriction.unstableRuns}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.activeDays)}: ${summary.businessMetrics.developerFriction.activeDays}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.releaseConfidenceScore, METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.releaseConfidenceScore, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatScore)(summary.businessMetrics.releaseConfidenceScore))}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.releaseConfidenceDetails)}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.releaseConfidenceHint)}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.automationRoi, METRIC_DESCRIPTIONS.automationRoi)}</div>
+                    <div class="kpi-label">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.automationRoi, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.automationRoi)}</div>
                     <div class="kpi-value">${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatNullablePercent)(summary.businessMetrics.automationRoi.percent))}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.automationRoiPending)}</div>
                     <div class="trend-neutral">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.automationRoiHint)}</div>
@@ -1753,11 +1754,11 @@ function renderDashboardHtml(summary, options = {}) {
                 ${(0, render_dashboard_sections_1.renderBusinessMetricReadiness)(summary)}
             </div>
 
-            <div class="table-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.costSection, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+            <div class="table-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.costSection, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
             <div class="muted" style="margin-bottom: 16px;">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.costScenarioDescription)}</div>
             <div class="charts-grid-2">
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.costStructure, METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.costStructure, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness)}</div>
                     <div class="muted">${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.formulaDescription)}</div>
                     <div class="formula-grid">
                         <div class="formula-card">
@@ -1809,7 +1810,7 @@ function renderDashboardHtml(summary, options = {}) {
                     </div>
                 </div>
                 <div class="chart-card">
-                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.configAssumptions, METRIC_DESCRIPTIONS.configAssumptions)}</div>
+                    <div class="chart-title">${(0, render_metric_info_1.renderMetricHeading)(DASHBOARD_TEXT.metrics.configAssumptions, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.configAssumptions)}</div>
                     <div class="list">
                         <div class="list-item">
                             <div class="list-item-title"><span>${(0, text_utils_1.escapeHtml)(DASHBOARD_TEXT.business.ciMinuteCost)}</span><span data-assumption-ci-label>${(0, text_utils_1.escapeHtml)((0, render_dashboard_sections_1.formatAssumptionValue)(summary.businessMetrics.costOfFlakiness.assumptions.ciMinuteCostRub, '₽/мин'))}</span></div>
@@ -1861,11 +1862,11 @@ function renderDashboardHtml(summary, options = {}) {
         </section>
 
         <section class="tab-panel" data-tab-panel="team">
-            ${(0, render_dashboard_sections_1.renderPlaceholderPanel)(DASHBOARD_TEXT.metrics.team, METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
+            ${(0, render_dashboard_legacy_only_1.renderLegacyPlaceholderPanel)(DASHBOARD_TEXT.metrics.team, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
         </section>
 
         <section class="tab-panel" data-tab-panel="ai">
-            ${(0, render_dashboard_sections_1.renderPlaceholderPanel)(DASHBOARD_TEXT.metrics.ai, METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
+            ${(0, render_dashboard_legacy_only_1.renderLegacyPlaceholderPanel)(DASHBOARD_TEXT.metrics.ai, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
         </section>
     </div>
 

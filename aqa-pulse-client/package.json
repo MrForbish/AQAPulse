@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist')) fs.rmSync('dist',{recursive:true,force:true});\"",
-    "build": "npm --prefix ../aqa-pulse run compile && node ./scripts/build-package.js",
+    "build": "npm --prefix ../aqa-pulse run compile:compat && node ./scripts/build-package.js",
     "pack:check": "npm run build && npm pack --dry-run"
   }
 }

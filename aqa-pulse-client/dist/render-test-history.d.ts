@@ -1,3 +1,6 @@
+/**
+ * Назначение: legacy string-based test-history renderer. Сохраняется как compatibility-only реализация и не является целью дальнейшей React-миграции.
+ */
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store';
 interface HistoryPageFilters {
     branch?: string;

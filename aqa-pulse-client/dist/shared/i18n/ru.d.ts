@@ -484,8 +484,10 @@ export declare const ru: {
             readonly openAttachment: "Открыть артефакт";
             readonly inlineImagePreview: "Показать изображение внутри diagnostics";
             readonly expandImageHint: "Нажми на изображение, чтобы открыть его крупнее.";
+            readonly loadingImagePreview: "Открываем изображение…";
             readonly imageLightboxTitle: "Увеличенное изображение";
             readonly closeImageLightbox: "Закрыть увеличенное изображение";
+            readonly imagePreviewUnavailable: "Не удалось загрузить изображение в preview. Открой артефакт отдельной вкладкой.";
             readonly inlineMarkdownPreview: "Показать markdown внутри diagnostics";
             readonly loadingMarkdownPreview: "Загружаем markdown для preview…";
             readonly markdownPreviewUnavailable: "Не удалось загрузить markdown-preview для этого артефакта.";

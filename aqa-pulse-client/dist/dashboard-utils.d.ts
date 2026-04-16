@@ -49,6 +49,7 @@ export interface ReporterAttachment {
 export interface ReporterStep {
     title?: string;
     category?: string;
+    depth?: number;
     durationMs?: number;
     status?: string;
     failed?: boolean;
@@ -120,6 +121,7 @@ export interface DashboardCurrentRunTest {
     flaky: boolean;
     durationMs: number;
     errorMessage: string | null;
+    errorDetails?: string | null;
 }
 export interface DashboardCurrentRunTests {
     all: DashboardCurrentRunTest[];
@@ -141,9 +143,11 @@ export interface DashboardProblematicTest {
     attempts: number;
     failureRate: number;
     errorMessage: string;
+    errorDetails?: string | null;
 }
 export interface DashboardErrorCluster {
     message: string;
+    sampleMessage?: string;
     count: number;
     tests: string[];
 }
@@ -155,6 +159,7 @@ export interface DashboardSlowTest {
     flaky: boolean;
     durationMs: number;
     errorMessage: string | null;
+    errorDetails?: string | null;
 }
 export interface DashboardFlakyTestMetric {
     title: string;

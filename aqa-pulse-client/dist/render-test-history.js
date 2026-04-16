@@ -4,25 +4,9 @@ exports.renderTestHistoryHtml = renderTestHistoryHtml;
 const render_metric_info_1 = require("./render-metric-info");
 const formatting_1 = require("./shared/formatting");
 const ru_1 = require("./shared/i18n/ru");
+const test_history_metric_info_1 = require("./shared/test-history-metric-info");
 const text_utils_1 = require("./shared/text-utils");
 const render_test_history_sections_1 = require("./render-test-history-sections");
-const METRIC_DESCRIPTIONS = {
-    totalRuns: 'Количество сохранённых прогонов, в которых найден именно этот тест с учётом текущих фильтров.',
-    failedRuns: 'Количество прогонов, в которых тест завершился неуспешно: failed, timedout или interrupted.',
-    flakyRuns: 'Количество прогонов, где тест был отмечен как flaky: падал на одной из попыток, но в итоге завершился успешно.',
-    latestStatus: 'Финальный статус теста в самом свежем найденном прогоне.',
-    passRate: 'Доля прогонов этого теста со статусом passed среди всех найденных запусков.',
-    failRate: 'Доля прогонов этого теста с неуспешным результатом: failed, timedout или interrupted.',
-    flakyScore: 'Сводная оценка нестабильности теста на шкале 0–100 с учётом fail rate, паттерна нестабильности и MTBF.',
-    mtbf: 'Среднее время между нестабильными прогонами теста. Чем больше значение, тем реже тест становится нестабильным.',
-    timeline: 'Хронологическая история прогонов теста с ключевыми метаданными, длительностью, повторами и ошибками.',
-    archiveGaps: 'Список run id, для которых запись есть в history.json, но архив исходного data.json уже недоступен.',
-    latestEvent: 'Самый свежий нестабильный эпизод для теста: последнее падение с текстом ошибки или последний flaky-прогон, если более свежей ошибки нет.',
-    latestRecovery: 'Самый свежий стабильный прогон после нестабильной серии. Показывается только если после падения или flaky был зафиксирован чистый passed-run без flakiness.',
-    previousUnstableEvents: 'Несколько предыдущих нестабильных эпизодов до самого свежего нестабильного прогона. Полезно для быстрого просмотра паттерна проблем без прокрутки всей таблицы.',
-    currentStabilityStreak: 'Текущая серия подряд идущих стабильных прогонов от самого свежего запуска назад. Стабильным считается только passed-run без flakiness и без текста ошибки.',
-    unstableStreakBeforeRecovery: 'Длина нестабильной серии непосредственно перед последним стабильным восстановлением. Помогает понять, какой по глубине был проблемный период до восстановления.',
-};
 const HISTORY_TEXT = ru_1.ru.testHistory;
 function renderTestHistoryHtml(payload, requestedTitle, filters = {}, options = {}) {
     const normalizedFilters = {
@@ -89,7 +73,7 @@ function renderTestHistoryHtml(payload, requestedTitle, filters = {}, options = 
     const unstableStreakBeforeRecoveryHtml = (0, render_test_history_sections_1.renderUnstableStreakBeforeRecovery)(payload.history);
     const attemptDiagnosticsHtml = (0, render_test_history_sections_1.renderAttemptDiagnostics)(payload.history, normalizedArtifactBasePath);
     const missingRunsHtml = payload.missingRuns.length > 0
-        ? `<div class="notice-inline">${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.archiveGaps, METRIC_DESCRIPTIONS.archiveGaps, { className: 'inline-heading', tagName: 'div' })}<div class="mono">${(0, text_utils_1.escapeHtml)(payload.missingRuns.join(', '))}</div></div>`
+        ? `<div class="notice-inline">${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.archiveGaps, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.archiveGaps, { className: 'inline-heading', tagName: 'div' })}<div class="mono">${(0, text_utils_1.escapeHtml)(payload.missingRuns.join(', '))}</div></div>`
         : '';
     return `<!DOCTYPE html>
 <html lang="ru">
@@ -324,12 +308,15 @@ function renderTestHistoryHtml(payload, requestedTitle, filters = {}, options = 
         .attempt-step-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
         .attempt-step-summary::-webkit-details-marker { display: none; }
         .attempt-step-body { max-height: min(360px, 42vh); overflow: auto; padding: 0 10px 10px; scrollbar-gutter: stable; }
-        .step-list, .attachment-list { display: grid; gap: 8px; }
+        .step-list, .attachment-list, .step-tree, .step-tree-children { display: grid; gap: 8px; }
+        .step-tree-children { margin-top: 8px; padding-top: 8px; padding-left: 14px; border-left: 1px solid #30363d; }
         .step-item, .attachment-item { padding: 10px 12px; border-radius: 8px; background: #161b22; border: 1px solid #21262d; }
         .step-item.step-item-failure { border-color: rgba(248, 81, 73, 0.45); background: linear-gradient(180deg, rgba(248, 81, 73, 0.12) 0%, #161b22 100%); }
+        .step-item.step-item-nested { background: #101927; }
         .step-item-header, .attachment-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
         .step-title, .attachment-title { color: #ffffff; font-size: 12px; font-weight: 500; }
         .step-meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .step-meta-copy { margin-top: 2px; }
         .step-error { margin-top: 8px; }
         .attachment-link { color: #58a6ff; text-decoration: none; font-size: 12px; }
         .attachment-link:hover { text-decoration: underline; }
@@ -505,42 +492,42 @@ function renderTestHistoryHtml(payload, requestedTitle, filters = {}, options = 
 
         <div class="summary-grid">
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.totalRuns, METRIC_DESCRIPTIONS.totalRuns, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.totalRuns, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.totalRuns, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${payload.summary.totalRuns}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.totalRuns)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.failedRuns, METRIC_DESCRIPTIONS.failedRuns, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.failedRuns, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.failedRuns, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${payload.summary.failedRuns}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.failedRuns)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.flakyRuns, METRIC_DESCRIPTIONS.flakyRuns, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.flakyRuns, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.flakyRuns, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${payload.summary.flakyRuns}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.flakyRuns)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.latestStatus, METRIC_DESCRIPTIONS.latestStatus, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.latestStatus, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.latestStatus, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value"><span class="status-badge ${latestStatusClass}">${(0, text_utils_1.escapeHtml)((0, render_test_history_sections_1.formatStatusLabel)(payload.summary.latestStatus ?? 'unknown', payload.latestRun?.flaky ?? false))}</span></div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.latestStatus)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.passRate, METRIC_DESCRIPTIONS.passRate, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.passRate, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.passRate, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatPercent)(payload.summary.passRate))}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.passRate)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.failRate, METRIC_DESCRIPTIONS.failRate, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.failRate, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.failRate, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatPercent)(payload.summary.failRate))}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.failRate)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.flakyScore, METRIC_DESCRIPTIONS.flakyScore, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.flakyScore, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.flakyScore, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${(0, text_utils_1.escapeHtml)((0, render_test_history_sections_1.formatNullableNumber)(payload.summary.flakyScore))}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.flakyScore)}</div>
             </div>
             <div class="summary-card">
-                ${(0, render_metric_info_1.renderMetricHeading)('MTBF', METRIC_DESCRIPTIONS.mtbf, { className: 'subtle', tagName: 'div' })}
+                ${(0, render_metric_info_1.renderMetricHeading)('MTBF', test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.mtbf, { className: 'subtle', tagName: 'div' })}
                 <div class="summary-value">${(0, text_utils_1.escapeHtml)((0, render_test_history_sections_1.formatNullableDays)(payload.summary.mtbfDays))}</div>
                 <div class="summary-subtitle">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.subtitles.mtbf)}</div>
             </div>
@@ -562,7 +549,7 @@ function renderTestHistoryHtml(payload, requestedTitle, filters = {}, options = 
 
         ${missingRunsHtml}
 
-        ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.timeline, METRIC_DESCRIPTIONS.timeline, { className: 'table-title', tagName: 'div' })}
+        ${(0, render_metric_info_1.renderMetricHeading)(HISTORY_TEXT.metrics.timeline, test_history_metric_info_1.TEST_HISTORY_METRIC_DESCRIPTIONS.timeline, { className: 'table-title', tagName: 'div' })}
         <div class="table-container">
             <table>
                 <thead>

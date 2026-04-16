@@ -2,9 +2,25 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import type { TestHistoryConflict } from '../../../api-store'
 import { ru } from '../../../shared/i18n/ru'
-import { ErrorView, PageFrame, Panel } from '../../shared/ui'
+import { ErrorView, LoadingView, PageFrame, Panel } from '../../shared/ui'
 
 const HISTORY_TEXT = ru.testHistory
+
+export function TestHistoryLoadingState(): React.JSX.Element {
+    return (
+        <PageFrame>
+            <LoadingView label="Открываем историю теста..." />
+        </PageFrame>
+    )
+}
+
+export function TestHistoryErrorState(props: { message: string }): React.JSX.Element {
+    return (
+        <PageFrame>
+            <ErrorView title="Не удалось загрузить историю теста" message={props.message} />
+        </PageFrame>
+    )
+}
 
 export function TestHistoryNotFoundState(props: {
     dashboardHref: string

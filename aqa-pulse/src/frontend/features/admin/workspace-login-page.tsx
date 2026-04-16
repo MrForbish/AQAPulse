@@ -2,8 +2,9 @@
  * Назначение: workspace login-страница для входа по user token и перехода в dashboard конкретного slug.
  */
 import React from 'react'
-import { LoadingView, PageFrame, ErrorView } from '../../shared/ui'
+import { ErrorView } from '../../shared/ui'
 import { AuthShell } from './auth-shell'
+import { AuthCheckingSessionState, AuthTokenForm } from './auth-token-form'
 import { useWorkspaceLoginAction, useWorkspaceLoginRedirect } from './admin-hooks'
 
 /**
@@ -13,24 +14,8 @@ export function WorkspaceLoginPage(props: { workspaceSlug: string }): React.JSX.
     const { isCheckingSession } = useWorkspaceLoginRedirect(props.workspaceSlug)
     const { errorMessage, isSubmitting, submit } = useWorkspaceLoginAction(props.workspaceSlug)
 
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-        event.preventDefault()
-        const formData = new FormData(event.currentTarget)
-        const token = String(formData.get('token') ?? '').trim()
-
-        if (!token) {
-            return
-        }
-
-        await submit(token)
-    }
-
     if (isCheckingSession) {
-        return (
-            <PageFrame>
-                <LoadingView label="Проверяем workspace session..." />
-            </PageFrame>
-        )
+        return <AuthCheckingSessionState label="Проверяем workspace session..." />
     }
 
     return (
@@ -39,15 +24,7 @@ export function WorkspaceLoginPage(props: { workspaceSlug: string }): React.JSX.
             title="Workspace login"
             description={`Workspace: ${props.workspaceSlug}. Введи workspace user token для просмотра dashboard.`}
         >
-            <form className="stack auth-form" onSubmit={handleSubmit}>
-                <label>
-                    <span>Workspace user token</span>
-                    <input type="password" name="token" autoComplete="current-password" required />
-                </label>
-                <button type="submit" className="primary-link auth-submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Открываем...' : 'Открыть dashboard'}
-                </button>
-            </form>
+            <AuthTokenForm fieldLabel="Workspace user token" submitLabel="Открыть dashboard" submittingLabel="Открываем..." onSubmitToken={submit} isSubmitting={isSubmitting} />
             {errorMessage ? <ErrorView title="Login не выполнен" message={errorMessage} /> : null}
         </AuthShell>
     )

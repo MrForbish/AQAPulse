@@ -4,6 +4,7 @@
 import React from 'react'
 import { ErrorView, Panel } from '../../shared/ui'
 import { AuthShell } from './auth-shell'
+import { AuthTokenForm } from './auth-token-form'
 import { useWorkspaceApiKeyExchangeAction } from './admin-hooks'
 
 /**
@@ -11,18 +12,6 @@ import { useWorkspaceApiKeyExchangeAction } from './admin-hooks'
  */
 export function WorkspaceApiKeyExchangePage(props: { workspaceSlug: string }): React.JSX.Element {
     const { errorMessage, exchangeResult, isSubmitting, submit } = useWorkspaceApiKeyExchangeAction(props.workspaceSlug)
-
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-        event.preventDefault()
-        const formData = new FormData(event.currentTarget)
-        const token = String(formData.get('token') ?? '').trim()
-
-        if (!token) {
-            return
-        }
-
-        await submit(token)
-    }
 
     const detailEntries = exchangeResult
         ? {
@@ -42,15 +31,7 @@ export function WorkspaceApiKeyExchangePage(props: { workspaceSlug: string }): R
             description={`Workspace: ${props.workspaceSlug}. Введи raw API key, чтобы получить ingestion JWT для загрузки прогонов.`}
             footerLink={{ href: '/admin', label: 'Вернуться в admin dashboard' }}
         >
-            <form className="stack auth-form" onSubmit={handleSubmit}>
-                <label>
-                    <span>Workspace API key</span>
-                    <input type="password" name="token" autoComplete="current-password" required />
-                </label>
-                <button type="submit" className="primary-link auth-submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Выпускаем JWT...' : 'Получить ingestion JWT'}
-                </button>
-            </form>
+            <AuthTokenForm fieldLabel="Workspace API key" submitLabel="Получить ingestion JWT" submittingLabel="Выпускаем JWT..." onSubmitToken={submit} isSubmitting={isSubmitting} />
             {errorMessage ? <ErrorView title="JWT не выпущен" message={errorMessage} /> : null}
             {detailEntries ? (
                 <Panel title="JWT выпущен" className="panel-success">

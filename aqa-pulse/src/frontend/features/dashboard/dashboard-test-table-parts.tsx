@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import type {
     DashboardCurrentRunTest,
     DashboardErrorCluster,
+    DashboardFlakyTestMetric,
     DashboardProblematicTest,
     DashboardSlowTest,
     DashboardSummary,
 } from '../../../dashboard-utils'
-import { formatDuration, formatPercent } from '../../../shared/formatting'
-import { formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
+import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
+import { formatCommit, formatScore, formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
 import { buildTestHistoryHref } from '../../runtime'
 import { EmptyState, OverflowText, Panel, StatusBadge, TraceDisclosure } from '../../shared/ui'
 
@@ -157,6 +158,56 @@ export function DashboardErrorClusterRow(props: { cluster: DashboardErrorCluster
             <td>
                 <OverflowText as="span" text={props.cluster.tests.join(' • ')} className="cluster-tests-react" lines={2} />
             </td>
+        </tr>
+    )
+}
+
+export function DashboardFlakyTestRow(props: {
+    test: DashboardFlakyTestMetric
+    summary: DashboardSummary
+    workspaceSlug: string | null
+    showRunCounts?: boolean
+}): React.JSX.Element {
+    return (
+        <tr>
+            <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
+            <td>{props.test.file}</td>
+            <td>{formatScore(props.test.flakyScore)}</td>
+            <td>{formatPercent(props.test.failRate)}</td>
+            <td>{props.test.mtbfDays === null ? '—' : `${props.test.mtbfDays.toFixed(2)} дн`}</td>
+            {props.showRunCounts ? <td>{props.test.unstableRuns} / {props.test.totalRuns}</td> : null}
+            <td><StatusBadge label={formatStatusLabel(props.test.latestStatus, false)} tone={getStatusTone(props.test.latestStatus, false)} /></td>
+        </tr>
+    )
+}
+
+export function DashboardRecentRunSummaryRow(props: { run: DashboardSummary['history']['recentRuns'][number] }): React.JSX.Element {
+    return (
+        <tr>
+            <td>{formatDate(props.run.reportTimestamp ?? props.run.generatedAt)}</td>
+            <td>{formatPercent(props.run.passRate)}</td>
+            <td>{props.run.failedTests}</td>
+            <td>{props.run.flakyTests}</td>
+            <td>{formatDuration(props.run.totalDurationMs)}</td>
+            <td>{props.run.branch ?? '—'}</td>
+            <td>{formatCommit(props.run.commit)}</td>
+            <td>{props.run.author ?? '—'}</td>
+            <td>{props.run.sourceFile}</td>
+        </tr>
+    )
+}
+
+export function DashboardRecentRunCompactRow(props: { run: DashboardSummary['history']['recentRuns'][number] }): React.JSX.Element {
+    return (
+        <tr>
+            <td>{formatDate(props.run.reportTimestamp ?? props.run.generatedAt)}</td>
+            <td>{props.run.branch ?? '—'}</td>
+            <td>{formatCommit(props.run.commit)}</td>
+            <td>{formatPercent(props.run.passRate)}</td>
+            <td>{props.run.failedTests}</td>
+            <td>{props.run.flakyTests}</td>
+            <td>{formatDuration(props.run.totalDurationMs)}</td>
+            <td>{props.run.author ?? '—'}</td>
         </tr>
     )
 }

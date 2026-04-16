@@ -19,7 +19,6 @@ import {
     formatNullableMinutes,
     formatNullablePercent,
     formatScore,
-    formatStatusLabel,
     getBusinessDriverInsightBody,
     getBusinessDriverInsightTitle,
     getBusinessImpactLabel,
@@ -27,7 +26,6 @@ import {
     getBusinessScenarioStatusLabel,
     getManagerChangeLabel,
     getScoreTone,
-    getStatusTone,
     roundOne,
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
@@ -35,11 +33,12 @@ import { ru } from '../../../shared/i18n/ru'
 import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge } from '../../shared/ui'
 import {
     DashboardEmptyTableRow,
+    DashboardFlakyTestRow,
     DashboardProblematicTestRow,
+    DashboardRecentRunCompactRow,
     DashboardSlowTestRow,
     DashboardTable,
     DashboardTablePanel,
-    DashboardTestHistoryLink,
 } from './dashboard-test-table-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
@@ -330,18 +329,7 @@ export function TeamModule(props: { summary: DashboardSummary; workspaceSlug: st
                         'Author',
                     ]}
                 >
-                    {summary.history.recentRuns.length > 0 ? summary.history.recentRuns.map((run) => (
-                        <tr key={run.id}>
-                            <td>{formatDate(run.reportTimestamp ?? run.generatedAt)}</td>
-                            <td>{run.branch ?? '—'}</td>
-                            <td>{formatCommit(run.commit)}</td>
-                            <td>{formatPercent(run.passRate)}</td>
-                            <td>{run.failedTests}</td>
-                            <td>{run.flakyTests}</td>
-                            <td>{formatDuration(run.totalDurationMs)}</td>
-                            <td>{run.author ?? '—'}</td>
-                        </tr>
-                    )) : <DashboardEmptyTableRow colSpan={8} message={DASHBOARD_TEXT.states.historyEmpty} />}
+                    {summary.history.recentRuns.length > 0 ? summary.history.recentRuns.map((run) => <DashboardRecentRunCompactRow key={run.id} run={run} />) : <DashboardEmptyTableRow colSpan={8} message={DASHBOARD_TEXT.states.historyEmpty} />}
                 </DashboardTable>
             </Panel>
         </div>
@@ -377,16 +365,7 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
                 emptyTitle="Исторических сигналов мало"
                 emptyMessage={DASHBOARD_TEXT.states.flakyTestsEmpty}
             >
-                {summary.flakyAnalytics.topFlakyTests.map((test) => (
-                    <tr key={`${test.project}-${test.file}-${test.title}`}>
-                        <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
-                        <td>{test.file}</td>
-                        <td>{formatScore(test.flakyScore)}</td>
-                        <td>{formatPercent(test.failRate)}</td>
-                        <td>{test.mtbfDays === null ? '—' : `${test.mtbfDays.toFixed(2)} дн`}</td>
-                        <td><StatusBadge label={formatStatusLabel(test.latestStatus, false)} tone={getStatusTone(test.latestStatus, false)} /></td>
-                    </tr>
-                ))}
+                {summary.flakyAnalytics.topFlakyTests.map((test) => <DashboardFlakyTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} />)}
             </DashboardTablePanel>
 
             <Panel title="Root-cause clusters" titleMetricKey="errorClusters" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} description="Повторяемые ошибки уже можно использовать как базу для кластеризации, объяснений и рекомендаций." className="span-2">

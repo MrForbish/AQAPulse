@@ -1,7 +1,6 @@
 import React from 'react'
 import type {
     DashboardDurationBreakdownItem,
-    DashboardFlakyTestMetric,
     DashboardSummary,
 } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
@@ -11,13 +10,11 @@ import {
     formatDelta,
     formatPerformancePhaseLabel,
     formatScore,
-    formatStatusLabel,
     getFlakyTopTestsEmptyState,
     getManagerChangeLabel,
     getManagerReadinessLabel,
     getManagerRiskLabel,
     getScoreTone,
-    getStatusTone,
     roundOne,
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
@@ -28,11 +25,12 @@ import {
     DashboardCurrentRunTestRow,
     DashboardEmptyTableRow,
     DashboardErrorClusterRow,
+    DashboardFlakyTestRow,
     DashboardProblematicTestRow,
+    DashboardRecentRunSummaryRow,
     DashboardSlowTestRow,
     DashboardTable,
     DashboardTablePanel,
-    DashboardTestHistoryLink,
 } from './dashboard-test-table-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
@@ -155,7 +153,7 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                 emptyTitle="Исторический список flaky-тестов пуст"
                 emptyMessage={getFlakyTopTestsEmptyState(props.summary)}
             >
-                {props.summary.flakyAnalytics.topFlakyTests.map((test) => <FlakyTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} />)}
+                {props.summary.flakyAnalytics.topFlakyTests.map((test) => <DashboardFlakyTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} showRunCounts />)}
             </DashboardTablePanel>
 
             <DashboardTablePanel
@@ -282,19 +280,7 @@ function RecentRunsPanel(props: { summary: DashboardSummary }): React.JSX.Elemen
                     DASHBOARD_TEXT.tables.source,
                 ]}
             >
-                {props.summary.history.recentRuns.length > 0 ? props.summary.history.recentRuns.map((run) => (
-                    <tr key={run.id}>
-                        <td>{formatDate(run.reportTimestamp ?? run.generatedAt)}</td>
-                        <td>{formatPercent(run.passRate)}</td>
-                        <td>{run.failedTests}</td>
-                        <td>{run.flakyTests}</td>
-                        <td>{formatDuration(run.totalDurationMs)}</td>
-                        <td>{run.branch ?? '—'}</td>
-                        <td>{formatCommit(run.commit)}</td>
-                        <td>{run.author ?? '—'}</td>
-                        <td>{run.sourceFile}</td>
-                    </tr>
-                )) : <DashboardEmptyTableRow colSpan={9} message={DASHBOARD_TEXT.states.historyEmpty} />}
+                {props.summary.history.recentRuns.length > 0 ? props.summary.history.recentRuns.map((run) => <DashboardRecentRunSummaryRow key={run.id} run={run} />) : <DashboardEmptyTableRow colSpan={9} message={DASHBOARD_TEXT.states.historyEmpty} />}
             </DashboardTable>
         </Panel>
     )
@@ -312,20 +298,6 @@ function BreakdownTable(props: { labelColumn: string; items: DashboardDurationBr
                 </tr>
             )) : <DashboardEmptyTableRow colSpan={4} message={props.emptyMessage} />}
         </DashboardTable>
-    )
-}
-
-function FlakyTestRow(props: { test: DashboardFlakyTestMetric; summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
-    return (
-        <tr>
-            <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
-            <td>{props.test.file}</td>
-            <td>{formatScore(props.test.flakyScore)}</td>
-            <td>{formatPercent(props.test.failRate)}</td>
-            <td>{props.test.mtbfDays === null ? '—' : `${props.test.mtbfDays.toFixed(2)} дн`}</td>
-            <td>{props.test.unstableRuns} / {props.test.totalRuns}</td>
-            <td><StatusBadge label={formatStatusLabel(props.test.latestStatus, false)} tone={getStatusTone(props.test.latestStatus, false)} /></td>
-        </tr>
     )
 }
 

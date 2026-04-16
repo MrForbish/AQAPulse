@@ -3,7 +3,8 @@
  */
 import React from 'react'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { readBootstrapFromDocument, RuntimeProvider, useRuntime } from './runtime'
+import { readBootstrapFromDocument, RuntimeProvider } from './runtime'
+import { useIsStaticDashboardRuntime } from './runtime-hooks'
 import { FrontendErrorBoundary } from './shared/error-boundary'
 import { FramedLoadingState } from './shared/route-states'
 
@@ -48,9 +49,9 @@ export function App(): React.JSX.Element {
  * Static export живёт на HashRouter, а server/self-hosted сценарии — на BrowserRouter, поэтому разветвление по `route.kind` централизовано здесь, а не размазано по feature-модулям.
  */
 function AppBody(): React.JSX.Element {
-    const runtime = useRuntime()
+    const isStaticMode = useIsStaticDashboardRuntime()
 
-    if (runtime.route.kind === 'static-dashboard') {
+    if (isStaticMode) {
         return (
             <HashRouter>
                 <FrontendErrorBoundary>

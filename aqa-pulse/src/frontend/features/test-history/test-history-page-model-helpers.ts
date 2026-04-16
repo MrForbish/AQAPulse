@@ -1,5 +1,4 @@
 import type { TestHistoryConflict, TestHistoryResponse } from '../../../api-store'
-import type { FrontendBootstrapData } from '../../../frontend-bootstrap'
 import {
     buildArtifactBaseUrl,
     buildDashboardHref,
@@ -7,11 +6,6 @@ import {
     readFiltersFromSearchParams,
     type FrontendFilters,
 } from '../../runtime'
-
-export interface TestHistoryRuntimeBootstrapState {
-    isStaticMode: boolean
-    initialPayload: TestHistoryResponse | TestHistoryConflict | null
-}
 
 export interface TestHistoryDataRequestPreparation {
     filters: FrontendFilters
@@ -25,24 +19,6 @@ export interface TestHistoryDataRequestPreparation {
         project?: string | null
         file?: string | null
         requestedTitle: string
-    }
-}
-
-export function resolveTestHistoryRuntimeBootstrap(props: {
-    runtime: FrontendBootstrapData
-    workspaceSlug: string | null
-    requestedTitle: string
-    currentRequestUrl: string
-}): TestHistoryRuntimeBootstrapState {
-    const isStaticMode = props.runtime.route.kind === 'static-dashboard'
-    const bootstrapMatches = props.runtime.route.kind === 'test-history'
-        && props.runtime.route.workspaceSlug === props.workspaceSlug
-        && props.runtime.route.testName === props.requestedTitle
-        && props.runtime.initialRequestUrl === props.currentRequestUrl
-
-    return {
-        isStaticMode,
-        initialPayload: bootstrapMatches ? props.runtime.initialTestHistoryPayload : null,
     }
 }
 

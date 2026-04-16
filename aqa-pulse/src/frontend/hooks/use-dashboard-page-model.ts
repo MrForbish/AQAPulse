@@ -1,10 +1,8 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useDashboardSummaryData } from './use-dashboard-summary'
-import { readFiltersFromSearchParams, useRuntime } from '../runtime'
-import {
-    prepareDashboardSummaryRequest,
-    resolveDashboardRuntimeBootstrap,
-} from '../features/dashboard/dashboard-page-model-helpers'
+import { readFiltersFromSearchParams } from '../runtime'
+import { useDashboardRuntimeBootstrapState } from '../runtime-hooks'
+import { prepareDashboardSummaryRequest } from '../features/dashboard/dashboard-page-model-helpers'
 
 export function useDashboardPageModel(workspaceSlug: string | null): {
     activeTab: ReturnType<typeof prepareDashboardSummaryRequest>['activeTab']
@@ -18,7 +16,6 @@ export function useDashboardPageModel(workspaceSlug: string | null): {
     isLoading: boolean
     errorMessage: string | null
 } {
-    const runtime = useRuntime()
     const location = useLocation()
     const [searchParams, setSearchParams] = useSearchParams()
     const currentRequestUrl = `${location.pathname}${location.search}`
@@ -27,11 +24,7 @@ export function useDashboardPageModel(workspaceSlug: string | null): {
         searchParams,
         currentRequestUrl,
     })
-    const bootstrapState = resolveDashboardRuntimeBootstrap({
-        runtime,
-        workspaceSlug,
-        currentRequestUrl,
-    })
+    const bootstrapState = useDashboardRuntimeBootstrapState(workspaceSlug, currentRequestUrl)
     const { summary, isLoading, errorMessage } = useDashboardSummaryData({
         ...requestPreparation.summaryDataRequest,
         initialSummary: bootstrapState.initialSummary,

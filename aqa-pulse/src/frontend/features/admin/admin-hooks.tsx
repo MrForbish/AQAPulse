@@ -22,7 +22,7 @@ import {
     readWorkspaceSessionStatus,
     type WorkspaceApiKeyExchangeResponse,
 } from './admin-api'
-import { useRuntime } from '../../runtime'
+import { useAdminBootstrapSession, useWorkspaceBootstrapSession } from '../../runtime-hooks'
 
 export interface DashboardActionResult {
     title: string
@@ -34,9 +34,8 @@ export interface DashboardActionResult {
  * Redirect hook сначала использует bootstrap session, чтобы не делать лишний HTTP roundtrip после server-rendered shell, и только затем падает обратно на session endpoint.
  */
 export function useAdminLoginRedirect(): { isCheckingSession: boolean } {
-    const runtime = useRuntime()
     const navigate = useNavigate()
-    const bootstrapSession = runtime.initialSessionStatus?.scope === 'admin' ? runtime.initialSessionStatus : null
+    const bootstrapSession = useAdminBootstrapSession()
     const [isCheckingSession, setIsCheckingSession] = React.useState(bootstrapSession === null)
 
     React.useEffect(() => {
@@ -82,11 +81,8 @@ export function useAdminLoginRedirect(): { isCheckingSession: boolean } {
  * Workspace redirect зависит от slug, поэтому bootstrap session принимается только если она действительно относится к текущему workspace route.
  */
 export function useWorkspaceLoginRedirect(workspaceSlug: string): { isCheckingSession: boolean } {
-    const runtime = useRuntime()
     const navigate = useNavigate()
-    const bootstrapSession = runtime.initialSessionStatus?.scope === 'workspace' && runtime.initialSessionStatus.workspaceSlug === workspaceSlug
-        ? runtime.initialSessionStatus
-        : null
+    const bootstrapSession = useWorkspaceBootstrapSession(workspaceSlug)
     const [isCheckingSession, setIsCheckingSession] = React.useState(bootstrapSession === null)
 
     React.useEffect(() => {

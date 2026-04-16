@@ -7,6 +7,7 @@ import type { TestHistoryConflict, TestHistoryResponse } from '../../api-store'
 import { buildWorkspaceLoginHref } from '../shared/navigation'
 import { HttpError, isUnauthorizedError, readErrorMessage, readPayloadErrorMessage, requestJsonResponse } from '../shared/http'
 import { loadStaticTestHistoryPayload } from '../shared/static-test-history'
+import { hasResolvedRequestUrl, resolveInitialLoadedRequestUrl } from './request-state-helpers'
 
 /**
  * Хук хранит `loadedRequestUrl`, чтобы bootstrap payload использовался ровно для того URL, с которым был отрендерен shell, и не подмешивался в следующий client-side переход.
@@ -28,7 +29,7 @@ export function useTestHistoryData(props: {
 } {
     const navigate = useNavigate()
     const [payload, setPayload] = React.useState<TestHistoryResponse | TestHistoryConflict | null>(() => props.initialPayload)
-    const [loadedRequestUrl, setLoadedRequestUrl] = React.useState<string | null>(() => props.initialPayload ? props.currentRequestUrl : null)
+    const [loadedRequestUrl, setLoadedRequestUrl] = React.useState<string | null>(() => resolveInitialLoadedRequestUrl(props.initialPayload, props.currentRequestUrl))
     const [isLoading, setIsLoading] = React.useState<boolean>(() => !props.initialPayload)
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
@@ -36,7 +37,7 @@ export function useTestHistoryData(props: {
      * В static mode идёт resolve из local index, а в server mode — обычный JSON fetch; обе ветки сходятся к одному payload shape, чтобы страница не дублировала transport-логику.
      */
     React.useEffect(() => {
-        if (loadedRequestUrl === props.currentRequestUrl) {
+        if (hasResolvedRequestUrl(loadedRequestUrl, props.currentRequestUrl)) {
             return undefined
         }
 
@@ -44,60 +45,13 @@ export function useTestHistoryData(props: {
         setIsLoading(true)
         setErrorMessage(null)
 
-        if (props.isStaticMode) {
-            void loadStaticTestHistoryPayload({
-                title: props.requestedTitle,
-                branch: props.branch,
-                project: props.project,
-                file: props.file,
-            })
-                .then((staticPayload) => {
-                    if (abortController.signal.aborted) {
-                        return
-                    }
-
-                    setPayload(staticPayload)
-                    setLoadedRequestUrl(props.currentRequestUrl)
-                })
-                .catch((error: unknown) => {
-                    if (!abortController.signal.aborted) {
-                        setErrorMessage(readErrorMessage(error, 'История теста временно недоступна.'))
-                    }
-                })
-                .finally(() => {
-                    if (!abortController.signal.aborted) {
-                        setIsLoading(false)
-                    }
-                })
-
-            return () => {
-                abortController.abort()
-            }
-        }
-
-        void requestJsonResponse(props.apiUrl, { signal: abortController.signal })
-            .then(({ response, payload: jsonPayload }) => {
-                if (response.status === 401 || response.status === 403) {
-                    throw new HttpError(response.status, readPayloadErrorMessage(jsonPayload, response.status), jsonPayload)
-                }
-
-                if (response.status === 404) {
-                    setPayload(null)
-                    setLoadedRequestUrl(props.currentRequestUrl)
+        void loadTestHistoryPayloadForRequest(props, abortController.signal)
+            .then((nextPayload) => {
+                if (abortController.signal.aborted) {
                     return
                 }
 
-                if (response.status === 409) {
-                    setPayload(jsonPayload as TestHistoryConflict)
-                    setLoadedRequestUrl(props.currentRequestUrl)
-                    return
-                }
-
-                if (!response.ok) {
-                    throw new Error(readPayloadErrorMessage(jsonPayload, response.status))
-                }
-
-                setPayload(jsonPayload as TestHistoryResponse)
+                setPayload(nextPayload)
                 setLoadedRequestUrl(props.currentRequestUrl)
             })
             .catch((error: unknown) => {
@@ -124,4 +78,42 @@ export function useTestHistoryData(props: {
     }, [loadedRequestUrl, navigate, props.apiUrl, props.branch, props.currentRequestUrl, props.file, props.isStaticMode, props.project, props.requestedTitle, props.workspaceSlug])
 
     return { payload, isLoading, errorMessage }
+}
+
+async function loadTestHistoryPayloadForRequest(props: {
+    apiUrl: string
+    isStaticMode: boolean
+    branch?: string | null
+    project?: string | null
+    file?: string | null
+    requestedTitle: string
+}, signal: AbortSignal): Promise<TestHistoryResponse | TestHistoryConflict | null> {
+    if (props.isStaticMode) {
+        return loadStaticTestHistoryPayload({
+            title: props.requestedTitle,
+            branch: props.branch,
+            project: props.project,
+            file: props.file,
+        })
+    }
+
+    const { response, payload } = await requestJsonResponse(props.apiUrl, { signal })
+
+    if (response.status === 401 || response.status === 403) {
+        throw new HttpError(response.status, readPayloadErrorMessage(payload, response.status), payload)
+    }
+
+    if (response.status === 404) {
+        return null
+    }
+
+    if (response.status === 409) {
+        return payload as TestHistoryConflict
+    }
+
+    if (!response.ok) {
+        throw new Error(readPayloadErrorMessage(payload, response.status))
+    }
+
+    return payload as TestHistoryResponse
 }

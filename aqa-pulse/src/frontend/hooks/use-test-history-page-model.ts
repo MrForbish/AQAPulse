@@ -1,10 +1,8 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTestHistoryData } from './use-test-history'
-import { readFiltersFromSearchParams, useRuntime } from '../runtime'
-import {
-    prepareTestHistoryDataRequest,
-    resolveTestHistoryRuntimeBootstrap,
-} from '../features/test-history/test-history-page-model-helpers'
+import { readFiltersFromSearchParams } from '../runtime'
+import { useTestHistoryRuntimeBootstrapState } from '../runtime-hooks'
+import { prepareTestHistoryDataRequest } from '../features/test-history/test-history-page-model-helpers'
 
 export function useTestHistoryPageModel(workspaceSlug: string | null, requestedTitle: string): {
     filters: ReturnType<typeof readFiltersFromSearchParams>
@@ -16,7 +14,6 @@ export function useTestHistoryPageModel(workspaceSlug: string | null, requestedT
     isLoading: boolean
     errorMessage: string | null
 } {
-    const runtime = useRuntime()
     const location = useLocation()
     const [searchParams] = useSearchParams()
     const currentRequestUrl = `${location.pathname}${location.search}`
@@ -26,12 +23,7 @@ export function useTestHistoryPageModel(workspaceSlug: string | null, requestedT
         searchParams,
         currentRequestUrl,
     })
-    const bootstrapState = resolveTestHistoryRuntimeBootstrap({
-        runtime,
-        workspaceSlug,
-        requestedTitle,
-        currentRequestUrl,
-    })
+    const bootstrapState = useTestHistoryRuntimeBootstrapState(workspaceSlug, requestedTitle, currentRequestUrl)
     const { payload, isLoading, errorMessage } = useTestHistoryData({
         ...requestPreparation.testHistoryDataRequest,
         initialPayload: bootstrapState.initialPayload,

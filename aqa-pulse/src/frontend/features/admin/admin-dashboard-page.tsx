@@ -2,7 +2,7 @@
  * Назначение: admin React-страница для provisioning workspace, API keys и workspace users в едином shell.
  */
 import React from 'react'
-import { useRuntime } from '../../runtime'
+import { useInitialAdminWorkspaces } from '../../runtime-hooks'
 import { ErrorView, PageFrame } from '../../shared/ui'
 import { useAdminDashboardState } from './admin-hooks'
 import {
@@ -16,7 +16,7 @@ import {
  * Dashboard reuses bootstrap-loaded workspaces when они уже встроены в HTML shell, но сохраняет живые CRUD-action handlers как отдельный hook-слой.
  */
 export function AdminDashboardPage(): React.JSX.Element {
-    const runtime = useRuntime()
+    const initialWorkspaces = useInitialAdminWorkspaces()
     const {
         workspaces,
         isLoading,
@@ -27,7 +27,7 @@ export function AdminDashboardPage(): React.JSX.Element {
         createApiKey,
         createUser,
         logout,
-    } = useAdminDashboardState(runtime.initialAdminWorkspaces)
+    } = useAdminDashboardState(initialWorkspaces)
 
     return (
         <PageFrame>

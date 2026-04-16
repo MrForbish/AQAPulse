@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import type { DashboardSummary } from '../../dashboard-utils'
 import { buildWorkspaceLoginHref } from '../shared/navigation'
 import { isUnauthorizedError, readErrorMessage, requestJson } from '../shared/http'
+import { hasResolvedRequestUrl, resolveInitialLoadedRequestUrl } from './request-state-helpers'
 
 /**
  * Static export не делает runtime fetch summary, а server/workspace маршруты могут переходить между фильтрами и slug, поэтому хук отдельно отслеживает, к какому URL уже привязаны текущие данные.
@@ -23,7 +24,7 @@ export function useDashboardSummaryData(props: {
 } {
     const navigate = useNavigate()
     const [summary, setSummary] = React.useState<DashboardSummary | null>(() => props.initialSummary)
-    const [loadedRequestUrl, setLoadedRequestUrl] = React.useState<string | null>(() => props.initialSummary ? props.currentRequestUrl : null)
+    const [loadedRequestUrl, setLoadedRequestUrl] = React.useState<string | null>(() => resolveInitialLoadedRequestUrl(props.initialSummary, props.currentRequestUrl))
     const [isLoading, setIsLoading] = React.useState<boolean>(() => !props.initialSummary && !props.isStaticMode)
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
@@ -32,7 +33,7 @@ export function useDashboardSummaryData(props: {
             return undefined
         }
 
-        if (loadedRequestUrl === props.currentRequestUrl && summary) {
+        if (hasResolvedRequestUrl(loadedRequestUrl, props.currentRequestUrl) && summary) {
             return undefined
         }
 
@@ -40,7 +41,7 @@ export function useDashboardSummaryData(props: {
         setIsLoading(true)
         setErrorMessage(null)
 
-        void requestJson<DashboardSummary>(props.apiUrl, { signal: abortController.signal })
+        void loadDashboardSummaryForRequest(props.apiUrl, abortController.signal)
             .then((payload) => {
                 setSummary(payload)
                 setLoadedRequestUrl(props.currentRequestUrl)
@@ -69,4 +70,8 @@ export function useDashboardSummaryData(props: {
     }, [loadedRequestUrl, navigate, props.apiUrl, props.currentRequestUrl, props.isStaticMode, props.workspaceSlug, summary])
 
     return { summary, isLoading, errorMessage }
+}
+
+function loadDashboardSummaryForRequest(apiUrl: string, signal: AbortSignal): Promise<DashboardSummary> {
+    return requestJson<DashboardSummary>(apiUrl, { signal })
 }

@@ -4,7 +4,7 @@ import { PageFrame } from '../../shared/ui'
 import { DashboardFiltersSection, DashboardHeroSection, DashboardMetricsSection, DashboardRuntimeNotices } from './dashboard-shell-sections'
 import { type DashboardTabId, DashboardTabsSection } from './dashboard-tab-content'
 
-export function DashboardPageContent(props: {
+export interface DashboardPageContentProps {
     workspaceSlug: string | null
     summary: DashboardSummary
     activeTab: DashboardTabId
@@ -19,7 +19,9 @@ export function DashboardPageContent(props: {
     onFileChange: (value: string) => void
     onReset: () => void
     onTabChange: (value: string) => void
-}): React.JSX.Element {
+}
+
+export function DashboardPageContent(props: DashboardPageContentProps): React.JSX.Element {
     return (
         <PageFrame>
             <DashboardHeroSection summary={props.summary} workspaceSlug={props.workspaceSlug} isStaticMode={props.isStaticMode} />

@@ -138,18 +138,13 @@ flowchart TD
         BST --> SQL[(sqlite storage)]
         BST --> PG[(postgres storage)]
 
-        APP --> ADMIN[admin-ui.ts\nadmin HTML/forms]
+        APP --> ADMIN[React auth/admin routes\nsendFrontendShell]
         APP --> ING[run-ingestion.service.ts]
         APP --> APISTORE[api-store.ts]
-        APP --> RDD[render-dashboard.ts]
-        APP --> RTH[render-test-history.ts]
+        APP --> SHELL[frontend-bootstrap.ts\ninjectFrontendBootstrap]
 
         APISTORE --> HIST[history-utils.ts]
         APISTORE --> DU[dashboard-utils.ts]
-        RDD --> FMT[shared/formatting.ts]
-        RDD --> I18N[shared/i18n/ru.ts]
-        RTH --> FMT
-        RTH --> I18N
 
         classDef runtime fill:#238636,stroke:#56d364,color:#ffffff,stroke-width:2px;
         classDef data fill:#8957e5,stroke:#b392f0,color:#ffffff,stroke-width:2px;
@@ -158,8 +153,8 @@ flowchart TD
 
         class START,CFG,BST,REG,APP runtime;
         class FS,SQL,PG data;
-        class ADMIN,RDD,RTH,I18N ui;
-        class AG,APISTORE,HIST,DU,FMT,ING util;
+        class ADMIN,SHELL ui;
+        class AG,APISTORE,HIST,DU,ING util;
         linkStyle default stroke:#8b949e,stroke-width:2px;
 ```
 
@@ -309,12 +304,12 @@ flowchart LR
         API2 --> DUTIL
         API2 --> INCIDENT[api-store incident summary\nroot cause heuristics]
 
-        DUTIL --> DASHHTML[render-dashboard.ts]
-        INCIDENT --> TESTHTML[render-test-history.ts]
+        API1 --> DASHHTML[sendFrontendShell\ndashboard bootstrap]
+        INCIDENT --> TESTHTML[sendFrontendShell\ntest-history bootstrap]
         API2 --> TESTHTML
 
-        DASHHTML --> RESPONSE1[SSR HTML]
-        TESTHTML --> RESPONSE2[SSR HTML]
+        DASHHTML --> RESPONSE1[React HTML shell + bootstrap]
+        TESTHTML --> RESPONSE2[React HTML shell + bootstrap]
         RESPONSE1 --> BROWSER
         RESPONSE2 --> BROWSER
 
@@ -406,19 +401,14 @@ flowchart TD
         API[api-store.ts] --> DU
         API --> HIST
 
-        RD[render-dashboard.ts] --> DU
-        RD --> FMT
-        RD --> I18N[shared/i18n/ru.ts]
-        RD --> METRICINFO[render-metric-info.ts]
-
-        RTH[render-test-history.ts] --> API
-        RTH --> FMT
-        RTH --> I18N
-        RTH --> METRICINFO
+        SHELL[frontend-bootstrap.ts] --> DU
+        FRONTEND[frontend/app.tsx + features/*] --> API
+        FRONTEND --> FMT
+        FRONTEND --> I18N[shared/i18n/ru.ts]
+        FRONTEND --> METRICINFO[render-metric-info.ts]
 
         APP[backend/app.ts] --> API
-        APP --> RD
-        APP --> RTH
+        APP --> SHELL
         APP --> AUTH[backend/auth.ts]
         APP --> REG[backend/workspace-registry.ts]
 
@@ -429,7 +419,7 @@ flowchart TD
 
         class APP runtime;
         class AUTH auth;
-        class RD,RTH,I18N,METRICINFO ui;
+        class SHELL,FRONTEND,I18N,METRICINFO ui;
         class DU,FMT,HIST,API,REG util;
         linkStyle default stroke:#8b949e,stroke-width:2px;
 ```
@@ -545,9 +535,8 @@ sequenceDiagram
         participant REG as WorkspaceRegistry
         participant DASH as /w/:slug
         participant API as ApiStore
-        participant RDD as render-dashboard.ts
+        participant SHELL as sendFrontendShell + bootstrap
         participant TEST as /w/:slug/test/:name
-        participant RTH as render-test-history.ts
         participant ST as Workspace storage
 
         U->>LOGIN: GET /w/:slug/login
@@ -562,15 +551,15 @@ sequenceDiagram
         DASH->>API: getFilteredSummary(...)
         API->>ST: read summary/history/archive as needed
         ST-->>API: workspace data
-        API-->>RDD: normalized summary model
-        RDD-->>DASH: SSR dashboard HTML
+        DASH->>SHELL: inject dashboard route + summary bootstrap
+        SHELL-->>DASH: React HTML shell + bootstrap
         DASH-->>U: dashboard page
 
         U->>TEST: GET /w/:slug/test/:name
         TEST->>API: getTestHistory(...)
         API->>ST: read history + archived run data
         ST-->>API: matching test history + attempts + attachments
-        API-->>RTH: incident summary + diagnostics model
-        RTH-->>TEST: SSR test history HTML
+        TEST->>SHELL: inject test-history route + payload bootstrap
+        SHELL-->>TEST: React HTML shell + bootstrap
         TEST-->>U: test history page
 ```

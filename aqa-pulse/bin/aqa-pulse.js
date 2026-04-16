@@ -6,7 +6,7 @@ const [, , command, ...restArgs] = process.argv
 
 const commandMap = {
     parse: '../dist-ts/parser.js',
-    build: '../dist-ts/build-dashboard.js',
+    build: '../dist-ts/build-static-shell.js',
     api: '../dist-ts/server.js',
 }
 
@@ -29,7 +29,7 @@ function printHelp() {
     console.log('')
     console.log('Команды:')
     console.log('  aqa-pulse parse <input.json> <dashboard-data.json> [history.json] [archiveDir] [--branch <name>] [--commit <sha>] [--author <name>]')
-    console.log('  aqa-pulse build <dashboard-data.json> <index.html>')
+    console.log('  aqa-pulse build <dashboard-data.json> <index.html>   # React static shell')
     console.log('  aqa-pulse api')
     console.log('')
     console.log('Подсказка: aqa-pulse <command> --help')
@@ -43,6 +43,7 @@ function printCommandHelp(commandName) {
 
     if (commandName === 'build') {
         console.log('aqa-pulse build <dashboard-data.json> <index.html>')
+        console.log('Собирает React static shell и offline test-history index.')
         return
     }
 

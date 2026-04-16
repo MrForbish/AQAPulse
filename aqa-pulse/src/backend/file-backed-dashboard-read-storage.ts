@@ -19,7 +19,7 @@ export interface FileBackedDashboardReadStoragePaths {
 }
 
 /**
- * Нужен отдельным модулем, чтобы SQLite/Postgres backend не дублировали один и тот же file-based read helper и одинаково читали legacy/default dashboard artifacts.
+ * Нужен отдельным модулем, чтобы SQLite/Postgres backend не дублировали один и тот же file-based read helper и одинаково читали static/default dashboard artifacts.
  */
 export class FileBackedDashboardReadStorage implements DashboardReadStorage {
     private readonly summaryPath: string

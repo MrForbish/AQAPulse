@@ -36,7 +36,7 @@ try {
 	fs.writeFileSync(staticTestHistoryIndexPath, `${JSON.stringify(testHistoryIndex, null, 2)}\n`, 'utf8')
 	writeTextFile(outputPath, html)
 
-	console.log('React dashboard shell собран.')
+	console.log('React static shell собран.')
 	console.log(`Источник: ${inputPath}`)
 	console.log(`HTML shell: ${outputPath}`)
 	console.log(`Frontend template: ${frontendTemplatePath}`)
@@ -44,7 +44,7 @@ try {
 	console.log(`Static test history index: ${staticTestHistoryIndexPath}`)
 } catch (error) {
 	const errorMessage = error instanceof Error ? error.message : String(error)
-	console.error(`Ошибка генерации React dashboard shell: ${errorMessage}`)
+	console.error(`Ошибка генерации React static shell: ${errorMessage}`)
 	process.exitCode = 1
 }
 
@@ -248,6 +248,3 @@ function rewriteStaticFrontendAssetContent(filePath: string, fileContents: strin
 function rewriteStaticFrontendTemplate(templateHtml: string): string {
 	return templateHtml.split('/ui-assets/').join('./static-web/')
 }
-
-
-

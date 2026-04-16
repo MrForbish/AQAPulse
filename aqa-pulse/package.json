@@ -61,7 +61,7 @@
   ],
   "scripts": {
     "parse": "ts-node src/parser.ts",
-    "build": "npm run frontend:build && ts-node src/build-dashboard.ts",
+    "build": "npm run frontend:build && ts-node src/build-static-shell.ts",
     "api": "ts-node src/server.ts",
     "api:demo": "npm run generate:history-demo && npm run api",
     "saas:demo": "ts-node src/backend/bootstrap-demo.ts",

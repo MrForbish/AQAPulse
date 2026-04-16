@@ -34,8 +34,8 @@ export function OverviewTab(props: { summary: DashboardSummary; workspaceSlug: s
     return (
         <div className="page-grid">
             <ManagerOverviewPanel summary={props.summary} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.passRateTrend} type="line" data={buildLineChart(props.summary.charts.passRateTrend.labels, props.summary.charts.passRateTrend.values, '#0f766e')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.statusDistribution} type="doughnut" data={buildDoughnutChart(props.summary.charts.statusDistribution.labels, props.summary.charts.statusDistribution.values)} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.passRateTrend} titleMetricKey="passRateTrend" titleTooltip={DASHBOARD_TEXT.tooltips.passRateTrend} type="line" data={buildLineChart(props.summary.charts.passRateTrend.labels, props.summary.charts.passRateTrend.values, '#0f766e')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.statusDistribution} titleMetricKey="statusDistribution" titleTooltip={DASHBOARD_TEXT.tooltips.statusDistribution} type="doughnut" data={buildDoughnutChart(props.summary.charts.statusDistribution.labels, props.summary.charts.statusDistribution.values)} />
             <CurrentRunTestsBrowser summary={props.summary} workspaceSlug={props.workspaceSlug} />
             <RecentRunsPanel summary={props.summary} />
         </div>
@@ -49,26 +49,26 @@ export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug
 
     return (
         <div className="page-grid">
-            <MetricCard label={DASHBOARD_TEXT.metrics.p95Duration} value={formatDuration(props.summary.performance.p95DurationMs)} hint="95% тестов укладываются в это значение или быстрее" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.p99Duration} value={formatDuration(props.summary.performance.p99DurationMs)} hint="Хвост самых долгих 1% тестов текущего среза" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.leadingPhase} value={leadingPhase ? formatPerformancePhaseLabel(leadingPhase.label) : '—'} hint={leadingPhase ? `${formatPercent(leadingPhase.sharePercent)} от длительности прогона` : 'Нет данных по фазам'} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.durationPerBrowser} value={topBrowser?.label ?? '—'} hint={topBrowser ? `${formatDuration(topBrowser.durationMs)} • ${topBrowser.tests} тестов` : 'Нет данных по браузерам / проектам'} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.suiteDuration} value={topSuite?.label ?? '—'} hint={topSuite ? `${formatDuration(topSuite.durationMs)} • ${topSuite.tests} тестов` : 'Нет данных по наборам'} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.durationTrend} value={formatDuration(props.summary.performance.durationTrend.currentDurationMs)} tone={props.summary.performance.durationTrend.deltaPercent !== null && props.summary.performance.durationTrend.deltaPercent > 0 ? 'warn' : 'good'} hint={formatDurationDelta(props.summary.performance.durationTrend.deltaPercent)} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.p95Duration} labelMetricKey="p95Duration" labelTooltip={DASHBOARD_TEXT.tooltips.p95Duration} value={formatDuration(props.summary.performance.p95DurationMs)} hint="95% тестов укладываются в это значение или быстрее" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.p99Duration} labelMetricKey="p99Duration" labelTooltip={DASHBOARD_TEXT.tooltips.p99Duration} value={formatDuration(props.summary.performance.p99DurationMs)} hint="Хвост самых долгих 1% тестов текущего среза" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.leadingPhase} labelMetricKey="leadingPhase" labelTooltip={DASHBOARD_TEXT.tooltips.phaseBreakdown} value={leadingPhase ? formatPerformancePhaseLabel(leadingPhase.label) : '—'} hint={leadingPhase ? `${formatPercent(leadingPhase.sharePercent)} от длительности прогона` : 'Нет данных по фазам'} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.durationPerBrowser} labelMetricKey="durationPerBrowser" labelTooltip={DASHBOARD_TEXT.tooltips.durationPerBrowser} value={topBrowser?.label ?? '—'} hint={topBrowser ? `${formatDuration(topBrowser.durationMs)} • ${topBrowser.tests} тестов` : 'Нет данных по браузерам / проектам'} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.suiteDuration} labelMetricKey="suiteDuration" labelTooltip={DASHBOARD_TEXT.tooltips.suiteDuration} value={topSuite?.label ?? '—'} hint={topSuite ? `${formatDuration(topSuite.durationMs)} • ${topSuite.tests} тестов` : 'Нет данных по наборам'} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.durationTrend} labelMetricKey="durationTrend" labelTooltip={DASHBOARD_TEXT.tooltips.durationTrend} value={formatDuration(props.summary.performance.durationTrend.currentDurationMs)} tone={props.summary.performance.durationTrend.deltaPercent !== null && props.summary.performance.durationTrend.deltaPercent > 0 ? 'warn' : 'good'} hint={formatDurationDelta(props.summary.performance.durationTrend.deltaPercent)} />
 
-            <ChartCard title={DASHBOARD_TEXT.metrics.durationTrend} description={DASHBOARD_TEXT.tooltips.durationTrend} type="line" data={buildLineChart(props.summary.charts.durationTrend.labels, props.summary.charts.durationTrend.values, '#1d4ed8')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.topSlowestTests} description={DASHBOARD_TEXT.tooltips.topSlowestTests} type="bar" data={buildBarChart(props.summary.charts.slowestTests.labels, props.summary.charts.slowestTests.values, '#f97316')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription} type="bar" data={buildBarChart(props.summary.performance.phaseBreakdown.map((item) => formatPerformancePhaseLabel(item.label)), props.summary.performance.phaseBreakdown.map((item) => roundOne(item.sharePercent)), '#f59e0b')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription} type="bar" data={buildBarChart(props.summary.performance.suiteDuration.map((item) => item.label), props.summary.performance.suiteDuration.map((item) => roundOne(item.durationMs / 60000)), '#22c55e')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.durationTrend} titleMetricKey="durationTrend" titleTooltip={DASHBOARD_TEXT.tooltips.durationTrend} description={DASHBOARD_TEXT.tooltips.durationTrend} type="line" data={buildLineChart(props.summary.charts.durationTrend.labels, props.summary.charts.durationTrend.values, '#1d4ed8')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.topSlowestTests} titleMetricKey="topSlowestTests" titleTooltip={DASHBOARD_TEXT.tooltips.topSlowestTests} description={DASHBOARD_TEXT.tooltips.topSlowestTests} type="bar" data={buildBarChart(props.summary.charts.slowestTests.labels, props.summary.charts.slowestTests.values, '#f97316')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.phaseBreakdown} titleMetricKey="phaseBreakdown" titleTooltip={DASHBOARD_TEXT.tooltips.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription} type="bar" data={buildBarChart(props.summary.performance.phaseBreakdown.map((item) => formatPerformancePhaseLabel(item.label)), props.summary.performance.phaseBreakdown.map((item) => roundOne(item.sharePercent)), '#f59e0b')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.suiteDuration} titleMetricKey="suiteDuration" titleTooltip={DASHBOARD_TEXT.tooltips.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription} type="bar" data={buildBarChart(props.summary.performance.suiteDuration.map((item) => item.label), props.summary.performance.suiteDuration.map((item) => roundOne(item.durationMs / 60000)), '#22c55e')} />
 
-            <Panel title={DASHBOARD_TEXT.performance.runtimeBreakdownTitle} description={DASHBOARD_TEXT.performance.durationPerBrowserDescription}>
+            <Panel title={DASHBOARD_TEXT.performance.runtimeBreakdownTitle} titleMetricKey="durationPerBrowser" titleTooltip={DASHBOARD_TEXT.tooltips.durationPerBrowser} description={DASHBOARD_TEXT.performance.durationPerBrowserDescription}>
                 <BreakdownTable labelColumn={DASHBOARD_TEXT.filters.project} items={props.summary.performance.durationPerBrowser} emptyMessage={DASHBOARD_TEXT.states.performanceBreakdownEmpty} />
             </Panel>
-            <Panel title={DASHBOARD_TEXT.metrics.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription}>
+            <Panel title={DASHBOARD_TEXT.metrics.suiteDuration} titleMetricKey="suiteDuration" titleTooltip={DASHBOARD_TEXT.tooltips.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription}>
                 <BreakdownTable labelColumn={DASHBOARD_TEXT.tables.group} items={props.summary.performance.suiteDuration} emptyMessage={DASHBOARD_TEXT.states.performanceBreakdownEmpty} />
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.topSlowestTestsP1} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.topSlowestTestsP1} titleMetricKey="topSlowestTestsP1" titleTooltip={DASHBOARD_TEXT.tooltips.topSlowestTests} className="span-2">
                 {props.summary.performance.slowestTests.length > 0 ? (
                     <div className="table-wrap compact-top">
                         <table>
@@ -109,15 +109,15 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
 
     return (
         <div className="page-grid">
-            <MetricCard label={DASHBOARD_TEXT.metrics.flakyScore} value={props.summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(props.summary.flakyAnalytics.averageFlakyScore)} tone={props.summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getScoreTone(props.summary.flakyAnalytics.averageFlakyScore)} />
-            <MetricCard label="Average MTBF" value={props.summary.flakyAnalytics.averageMtbfDays === null ? '—' : `${props.summary.flakyAnalytics.averageMtbfDays.toFixed(2)} дн`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.flakyScore} labelMetricKey="flakyScore" labelTooltip={DASHBOARD_TEXT.tooltips.flakyScore} value={props.summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(props.summary.flakyAnalytics.averageFlakyScore)} tone={props.summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getScoreTone(props.summary.flakyAnalytics.averageFlakyScore)} />
+            <MetricCard label="Average MTBF" labelMetricKey="mtbf" labelTooltip={DASHBOARD_TEXT.tooltips.mtbf} value={props.summary.flakyAnalytics.averageMtbfDays === null ? '—' : `${props.summary.flakyAnalytics.averageMtbfDays.toFixed(2)} дн`} />
             <MetricCard label="First Flake to Fix" value={props.summary.flakyAnalytics.firstFlakeToFix ? `${props.summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} />
             <MetricCard label="Исторических flaky" value={String(props.summary.flakyAnalytics.topFlakyTests.length)} hint={formatDelta(props.summary.flakyAnalytics.flakyTrend.delta, 'к прошлому прогону')} />
 
-            <ChartCard title={DASHBOARD_TEXT.metrics.flakyTrend} type="bar" data={buildBarChart(props.summary.charts.flakyTrend.labels, props.summary.charts.flakyTrend.values, '#d97706')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.clusterDistribution} type="bar" data={buildBarChart(props.summary.charts.errorClusters.labels, props.summary.charts.errorClusters.values, '#ef4444')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.flakyTrend} titleMetricKey="flakyTrend" titleTooltip={DASHBOARD_TEXT.tooltips.flakyTrend} type="bar" data={buildBarChart(props.summary.charts.flakyTrend.labels, props.summary.charts.flakyTrend.values, '#d97706')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.clusterDistribution} titleMetricKey="clusterDistribution" titleTooltip={DASHBOARD_TEXT.tooltips.clusterList} type="bar" data={buildBarChart(props.summary.charts.errorClusters.labels, props.summary.charts.errorClusters.values, '#ef4444')} />
 
-            <Panel title={DASHBOARD_TEXT.metrics.problematicTests} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.problematicTests} titleMetricKey="problematicTests" titleTooltip={DASHBOARD_TEXT.tooltips.problematicTests} className="span-2">
                 {props.summary.topProblematicTests.length > 0 ? (
                     <div className="table-wrap compact-top">
                         <table>
@@ -147,7 +147,7 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                 <div className="compact-top">{flakyInsight.body}</div>
             </div>
 
-            <Panel title={DASHBOARD_TEXT.metrics.topFlakyTests} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.topFlakyTests} titleMetricKey="topFlakyTests" titleTooltip={DASHBOARD_TEXT.tooltips.topFlakyTests} className="span-2">
                 {props.summary.flakyAnalytics.topFlakyTests.length > 0 ? (
                     <div className="table-wrap compact-top">
                         <table>
@@ -172,7 +172,7 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                 )}
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.errorClusters} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.errorClusters} titleMetricKey="errorClusters" titleTooltip={DASHBOARD_TEXT.tooltips.clusterList} className="span-2">
                 {props.summary.errorClusters.length > 0 ? (
                     <div className="table-wrap compact-top">
                         <table>
@@ -295,7 +295,7 @@ function RecentRunsPanel(props: { summary: DashboardSummary }): React.JSX.Elemen
     const previousRunLabel = props.summary.comparison.previousRun ? formatDate(props.summary.comparison.previousRun.reportTimestamp ?? props.summary.comparison.previousRun.generatedAt) : DASHBOARD_TEXT.states.noPreviousRunShort
 
     return (
-        <Panel title={DASHBOARD_TEXT.metrics.latestRuns} className="span-2">
+        <Panel title={DASHBOARD_TEXT.metrics.latestRuns} titleMetricKey="latestRuns" titleTooltip={DASHBOARD_TEXT.tooltips.recentRuns} className="span-2">
             <div className="summary-strip compact-top">
                 <SummaryStripItem label={DASHBOARD_TEXT.history.totalRuns} value={String(props.summary.history.totalRuns)} />
                 <SummaryStripItem label={DASHBOARD_TEXT.history.previousRun} value={previousRunLabel} />

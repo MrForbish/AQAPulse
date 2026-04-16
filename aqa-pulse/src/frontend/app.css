@@ -153,6 +153,77 @@ input {
     font-size: 13px;
 }
 
+.metric-heading-react {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.metric-icon-react {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    transform: translateY(-1px);
+}
+
+.metric-info-react {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.metric-info-button-react {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(133, 157, 194, 0.34);
+    background: rgba(15, 26, 47, 0.88);
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: help;
+}
+
+.metric-info-button-react:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+}
+
+.metric-tooltip-react {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    width: min(280px, 70vw);
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #08111f;
+    border: 1px solid rgba(133, 157, 194, 0.22);
+    color: #d7deeb;
+    font-size: 12px;
+    line-height: 1.45;
+    box-shadow: 0 10px 30px rgba(1, 4, 9, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+    white-space: normal;
+    text-align: left;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.metric-info-react:hover .metric-tooltip-react,
+.metric-info-react:focus-within .metric-tooltip-react {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
 .meta-badge,
 .meta-badge-row {
     display: flex;
@@ -313,6 +384,10 @@ input {
 .panel-header h2 {
     margin: 0 0 6px;
     font-size: 20px;
+}
+
+.panel-title-react {
+    color: var(--text-main);
 }
 
 .page-grid {

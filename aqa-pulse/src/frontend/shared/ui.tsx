@@ -2,6 +2,7 @@
  * Назначение: набор базовых frontend UI primitives для layout, state views и повторно используемых control-элементов.
  */
 import React from 'react'
+import { resolveMetricIcon } from '../../shared/metric-info'
 
 export interface PageFrameProps {
     children: React.ReactNode
@@ -14,6 +15,8 @@ export function PageFrame(props: PageFrameProps): React.JSX.Element {
 export interface PanelProps {
     title?: string
     description?: string
+    titleTooltip?: string
+    titleMetricKey?: string
     children: React.ReactNode
     className?: string
 }
@@ -23,7 +26,16 @@ export function Panel(props: PanelProps): React.JSX.Element {
         <section className={['panel', props.className].filter(Boolean).join(' ')}>
             {(props.title || props.description) ? (
                 <header className="panel-header">
-                    {props.title ? <h2>{props.title}</h2> : null}
+                    {props.title ? (
+                        <h2>
+                            <MetricHeading
+                                label={props.title}
+                                description={props.titleTooltip}
+                                metricKey={props.titleMetricKey}
+                                className="panel-title-react"
+                            />
+                        </h2>
+                    ) : null}
                     {props.description ? <p>{props.description}</p> : null}
                 </header>
             ) : null}
@@ -36,16 +48,50 @@ export interface MetricCardProps {
     label: string
     value: string
     hint?: string
+    labelTooltip?: string
+    labelMetricKey?: string
     tone?: 'default' | 'good' | 'warn' | 'danger'
 }
 
 export function MetricCard(props: MetricCardProps): React.JSX.Element {
     return (
         <article className={['metric-card', props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
-            <div className="metric-label">{props.label}</div>
+            <div className="metric-label">
+                <MetricHeading
+                    label={props.label}
+                    description={props.labelTooltip}
+                    metricKey={props.labelMetricKey}
+                    className="metric-label-heading-react"
+                />
+            </div>
             <div className="metric-value">{props.value}</div>
             {props.hint ? <div className="metric-hint">{props.hint}</div> : null}
         </article>
+    )
+}
+
+export interface MetricHeadingProps {
+    label: string
+    description?: string
+    metricKey?: string
+    className?: string
+}
+
+export function MetricHeading(props: MetricHeadingProps): React.JSX.Element {
+    const icon = resolveMetricIcon(props.metricKey, props.label)
+    const className = ['metric-heading-react', props.className].filter(Boolean).join(' ')
+
+    return (
+        <span className={className}>
+            {icon ? <span className="metric-icon-react" aria-hidden="true">{icon}</span> : null}
+            <span>{props.label}</span>
+            {props.description ? (
+                <span className="metric-info-react">
+                    <span className="metric-info-button-react" tabIndex={0} role="img" aria-label={`Описание метрики ${props.label}`}>i</span>
+                    <span className="metric-tooltip-react">{props.description}</span>
+                </span>
+            ) : null}
+        </span>
     )
 }
 

@@ -5,6 +5,7 @@ import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import { ru } from './shared/i18n/ru'
+import { TEST_HISTORY_METRIC_DESCRIPTIONS as METRIC_DESCRIPTIONS } from './shared/test-history-metric-info'
 import { escapeHtml } from './shared/text-utils'
 
 import {
@@ -59,24 +60,6 @@ import {
     getRunWord,
     formatTemplate
 } from './render-test-history-sections'
-
-const METRIC_DESCRIPTIONS = {
-    totalRuns: 'Количество сохранённых прогонов, в которых найден именно этот тест с учётом текущих фильтров.',
-    failedRuns: 'Количество прогонов, в которых тест завершился неуспешно: failed, timedout или interrupted.',
-    flakyRuns: 'Количество прогонов, где тест был отмечен как flaky: падал на одной из попыток, но в итоге завершился успешно.',
-    latestStatus: 'Финальный статус теста в самом свежем найденном прогоне.',
-    passRate: 'Доля прогонов этого теста со статусом passed среди всех найденных запусков.',
-    failRate: 'Доля прогонов этого теста с неуспешным результатом: failed, timedout или interrupted.',
-    flakyScore: 'Сводная оценка нестабильности теста на шкале 0–100 с учётом fail rate, паттерна нестабильности и MTBF.',
-    mtbf: 'Среднее время между нестабильными прогонами теста. Чем больше значение, тем реже тест становится нестабильным.',
-    timeline: 'Хронологическая история прогонов теста с ключевыми метаданными, длительностью, повторами и ошибками.',
-    archiveGaps: 'Список run id, для которых запись есть в history.json, но архив исходного data.json уже недоступен.',
-    latestEvent: 'Самый свежий нестабильный эпизод для теста: последнее падение с текстом ошибки или последний flaky-прогон, если более свежей ошибки нет.',
-    latestRecovery: 'Самый свежий стабильный прогон после нестабильной серии. Показывается только если после падения или flaky был зафиксирован чистый passed-run без flakiness.',
-    previousUnstableEvents: 'Несколько предыдущих нестабильных эпизодов до самого свежего нестабильного прогона. Полезно для быстрого просмотра паттерна проблем без прокрутки всей таблицы.',
-    currentStabilityStreak: 'Текущая серия подряд идущих стабильных прогонов от самого свежего запуска назад. Стабильным считается только passed-run без flakiness и без текста ошибки.',
-    unstableStreakBeforeRecovery: 'Длина нестабильной серии непосредственно перед последним стабильным восстановлением. Помогает понять, какой по глубине был проблемный период до восстановления.',
-} as const
 
 const HISTORY_TEXT = ru.testHistory
 

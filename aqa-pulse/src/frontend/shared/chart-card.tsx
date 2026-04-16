@@ -23,6 +23,8 @@ export interface FrontendChartData<TChartType extends FrontendChartType = Fronte
 export interface ChartCardProps {
     title: string
     description?: string
+    titleTooltip?: string
+    titleMetricKey?: string
     type: FrontendChartType
     data: FrontendChartData
 }
@@ -112,7 +114,7 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
     }, [props.data, props.type])
 
     return (
-        <Panel title={props.title} description={props.description} className="chart-panel">
+        <Panel title={props.title} description={props.description} titleTooltip={props.titleTooltip} titleMetricKey={props.titleMetricKey} className="chart-panel">
             <div className="chart-frame">
                 <canvas ref={canvasRef} />
             </div>

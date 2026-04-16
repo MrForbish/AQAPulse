@@ -6,6 +6,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { TestHistoryAttachment, TestHistoryConflict, TestHistoryResponse } from '../../../api-store'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import { ru } from '../../../shared/i18n/ru'
+import { TEST_HISTORY_METRIC_DESCRIPTIONS } from '../../../shared/test-history-metric-info'
 import { formatCommit, formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
 import {
     buildAttachmentHref,
@@ -152,12 +153,12 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
             </section>
 
             <section className="metrics-grid">
-                <MetricCard label={HISTORY_TEXT.metrics.totalRuns} value={String(payload.summary.totalRuns)} />
-                <MetricCard label={HISTORY_TEXT.metrics.failedRuns} value={String(payload.summary.failedRuns)} tone={payload.summary.failedRuns > 0 ? 'danger' : 'default'} />
-                <MetricCard label={HISTORY_TEXT.metrics.flakyRuns} value={String(payload.summary.flakyRuns)} tone={payload.summary.flakyRuns > 0 ? 'warn' : 'default'} />
-                <MetricCard label={HISTORY_TEXT.metrics.passRate} value={formatPercent(payload.summary.passRate)} tone="good" />
-                <MetricCard label={HISTORY_TEXT.metrics.flakyScore} value={payload.summary.flakyScore.toFixed(1)} />
-                <MetricCard label="MTBF" value={payload.summary.mtbfDays === null ? '—' : `${payload.summary.mtbfDays.toFixed(2)} дн`} hint={HISTORY_TEXT.subtitles.mtbf} />
+                <MetricCard label={HISTORY_TEXT.metrics.totalRuns} labelMetricKey="totalRuns" labelTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.totalRuns} value={String(payload.summary.totalRuns)} />
+                <MetricCard label={HISTORY_TEXT.metrics.failedRuns} labelMetricKey="failedRuns" labelTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.failedRuns} value={String(payload.summary.failedRuns)} tone={payload.summary.failedRuns > 0 ? 'danger' : 'default'} />
+                <MetricCard label={HISTORY_TEXT.metrics.flakyRuns} labelMetricKey="flakyRuns" labelTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.flakyRuns} value={String(payload.summary.flakyRuns)} tone={payload.summary.flakyRuns > 0 ? 'warn' : 'default'} />
+                <MetricCard label={HISTORY_TEXT.metrics.passRate} labelMetricKey="passRate" labelTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.passRate} value={formatPercent(payload.summary.passRate)} tone="good" />
+                <MetricCard label={HISTORY_TEXT.metrics.flakyScore} labelMetricKey="flakyScore" labelTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.flakyScore} value={payload.summary.flakyScore.toFixed(1)} />
+                <MetricCard label="MTBF" labelMetricKey="mtbf" labelTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.mtbf} value={payload.summary.mtbfDays === null ? '—' : `${payload.summary.mtbfDays.toFixed(2)} дн`} hint={HISTORY_TEXT.subtitles.mtbf} />
             </section>
 
             {payload.missingRuns.length > 0 ? (
@@ -170,6 +171,8 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
             {payload.incidentSummary ? (
                 <Panel
                     title={HISTORY_TEXT.incident.title}
+                    titleMetricKey="latestEvent"
+                    titleTooltip={HISTORY_TEXT.incident.tooltip}
                     description={HISTORY_TEXT.incident.severityDescription[payload.incidentSummary.severity]}
                     className={`incident-panel is-${payload.incidentSummary.severity}`}
                 >
@@ -219,41 +222,41 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
             ) : null}
 
             <div className="page-grid">
-                <Panel title={latestUnstableRun?.errorMessage ? HISTORY_TEXT.metrics.latestError : HISTORY_TEXT.metrics.latestFlakyEvent}>
+                <Panel title={latestUnstableRun?.errorMessage ? HISTORY_TEXT.metrics.latestError : HISTORY_TEXT.metrics.latestFlakyEvent} titleMetricKey={latestUnstableRun?.errorMessage ? 'latestError' : 'latestFlakyEvent'} titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.latestEvent}>
                     {latestUnstableRun ? (
                         <EventSnapshot run={latestUnstableRun} />
                     ) : (
                         <EmptyState title="Нестабильных эпизодов нет" message="История теста пока выглядит стабильной." />
                     )}
                 </Panel>
-                <Panel title={HISTORY_TEXT.metrics.latestStatus}>
+                <Panel title={HISTORY_TEXT.metrics.latestStatus} titleMetricKey="latestStatus" titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.latestStatus}>
                     {latestRun ? <EventSnapshot run={latestRun} /> : <EmptyState title="Данных нет" message="Последний запуск пока не найден." />}
                 </Panel>
-                <Panel title={HISTORY_TEXT.metrics.previousUnstableEvents}>
+                <Panel title={HISTORY_TEXT.metrics.previousUnstableEvents} titleMetricKey="previousUnstableEvents" titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.previousUnstableEvents}>
                     {previousUnstableRuns.length > 0 ? (
                         <PreviousUnstableEventsList runs={previousUnstableRuns} />
                     ) : (
                         <EmptyState title="Предыдущих инцидентов нет" message="Кроме самого свежего нестабильного события дополнительных эпизодов пока не видно." />
                     )}
                 </Panel>
-                <Panel title={HISTORY_TEXT.metrics.latestStableRecovery}>
+                <Panel title={HISTORY_TEXT.metrics.latestStableRecovery} titleMetricKey="latestRecovery" titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.latestRecovery}>
                     {latestRecovery ? (
                         <RecoverySnapshot recovery={latestRecovery.recovery} previousUnstable={latestRecovery.previousUnstable} />
                     ) : (
                         <EmptyState title="Восстановление не найдено" message="После нестабильной серии пока нет чистого стабильного прогона." />
                     )}
                 </Panel>
-                <Panel title={HISTORY_TEXT.metrics.currentStabilityStreak}>
+                <Panel title={HISTORY_TEXT.metrics.currentStabilityStreak} titleMetricKey="currentStabilityStreak" titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.currentStabilityStreak}>
                     <StabilityStreakSnapshot history={payload.history} streak={currentStabilityStreak} />
                 </Panel>
-                <Panel title={HISTORY_TEXT.metrics.unstableStreakBeforeRecovery}>
+                <Panel title={HISTORY_TEXT.metrics.unstableStreakBeforeRecovery} titleMetricKey="unstableStreakBeforeRecovery" titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.unstableStreakBeforeRecovery}>
                     {unstableStreakBeforeRecovery ? (
                         <UnstableStreakSnapshot streak={unstableStreakBeforeRecovery} />
                     ) : (
                         <EmptyState title="Серия перед восстановлением не найдена" message="Либо восстановление ещё не наступило, либо перед ним не было сплошной нестабильной серии." />
                     )}
                 </Panel>
-                <Panel title={HISTORY_TEXT.metrics.timeline} className="span-2">
+                <Panel title={HISTORY_TEXT.metrics.timeline} titleMetricKey="timeline" titleTooltip={TEST_HISTORY_METRIC_DESCRIPTIONS.timeline} className="span-2">
                     <div className="table-wrap">
                         <table>
                             <thead>

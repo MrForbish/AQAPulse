@@ -131,7 +131,7 @@ async function main(): Promise<void> {
             },
         ),
         '/',
-    ), ['React UI', summary.sourceFile])
+    ), ['React UI', summary.sourceFile, 'metric-info-button-react'])
 
     renderMarkup('dashboard transition tab', renderWithRouter(
         React.createElement(
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
             },
         ),
         `/test/${encodeURIComponent(firstTestTitle)}`,
-    ), ['Test History', 'MTBF', 'Диагностика последнего запуска'])
+    ), ['Test History', 'MTBF', 'Диагностика последнего запуска', 'metric-info-button-react'])
 
     renderMarkup('admin dashboard page', renderWithRouter(
         React.createElement(

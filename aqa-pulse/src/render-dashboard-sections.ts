@@ -9,6 +9,44 @@
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import {
+    averageDashboardNumber as averageDashboardNumberShared,
+    buildBusinessMetricReadiness as buildBusinessMetricReadinessShared,
+    buildFlakyHistoryInsight as buildFlakyHistoryInsightShared,
+    buildReleaseConfidenceBreakdown as buildReleaseConfidenceBreakdownShared,
+    clampDashboardScore as clampDashboardScoreShared,
+    formatAssumptionValue as formatAssumptionValueShared,
+    formatCommit as formatCommitShared,
+    formatCostShare as formatCostShareShared,
+    formatCostShareWidth as formatCostShareWidthShared,
+    formatCurrency as formatCurrencyShared,
+    formatDailyRatio as formatDailyRatioShared,
+    formatMinutes as formatMinutesShared,
+    formatNullableDays as formatNullableDaysShared,
+    formatNullableMinutes as formatNullableMinutesShared,
+    formatNullablePercent as formatNullablePercentShared,
+    formatPerformancePhaseLabel as formatPerformancePhaseLabelShared,
+    formatScore as formatScoreShared,
+    formatStatusLabel as formatStatusLabelShared,
+    getBusinessAssumptionsState as getBusinessAssumptionsStateShared,
+    getBusinessBreakdownItemClass as getBusinessBreakdownItemClassShared,
+    getBusinessDriverInsightBody as getBusinessDriverInsightBodyShared,
+    getBusinessDriverInsightTitle as getBusinessDriverInsightTitleShared,
+    getBusinessDriverSignalClass as getBusinessDriverSignalClassShared,
+    getBusinessDriverType as getBusinessDriverTypeShared,
+    getBusinessImpactClass as getBusinessImpactClassShared,
+    getBusinessImpactLabel as getBusinessImpactLabelShared,
+    getBusinessImpactLevel as getBusinessImpactLevelShared,
+    getBusinessReadinessStatusLabel as getBusinessReadinessStatusLabelShared,
+    getBusinessScenarioStatusHint as getBusinessScenarioStatusHintShared,
+    getBusinessScenarioStatusLabel as getBusinessScenarioStatusLabelShared,
+    getDashboardScoreTone as getDashboardScoreToneShared,
+    getFlakyTopTestsEmptyState as getFlakyTopTestsEmptyStateShared,
+    getManagerChangeLabel as getManagerChangeLabelShared,
+    getManagerReadinessLabel as getManagerReadinessLabelShared,
+    getManagerRiskLabel as getManagerRiskLabelShared,
+    roundToOneDigit as roundToOneDigitShared,
+} from './shared/dashboard-helpers'
+import {
     buildDashboardTabHref as buildSharedDashboardTabHref,
     buildQueryString as buildSharedQueryString,
     buildTestHistoryHrefFromTestDetailsBasePath,
@@ -289,15 +327,7 @@ export function getLeadingPhase(items: DashboardPhaseBreakdownItem[]): Dashboard
 }
 
 export function formatPerformancePhaseLabel(label: string): string {
-    if (label === 'Setup') {
-        return 'Подготовка'
-    }
-
-    if (label === 'Teardown') {
-        return 'Завершение'
-    }
-
-    return 'Тесты'
+    return formatPerformancePhaseLabelShared(label)
 }
 
 export function shortenChartLabel(label: string, maxLength: number): string {
@@ -335,12 +365,7 @@ export function getStatusClass(status: string, flaky: boolean): string {
 }
 
 export function formatStatusLabel(status: string, flaky: boolean): string {
-    if (flaky) {
-        return DASHBOARD_TEXT.statusLabels.flaky
-    }
-
-    const normalizedStatus = status.toLowerCase()
-    return DASHBOARD_TEXT.statusLabels[normalizedStatus as keyof typeof DASHBOARD_TEXT.statusLabels] ?? status
+    return formatStatusLabelShared(status, flaky)
 }
 
 export function formatPassRateDelta(delta: number | null): string {
@@ -420,11 +445,7 @@ export function getTrendArrow(delta: number | null, inverted: boolean): string {
 }
 
 export function formatCommit(commit: string | null): string {
-    if (!commit) {
-        return '—'
-    }
-
-    return commit.slice(0, 8)
+    return formatCommitShared(commit)
 }
 
 export function formatRunLabel(run: DashboardSummary['comparison']['currentRun']): string {
@@ -440,35 +461,31 @@ export function formatRunLabel(run: DashboardSummary['comparison']['currentRun']
 }
 
 export function formatCurrency(value: number | null): string {
-    if (value === null) {
-        return '—'
-    }
-
-    return `${value.toFixed(2)} ₽`
+    return formatCurrencyShared(value)
 }
 
 export function formatMinutes(value: number): string {
-    return `${value.toFixed(2)} мин`
+    return formatMinutesShared(value)
 }
 
 export function formatNullableMinutes(value: number | null): string {
-    return value === null ? '—' : formatMinutes(value)
+    return formatNullableMinutesShared(value)
 }
 
 export function formatDailyRatio(value: number): string {
-    return `${value.toFixed(2)} / день`
+    return formatDailyRatioShared(value)
 }
 
 export function formatScore(value: number): string {
-    return `${value.toFixed(1)} / 100`
+    return formatScoreShared(value)
 }
 
 export function formatNullableDays(value: number | null): string {
-    return value === null ? '—' : `${value.toFixed(2)} дн`
+    return formatNullableDaysShared(value)
 }
 
 export function formatNullablePercent(value: number | null): string {
-    return value === null ? '—' : `${value.toFixed(1)}%`
+    return formatNullablePercentShared(value)
 }
 
 export function formatCostAssumptions(summary: DashboardSummary): string {
@@ -482,11 +499,7 @@ export function formatCostAssumptions(summary: DashboardSummary): string {
 }
 
 export function formatAssumptionValue(value: number | null, unit: string): string {
-    if (value === null) {
-        return DASHBOARD_TEXT.states.notSet
-    }
-
-    return `${value} ${unit}`
+    return formatAssumptionValueShared(value, unit)
 }
 
 export function renderManagerOverview(summary: DashboardSummary, dashboardActionPath: string): string {
@@ -623,27 +636,11 @@ export function getManagerBlockerHref(
 }
 
 export function getManagerReadinessLabel(level: DashboardSummary['managerSummary']['releaseReadiness']['level']): string {
-    if (level === 'healthy') {
-        return DASHBOARD_TEXT.manager.readinessHealthy
-    }
-
-    if (level === 'warning') {
-        return DASHBOARD_TEXT.manager.readinessWarning
-    }
-
-    return DASHBOARD_TEXT.manager.readinessCritical
+    return getManagerReadinessLabelShared(level)
 }
 
 export function getManagerRiskLabel(level: DashboardSummary['managerSummary']['qualityRisk']['level']): string {
-    if (level === 'healthy') {
-        return DASHBOARD_TEXT.manager.riskHealthy
-    }
-
-    if (level === 'warning') {
-        return DASHBOARD_TEXT.manager.riskWarning
-    }
-
-    return DASHBOARD_TEXT.manager.riskCritical
+    return getManagerRiskLabelShared(level)
 }
 
 export function getManagerChangeClass(direction: DashboardSummary['managerSummary']['changes'][number]['direction']): 'improving' | 'regressing' | 'stable' {
@@ -651,45 +648,27 @@ export function getManagerChangeClass(direction: DashboardSummary['managerSummar
 }
 
 export function getManagerChangeLabel(direction: DashboardSummary['managerSummary']['changes'][number]['direction']): string {
-    if (direction === 'improving') {
-        return 'Улучшается'
-    }
-
-    if (direction === 'regressing') {
-        return 'Деградирует'
-    }
-
-    return 'Без сдвига'
+    return getManagerChangeLabelShared(direction)
 }
 
 export function renderFlakyHistoryInsight(summary: DashboardSummary): string {
-    const hasHistoricalRanking = summary.flakyAnalytics.topFlakyTests.length > 0
-    const noteClass = hasHistoricalRanking
+    const insight = buildFlakyHistoryInsightShared(summary)
+    const noteClass = insight.tone === 'info'
         ? 'context-note is-info'
-        : summary.kpis.flakyTests > 0
+        : insight.tone === 'warn'
             ? 'context-note is-warning'
             : 'context-note'
-    const currentRunLine = DASHBOARD_TEXT.flakyInsights.currentRunLine.replace('{count}', String(summary.kpis.flakyTests))
-    const finalLine = hasHistoricalRanking
-        ? DASHBOARD_TEXT.flakyInsights.historyReady
-        : summary.kpis.flakyTests > 0
-            ? DASHBOARD_TEXT.flakyInsights.historyMissing
-            : DASHBOARD_TEXT.flakyInsights.historyLine
 
     return `
         <div class="${escapeHtml(noteClass)}">
-            <div class="context-note-title">${escapeHtml(DASHBOARD_TEXT.flakyInsights.title)}</div>
-            <div class="context-note-body">${escapeHtml(currentRunLine)} ${escapeHtml(DASHBOARD_TEXT.flakyInsights.historyLine)} ${escapeHtml(finalLine)}</div>
+            <div class="context-note-title">${escapeHtml(insight.title)}</div>
+            <div class="context-note-body">${escapeHtml(insight.body)}</div>
         </div>
     `
 }
 
 export function getFlakyTopTestsEmptyState(summary: DashboardSummary): string {
-    if (summary.kpis.flakyTests > 0) {
-        return DASHBOARD_TEXT.states.flakyTestsHistoryMissing
-    }
-
-    return DASHBOARD_TEXT.states.flakyTestsEmpty
+    return getFlakyTopTestsEmptyStateShared(summary)
 }
 
 export function renderReleaseConfidenceBreakdown(summary: DashboardSummary): string {
@@ -751,48 +730,7 @@ export function buildReleaseConfidenceBreakdown(summary: DashboardSummary): {
         tone: string
     }>
 } {
-    const passRateValue = clampDashboardScore(summary.kpis.passRate)
-    const inverseFlakyValue = clampDashboardScore(100 - summary.kpis.flakyRatio)
-    const errorHealthValue = summary.kpis.totalTests === 0
-        ? 100
-        : clampDashboardScore(100 - ((summary.errorClusters.length / summary.kpis.totalTests) * 100))
-    const recentRuns = summary.history.recentRuns.slice(-5)
-    const historyConsistencyValue = recentRuns.length > 0
-        ? clampDashboardScore(averageDashboardNumber(recentRuns.map((run) => run.passRate - run.flakyRatio)))
-        : clampDashboardScore(summary.kpis.passRate - summary.kpis.flakyRatio)
-
-    const componentDefinitions = [
-        {
-            label: DASHBOARD_TEXT.business.releaseConfidencePassRate,
-            rawValue: passRateValue,
-            weight: 0.4,
-        },
-        {
-            label: DASHBOARD_TEXT.business.releaseConfidenceFlakyRatio,
-            rawValue: inverseFlakyValue,
-            weight: 0.3,
-        },
-        {
-            label: DASHBOARD_TEXT.business.releaseConfidenceErrorHealth,
-            rawValue: errorHealthValue,
-            weight: 0.15,
-        },
-        {
-            label: DASHBOARD_TEXT.business.releaseConfidenceHistoryConsistency,
-            rawValue: historyConsistencyValue,
-            weight: 0.15,
-        },
-    ]
-
-    return {
-        total: roundToOneDigit(componentDefinitions.reduce((total, component) => total + (component.rawValue * component.weight), 0)),
-        components: componentDefinitions.map((component) => ({
-            label: component.label,
-            formula: `${roundToOneDigit(component.rawValue)} × ${component.weight} = ${roundToOneDigit(component.rawValue * component.weight)}`,
-            width: `${roundToOneDigit(component.rawValue)}%`,
-            tone: getDashboardScoreTone(component.rawValue),
-        })),
-    }
+    return buildReleaseConfidenceBreakdownShared(summary)
 }
 
 export function buildBusinessMetricReadiness(summary: DashboardSummary): Array<{
@@ -801,104 +739,31 @@ export function buildBusinessMetricReadiness(summary: DashboardSummary): Array<{
     statusLabel: string
     hint: string
 }> {
-    const costAssumptionsState = getBusinessAssumptionsState(summary.businessMetrics.costOfFlakiness.assumptions)
-    const costStatus = costAssumptionsState === 'empty' ? 'pending' : costAssumptionsState
-    const timeToFixStatus = summary.businessMetrics.timeToFixFlaky.averageDays === null ? 'pending' : 'ready'
-
-    return [
-        {
-            label: DASHBOARD_TEXT.metrics.timeToDetect,
-            status: 'pending',
-            statusLabel: DASHBOARD_TEXT.business.readinessPending,
-            hint: DASHBOARD_TEXT.business.readinessTimeToDetectHint,
-        },
-        {
-            label: DASHBOARD_TEXT.metrics.timeToFixFlaky,
-            status: timeToFixStatus,
-            statusLabel: getBusinessReadinessStatusLabel(timeToFixStatus),
-            hint: DASHBOARD_TEXT.business.readinessTimeToFixHint,
-        },
-        {
-            label: DASHBOARD_TEXT.metrics.costOfFlakiness,
-            status: costStatus,
-            statusLabel: getBusinessReadinessStatusLabel(costStatus),
-            hint: DASHBOARD_TEXT.business.readinessCostHint,
-        },
-        {
-            label: DASHBOARD_TEXT.metrics.developerFriction,
-            status: 'ready',
-            statusLabel: DASHBOARD_TEXT.business.readinessReady,
-            hint: DASHBOARD_TEXT.business.readinessDeveloperFrictionHint,
-        },
-        {
-            label: DASHBOARD_TEXT.metrics.releaseConfidenceScore,
-            status: 'ready',
-            statusLabel: DASHBOARD_TEXT.business.readinessReady,
-            hint: DASHBOARD_TEXT.business.readinessReleaseConfidenceHint,
-        },
-        {
-            label: DASHBOARD_TEXT.metrics.automationRoi,
-            status: 'pending',
-            statusLabel: DASHBOARD_TEXT.business.readinessPending,
-            hint: DASHBOARD_TEXT.business.readinessAutomationRoiHint,
-        },
-    ]
+    return buildBusinessMetricReadinessShared(summary)
 }
 
 export function getBusinessReadinessStatusLabel(status: 'ready' | 'partial' | 'pending'): string {
-    if (status === 'ready') {
-        return DASHBOARD_TEXT.business.readinessReady
-    }
-
-    if (status === 'partial') {
-        return DASHBOARD_TEXT.business.readinessPartial
-    }
-
-    return DASHBOARD_TEXT.business.readinessPending
+    return getBusinessReadinessStatusLabelShared(status)
 }
 
 export function getDashboardScoreTone(value: number): string {
-    if (value >= 80) {
-        return ''
-    }
-
-    if (value >= 60) {
-        return 'warning'
-    }
-
-    return 'danger'
+    return getDashboardScoreToneShared(value)
 }
 
 export function clampDashboardScore(value: number): number {
-    return Math.min(Math.max(value, 0), 100)
+    return clampDashboardScoreShared(value)
 }
 
 export function averageDashboardNumber(values: number[]): number {
-    if (values.length === 0) {
-        return 0
-    }
-
-    return values.reduce((total, value) => total + value, 0) / values.length
+    return averageDashboardNumberShared(values)
 }
 
 export function roundToOneDigit(value: number): number {
-    return Math.round(value * 10) / 10
+    return roundToOneDigitShared(value)
 }
 
 export function getBusinessAssumptionsState(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): 'ready' | 'partial' | 'empty' {
-    const isCiConfigured = assumptions.ciMinuteCostRub !== null
-    const isDeveloperConfigured = assumptions.developerHourlyCostRub !== null && assumptions.analysisMinutesPerUnstable !== null
-    const hasAnyValue = isCiConfigured || assumptions.developerHourlyCostRub !== null || assumptions.analysisMinutesPerUnstable !== null
-
-    if (isCiConfigured && isDeveloperConfigured) {
-        return 'ready'
-    }
-
-    if (hasAnyValue) {
-        return 'partial'
-    }
-
-    return 'empty'
+    return getBusinessAssumptionsStateShared(assumptions)
 }
 
 export function getBusinessScenarioStatusClass(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): string {
@@ -906,145 +771,51 @@ export function getBusinessScenarioStatusClass(assumptions: DashboardSummary['bu
 }
 
 export function getBusinessScenarioStatusLabel(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): string {
-    const state = getBusinessAssumptionsState(assumptions)
-
-    if (state === 'ready') {
-        return DASHBOARD_TEXT.business.scenarioStatusReady
-    }
-
-    if (state === 'partial') {
-        return DASHBOARD_TEXT.business.scenarioStatusPartial
-    }
-
-    return DASHBOARD_TEXT.business.scenarioStatusEmpty
+    return getBusinessScenarioStatusLabelShared(assumptions)
 }
 
 export function getBusinessScenarioStatusHint(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): string {
-    const state = getBusinessAssumptionsState(assumptions)
-
-    if (state === 'ready') {
-        return DASHBOARD_TEXT.business.scenarioStatusReadyHint
-    }
-
-    if (state === 'partial') {
-        return DASHBOARD_TEXT.business.scenarioStatusPartialHint
-    }
-
-    return DASHBOARD_TEXT.business.scenarioStatusEmptyHint
+    return getBusinessScenarioStatusHintShared(assumptions)
 }
 
 export function getBusinessImpactLevel(totalCost: number | null, costPerDay: number | null): 'high' | 'medium' | 'low' | 'unknown' {
-    if (totalCost === null) {
-        return 'unknown'
-    }
-
-    if (totalCost >= 50000 || (costPerDay !== null && costPerDay >= 10000)) {
-        return 'high'
-    }
-
-    if (totalCost >= 15000 || (costPerDay !== null && costPerDay >= 3000)) {
-        return 'medium'
-    }
-
-    return 'low'
+    return getBusinessImpactLevelShared(totalCost, costPerDay)
 }
 
 export function getBusinessImpactClass(totalCost: number | null, costPerDay: number | null): string {
-    return `impact-${getBusinessImpactLevel(totalCost, costPerDay)}`
+    return getBusinessImpactClassShared(totalCost, costPerDay)
 }
 
 export function getBusinessImpactLabel(totalCost: number | null, costPerDay: number | null): string {
-    const impactLevel = getBusinessImpactLevel(totalCost, costPerDay)
-
-    if (impactLevel === 'high') {
-        return DASHBOARD_TEXT.business.impactHigh
-    }
-
-    if (impactLevel === 'medium') {
-        return DASHBOARD_TEXT.business.impactMedium
-    }
-
-    if (impactLevel === 'low') {
-        return DASHBOARD_TEXT.business.impactLow
-    }
-
-    return DASHBOARD_TEXT.business.impactUnknown
+    return getBusinessImpactLabelShared(totalCost, costPerDay)
 }
 
 export function getBusinessDriverType(ciCost: number | null, developerCost: number | null, totalCost: number | null): 'ci' | 'development' | 'balanced' | 'missing' {
-    if (totalCost === null || totalCost <= 0) {
-        return 'missing'
-    }
-
-    const normalizedCiCost = ciCost ?? 0
-    const normalizedDeveloperCost = developerCost ?? 0
-    const delta = Math.abs(normalizedCiCost - normalizedDeveloperCost)
-
-    if (delta <= totalCost * 0.15) {
-        return 'balanced'
-    }
-
-    return normalizedCiCost > normalizedDeveloperCost ? 'ci' : 'development'
+    return getBusinessDriverTypeShared(ciCost, developerCost, totalCost)
 }
 
 export function getBusinessBreakdownItemClass(ciCost: number | null, developerCost: number | null, totalCost: number | null, target: 'ci' | 'development'): string {
-    return getBusinessDriverType(ciCost, developerCost, totalCost) === target ? 'is-dominant' : ''
+    return getBusinessBreakdownItemClassShared(ciCost, developerCost, totalCost, target)
 }
 
 export function getBusinessDriverSignalClass(ciCost: number | null, developerCost: number | null, totalCost: number | null, target: 'ci' | 'development'): string {
-    return getBusinessDriverType(ciCost, developerCost, totalCost) === target ? 'is-dominant' : ''
+    return getBusinessDriverSignalClassShared(ciCost, developerCost, totalCost, target)
 }
 
 export function getBusinessDriverInsightTitle(ciCost: number | null, developerCost: number | null, totalCost: number | null): string {
-    const driverType = getBusinessDriverType(ciCost, developerCost, totalCost)
-
-    if (driverType === 'ci') {
-        return DASHBOARD_TEXT.business.topDriverCiTitle
-    }
-
-    if (driverType === 'development') {
-        return DASHBOARD_TEXT.business.topDriverDevelopmentTitle
-    }
-
-    if (driverType === 'balanced') {
-        return DASHBOARD_TEXT.business.topDriverBalancedTitle
-    }
-
-    return DASHBOARD_TEXT.business.topDriverMissingTitle
+    return getBusinessDriverInsightTitleShared(ciCost, developerCost, totalCost)
 }
 
 export function getBusinessDriverInsightBody(ciCost: number | null, developerCost: number | null, totalCost: number | null): string {
-    const driverType = getBusinessDriverType(ciCost, developerCost, totalCost)
-
-    if (driverType === 'ci') {
-        return DASHBOARD_TEXT.business.topDriverCiBody
-    }
-
-    if (driverType === 'development') {
-        return DASHBOARD_TEXT.business.topDriverDevelopmentBody
-    }
-
-    if (driverType === 'balanced') {
-        return DASHBOARD_TEXT.business.topDriverBalancedBody
-    }
-
-    return DASHBOARD_TEXT.business.topDriverMissingBody
+    return getBusinessDriverInsightBodyShared(ciCost, developerCost, totalCost)
 }
 
 export function formatCostShare(value: number | null, total: number | null): string {
-    if (value === null || total === null || total <= 0) {
-        return '—'
-    }
-
-    return `${((value / total) * 100).toFixed(1)}%`
+    return formatCostShareShared(value, total)
 }
 
 export function formatCostShareWidth(value: number | null, total: number | null): string {
-    if (value === null || total === null || total <= 0) {
-        return '0%'
-    }
-
-    return `${Math.max(0, Math.min(100, (value / total) * 100)).toFixed(1)}%`
+    return formatCostShareWidthShared(value, total)
 }
 
 export function getTrendClass(delta: number | null, inverted: boolean): string {

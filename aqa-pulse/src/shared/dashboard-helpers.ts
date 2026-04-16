@@ -288,6 +288,18 @@ export function averageDashboardNumber(values: number[]): number {
     return values.reduce((total, value) => total + value, 0) / values.length
 }
 
+export function getBusinessReadinessStatusLabel(status: 'ready' | 'partial' | 'pending'): string {
+    if (status === 'ready') {
+        return DASHBOARD_TEXT.business.readinessReady
+    }
+
+    if (status === 'partial') {
+        return DASHBOARD_TEXT.business.readinessPartial
+    }
+
+    return DASHBOARD_TEXT.business.readinessPending
+}
+
 export function getBusinessAssumptionsState(assumptions: DashboardSummary['businessMetrics']['costOfFlakiness']['assumptions']): 'ready' | 'partial' | 'empty' {
     const isCiConfigured = assumptions.ciMinuteCostRub !== null
     const isDeveloperConfigured = assumptions.developerHourlyCostRub !== null && assumptions.analysisMinutesPerUnstable !== null
@@ -332,6 +344,26 @@ export function getBusinessScenarioStatusHint(assumptions: DashboardSummary['bus
     return DASHBOARD_TEXT.business.scenarioStatusEmptyHint
 }
 
+export function getBusinessImpactLevel(totalCost: number | null, costPerDay: number | null): 'high' | 'medium' | 'low' | 'unknown' {
+    if (totalCost === null) {
+        return 'unknown'
+    }
+
+    if (totalCost >= 50000 || (costPerDay !== null && costPerDay >= 10000)) {
+        return 'high'
+    }
+
+    if (totalCost >= 15000 || (costPerDay !== null && costPerDay >= 3000)) {
+        return 'medium'
+    }
+
+    return 'low'
+}
+
+export function getBusinessImpactClass(totalCost: number | null, costPerDay: number | null): string {
+    return `impact-${getBusinessImpactLevel(totalCost, costPerDay)}`
+}
+
 export function getBusinessImpactLabel(totalCost: number | null, costPerDay: number | null): string {
     const impactLevel = getBusinessImpactLevel(totalCost, costPerDay)
 
@@ -348,6 +380,30 @@ export function getBusinessImpactLabel(totalCost: number | null, costPerDay: num
     }
 
     return DASHBOARD_TEXT.business.impactUnknown
+}
+
+export function getBusinessDriverType(ciCost: number | null, developerCost: number | null, totalCost: number | null): 'ci' | 'development' | 'balanced' | 'missing' {
+    if (totalCost === null || totalCost <= 0) {
+        return 'missing'
+    }
+
+    const normalizedCiCost = ciCost ?? 0
+    const normalizedDeveloperCost = developerCost ?? 0
+    const delta = Math.abs(normalizedCiCost - normalizedDeveloperCost)
+
+    if (delta <= totalCost * 0.15) {
+        return 'balanced'
+    }
+
+    return normalizedCiCost > normalizedDeveloperCost ? 'ci' : 'development'
+}
+
+export function getBusinessBreakdownItemClass(ciCost: number | null, developerCost: number | null, totalCost: number | null, target: 'ci' | 'development'): string {
+    return getBusinessDriverType(ciCost, developerCost, totalCost) === target ? 'is-dominant' : ''
+}
+
+export function getBusinessDriverSignalClass(ciCost: number | null, developerCost: number | null, totalCost: number | null, target: 'ci' | 'development'): string {
+    return getBusinessDriverType(ciCost, developerCost, totalCost) === target ? 'is-dominant' : ''
 }
 
 export function getBusinessDriverInsightTitle(ciCost: number | null, developerCost: number | null, totalCost: number | null): string {
@@ -402,23 +458,7 @@ export function formatCostShareWidth(value: number | null, total: number | null)
     return `${Math.max(0, Math.min(100, (value / total) * 100)).toFixed(1)}%`
 }
 
-export function roundOne(value: number): number {
-    return Math.round(value * 10) / 10
-}
-
-function getBusinessReadinessStatusLabel(status: 'ready' | 'partial' | 'pending'): string {
-    if (status === 'ready') {
-        return DASHBOARD_TEXT.business.readinessReady
-    }
-
-    if (status === 'partial') {
-        return DASHBOARD_TEXT.business.readinessPartial
-    }
-
-    return DASHBOARD_TEXT.business.readinessPending
-}
-
-function getDashboardScoreTone(value: number): string {
+export function getDashboardScoreTone(value: number): string {
     if (value >= 80) {
         return ''
     }
@@ -430,38 +470,14 @@ function getDashboardScoreTone(value: number): string {
     return 'danger'
 }
 
-function clampDashboardScore(value: number): number {
+export function clampDashboardScore(value: number): number {
     return Math.min(Math.max(value, 0), 100)
 }
 
-function getBusinessImpactLevel(totalCost: number | null, costPerDay: number | null): 'high' | 'medium' | 'low' | 'unknown' {
-    if (totalCost === null) {
-        return 'unknown'
-    }
-
-    if (totalCost >= 50000 || (costPerDay !== null && costPerDay >= 10000)) {
-        return 'high'
-    }
-
-    if (totalCost >= 15000 || (costPerDay !== null && costPerDay >= 3000)) {
-        return 'medium'
-    }
-
-    return 'low'
+export function roundToOneDigit(value: number): number {
+    return roundOne(value)
 }
 
-function getBusinessDriverType(ciCost: number | null, developerCost: number | null, totalCost: number | null): 'ci' | 'development' | 'balanced' | 'missing' {
-    if (totalCost === null || totalCost <= 0) {
-        return 'missing'
-    }
-
-    const normalizedCiCost = ciCost ?? 0
-    const normalizedDeveloperCost = developerCost ?? 0
-    const delta = Math.abs(normalizedCiCost - normalizedDeveloperCost)
-
-    if (delta <= totalCost * 0.15) {
-        return 'balanced'
-    }
-
-    return normalizedCiCost > normalizedDeveloperCost ? 'ci' : 'development'
+export function roundOne(value: number): number {
+    return Math.round(value * 10) / 10
 }

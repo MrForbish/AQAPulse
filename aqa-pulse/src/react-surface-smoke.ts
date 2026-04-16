@@ -731,25 +731,48 @@ async function verifyDashboardTraceDisclosure(summary: ReturnType<ApiStore['getS
             await flushMicrotasks()
         })
 
-        const trigger = container.querySelector('[data-trace-disclosure-trigger]')
-        assert(trigger, `Trace disclosure smoke expects an expandable error trigger. Actual DOM: ${container.innerHTML}`)
+        const getVisibleDisclosureDialog = (): HTMLElement | null => {
+            const dialogs = Array.from(dom.window.document.querySelectorAll('[data-trace-disclosure-dialog]')) as HTMLElement[]
+            return dialogs.find((dialog) => !dialog.hidden) ?? null
+        }
+
+        const metricTrigger = container.querySelector('.metrics-grid [data-trace-disclosure-trigger]')
+        const clusterTraceSample = summary.errorClusters[0]?.sampleMessage ?? summary.errorClusters[0]?.message ?? null
+        assert(metricTrigger, `Trace disclosure smoke expects an expandable cluster trigger in dashboard metrics. Actual DOM: ${container.innerHTML}`)
+        assert(clusterTraceSample, 'Trace disclosure smoke expects at least one dashboard error cluster sample.')
+
+        await clickElement(metricTrigger, dom.window)
+        await waitForCondition(() => {
+            return Boolean(getVisibleDisclosureDialog())
+        }, () => dom.window.document.body.innerHTML)
+
+        const metricDialogContent = getVisibleDisclosureDialog()?.querySelector('[data-trace-disclosure-content]')
+        assert(metricDialogContent?.textContent?.includes(clusterTraceSample.split('\n')[0] ?? clusterTraceSample), 'Trace disclosure smoke expects the cluster sample inside the metric dialog.')
+
+        const metricCloseButton = getVisibleDisclosureDialog()?.querySelector('[data-trace-disclosure-close]')
+        assert(metricCloseButton, 'Trace disclosure smoke expects a close control for the metric dialog.')
+        await clickElement(metricCloseButton, dom.window)
+        await waitForCondition(() => {
+            return !getVisibleDisclosureDialog()
+        }, () => dom.window.document.body.innerHTML)
+
+        const trigger = container.querySelector('tbody [data-trace-disclosure-trigger]')
+        assert(trigger, `Trace disclosure smoke expects an expandable table error trigger. Actual DOM: ${container.innerHTML}`)
 
         await clickElement(trigger, dom.window)
         await waitForCondition(() => {
-            const dialog = dom.window.document.querySelector('[data-trace-disclosure-dialog]') as HTMLElement | null
-            return Boolean(dialog && !dialog.hidden)
+            return Boolean(getVisibleDisclosureDialog())
         }, () => dom.window.document.body.innerHTML)
 
-        const dialogContent = dom.window.document.querySelector('[data-trace-disclosure-content]')
+        const dialogContent = getVisibleDisclosureDialog()?.querySelector('[data-trace-disclosure-content]')
         assert(dialogContent?.textContent?.includes('synthetic navigation failure'), 'Trace disclosure smoke expects the full error content inside the dialog.')
         assert(dialogContent?.textContent?.includes('dashboardSmoke'), 'Trace disclosure smoke expects stack-like lines inside the dialog.')
 
-        const closeButton = dom.window.document.querySelector('[data-trace-disclosure-close]')
+        const closeButton = getVisibleDisclosureDialog()?.querySelector('[data-trace-disclosure-close]')
         assert(closeButton, 'Trace disclosure smoke expects a close control.')
         await clickElement(closeButton, dom.window)
         await waitForCondition(() => {
-            const dialog = dom.window.document.querySelector('[data-trace-disclosure-dialog]') as HTMLElement | null
-            return Boolean(dialog && dialog.hidden)
+            return !getVisibleDisclosureDialog()
         }, () => dom.window.document.body.innerHTML)
     } finally {
         if (root) {

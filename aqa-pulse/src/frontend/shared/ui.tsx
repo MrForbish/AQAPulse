@@ -53,13 +53,15 @@ export function Panel(props: PanelProps): React.JSX.Element {
 export interface MetricCardProps {
     label: string
     value: string
-    hint?: string
+    hint?: React.ReactNode
     labelTooltip?: string
     labelMetricKey?: string
     tone?: 'default' | 'good' | 'warn' | 'danger'
 }
 
 export function MetricCard(props: MetricCardProps): React.JSX.Element {
+    const hintTitle = typeof props.hint === 'string' ? props.hint : undefined
+
     return (
         <article className={['metric-card', props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
             <div className="metric-label">
@@ -71,7 +73,7 @@ export function MetricCard(props: MetricCardProps): React.JSX.Element {
                 />
             </div>
             <div className="metric-value" title={props.value}>{props.value}</div>
-            {props.hint ? <div className="metric-hint" title={props.hint}>{props.hint}</div> : null}
+            {props.hint ? <div className="metric-hint" title={hintTitle}>{props.hint}</div> : null}
         </article>
     )
 }

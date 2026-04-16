@@ -2,7 +2,7 @@
  * Назначение: полноценные React-модули dashboard для business/code quality/team/ai. Здесь собирается feature-level UI поверх уже рассчитанных summary-метрик без возврата к legacy string renderer.
  */
 import React from 'react'
-import type { DashboardErrorCluster, DashboardSummary } from '../../../dashboard-utils'
+import type { DashboardSummary } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import {
     averageDashboardNumber,
@@ -30,7 +30,8 @@ import {
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
-import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge } from '../../shared/ui'
+import { EmptyState, MetricCard, Panel } from '../../shared/ui'
+import { DashboardClusterCard, DashboardClusterMetricHint } from './dashboard-cluster-parts'
 import {
     DashboardEmptyTableRow,
     DashboardFlakyTestRow,
@@ -40,6 +41,11 @@ import {
     DashboardTable,
     DashboardTablePanel,
 } from './dashboard-test-table-parts'
+import {
+    DashboardManagerBlockersSection,
+    DashboardManagerChangesSection,
+    DashboardManagerSummarySection,
+} from './dashboard-manager-sections'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -140,42 +146,9 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription}>
-                <div className="signal-grid compact-top">
-                    <SignalSummaryCard label={DASHBOARD_TEXT.manager.releaseReadiness} value={formatScore(summary.managerSummary.releaseReadiness.score)} hint={summary.managerSummary.releaseReadiness.level} tone={mapManagerTone(summary.managerSummary.releaseReadiness.level)} />
-                    <SignalSummaryCard label={DASHBOARD_TEXT.manager.qualityRisk} value={formatScore(summary.managerSummary.qualityRisk.score)} hint={summary.managerSummary.qualityRisk.level} tone={mapManagerTone(summary.managerSummary.qualityRisk.level)} />
-                    <SignalSummaryCard label={DASHBOARD_TEXT.manager.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} hint={summary.managerSummary.deliveryRisk.level} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} />
-                </div>
-            </Panel>
-
-            <Panel title={DASHBOARD_TEXT.manager.blockersTitle} className="span-2">
-                <NarrativeList
-                    className="compact-top"
-                    items={summary.managerSummary.blockers.map((blocker, index) => ({
-                        id: `${blocker.kind}-${index}`,
-                        title: blocker.title,
-                        pillLabel: blocker.value,
-                        pillTone: blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent',
-                        body: blocker.details,
-                    }))}
-                    emptyState={{ title: 'Блокеров нет', message: DASHBOARD_TEXT.manager.noBlockers }}
-                />
-            </Panel>
-
-            <Panel title={DASHBOARD_TEXT.manager.changesTitle} className="span-2">
-                <NarrativeList
-                    className="compact-top"
-                    items={summary.managerSummary.changes.map((change) => ({
-                        id: `${change.label}-${change.value}`,
-                        title: change.label,
-                        pillLabel: `${getManagerChangeLabel(change.direction)} ${change.value}`,
-                        pillTone: mapChangeTone(change.direction),
-                        pillStyle: 'module-pill',
-                        body: change.details,
-                    }))}
-                    emptyState={{ title: 'Изменений нет', message: DASHBOARD_TEXT.states.noChanges }}
-                />
-            </Panel>
+            <DashboardManagerSummarySection summary={summary} mapTone={mapManagerTone} />
+            <DashboardManagerBlockersSection summary={summary} />
+            <DashboardManagerChangesSection summary={summary} mapTone={mapChangeTone} mode="pill-with-value" />
         </div>
     )
 }
@@ -277,44 +250,9 @@ export function TeamModule(props: { summary: DashboardSummary; workspaceSlug: st
             <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
             <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} hint={summary.managerSummary.deliveryRisk.level} />
 
-            <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription}>
-                <div className="signal-grid compact-top">
-                    <SignalSummaryCard label={DASHBOARD_TEXT.manager.releaseReadiness} value={formatScore(summary.managerSummary.releaseReadiness.score)} hint={summary.managerSummary.releaseReadiness.level} tone={mapManagerTone(summary.managerSummary.releaseReadiness.level)} />
-                    <SignalSummaryCard label={DASHBOARD_TEXT.manager.qualityRisk} value={formatScore(summary.managerSummary.qualityRisk.score)} hint={summary.managerSummary.qualityRisk.level} tone={mapManagerTone(summary.managerSummary.qualityRisk.level)} />
-                    <SignalSummaryCard label={DASHBOARD_TEXT.manager.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} hint={summary.managerSummary.deliveryRisk.level} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} />
-                </div>
-            </Panel>
-
-            <Panel title={DASHBOARD_TEXT.manager.blockersTitle} className="span-2">
-                <NarrativeList
-                    className="compact-top"
-                    items={summary.managerSummary.blockers.map((blocker, index) => ({
-                        id: `${blocker.kind}-${index}`,
-                        title: blocker.title,
-                        pillLabel: blocker.value,
-                        pillTone: blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent',
-                        body: blocker.details,
-                        meta: blocker.testTitle,
-                    }))}
-                    emptyState={{ title: 'Блокеров нет', message: DASHBOARD_TEXT.manager.noBlockers }}
-                />
-            </Panel>
-
-            <Panel title={DASHBOARD_TEXT.manager.changesTitle} className="span-2">
-                <NarrativeList
-                    className="compact-top"
-                    items={summary.managerSummary.changes.map((change) => ({
-                        id: `${change.label}-${change.value}`,
-                        title: change.label,
-                        pillLabel: getManagerChangeLabel(change.direction),
-                        pillTone: mapChangeTone(change.direction),
-                        pillStyle: 'module-pill',
-                        value: change.value,
-                        body: change.details,
-                    }))}
-                    emptyState={{ title: 'Изменений нет', message: DASHBOARD_TEXT.states.noChanges }}
-                />
-            </Panel>
+            <DashboardManagerSummarySection summary={summary} mapTone={mapManagerTone} />
+            <DashboardManagerBlockersSection summary={summary} includeMeta />
+            <DashboardManagerChangesSection summary={summary} mapTone={mapChangeTone} mode="separate-value" />
 
             <Panel title={DASHBOARD_TEXT.metrics.recentRuns} titleMetricKey="recentRuns" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.recentRuns} className="span-2">
                 <DashboardTable
@@ -343,7 +281,14 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
     return (
         <div className="page-grid">
             <MetricCard label={DASHBOARD_TEXT.metrics.topFlakyTests} labelMetricKey="topFlakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests} value={String(summary.flakyAnalytics.topFlakyTests.length)} tone={summary.flakyAnalytics.topFlakyTests.length > 0 ? 'warn' : 'default'} hint="Risk ranking candidates" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Root-cause clusters available" />
+            <MetricCard
+                label={DASHBOARD_TEXT.metrics.errorClusters}
+                labelMetricKey="errorClusters"
+                labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList}
+                value={String(summary.errorClusters.length)}
+                tone={summary.errorClusters.length > 0 ? 'warn' : 'good'}
+                hint={<DashboardClusterMetricHint cluster={summary.errorClusters[0]} emptyLabel="Root-cause clusters unavailable" />}
+            />
             <MetricCard label="Signal coverage" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.signalCoverage} value={`${signalCoverage}%`} tone={signalCoverage >= 75 ? 'good' : signalCoverage >= 45 ? 'warn' : 'danger'} hint="Готовность данных для heuristics/ML" />
             <MetricCard label="First flake to fix" labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={summary.flakyAnalytics.firstFlakeToFix ? `${summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} hint="Исторический feedback loop" />
 
@@ -371,7 +316,7 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
             <Panel title="Root-cause clusters" titleMetricKey="errorClusters" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} description="Повторяемые ошибки уже можно использовать как базу для кластеризации, объяснений и рекомендаций." className="span-2">
                 <div className="cluster-list compact-top">
                     {summary.errorClusters.length > 0 ? summary.errorClusters.map((cluster) => (
-                        <ClusterCard key={cluster.message} cluster={cluster} />
+                        <DashboardClusterCard key={cluster.message} cluster={cluster} />
                     )) : <EmptyState title="Кластеры не обнаружены" message={DASHBOARD_TEXT.states.failuresEmpty} />}
                 </div>
             </Panel>
@@ -384,18 +329,6 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
                 </div>
             </Panel>
         </div>
-    )
-}
-
-function ClusterCard(props: { cluster: DashboardErrorCluster }): React.JSX.Element {
-    return (
-        <article className="stack-item">
-            <div className="stack-item-header">
-                <OverflowText as="strong" text={props.cluster.message} className="mono-cell cluster-message-react" lines={2} />
-                <StatusBadge label={`${props.cluster.count}`} tone="warn" />
-            </div>
-            <OverflowText as="div" text={props.cluster.tests.slice(0, 4).join(' • ')} className="subtle-copy cluster-tests-react" lines={2} />
-        </article>
     )
 }
 

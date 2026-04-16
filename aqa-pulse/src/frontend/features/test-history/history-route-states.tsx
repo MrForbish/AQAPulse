@@ -2,38 +2,22 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import type { TestHistoryConflict } from '../../../api-store'
 import { ru } from '../../../shared/i18n/ru'
-import { ErrorView, LoadingView, PageFrame, Panel } from '../../shared/ui'
+import { FramedErrorState, FramedLoadingState, FramedPanelState } from '../../shared/route-states'
 
 const HISTORY_TEXT = ru.testHistory
 
 export function TestHistoryLoadingState(): React.JSX.Element {
-    return (
-        <PageFrame>
-            <LoadingView label="Открываем историю теста..." />
-        </PageFrame>
-    )
+    return <FramedLoadingState label="Открываем историю теста..." />
 }
 
 export function TestHistoryErrorState(props: { message: string }): React.JSX.Element {
-    return (
-        <PageFrame>
-            <ErrorView title="Не удалось загрузить историю теста" message={props.message} />
-        </PageFrame>
-    )
+    return <FramedErrorState title="Не удалось загрузить историю теста" message={props.message} />
 }
 
 export function TestHistoryNotFoundState(props: {
     dashboardHref: string
 }): React.JSX.Element {
-    return (
-        <PageFrame>
-            <ErrorView
-                title={HISTORY_TEXT.statePages.notFound.heading}
-                message={HISTORY_TEXT.statePages.notFound.message}
-                action={<Link className="ghost-link" to={props.dashboardHref}>{HISTORY_TEXT.backToDashboard}</Link>}
-            />
-        </PageFrame>
-    )
+    return <FramedErrorState title={HISTORY_TEXT.statePages.notFound.heading} message={HISTORY_TEXT.statePages.notFound.message} action={<Link className="ghost-link" to={props.dashboardHref}>{HISTORY_TEXT.backToDashboard}</Link>} />
 }
 
 export function TestHistoryConflictState(props: {
@@ -41,8 +25,7 @@ export function TestHistoryConflictState(props: {
     buildCandidateHref: (candidate: TestHistoryConflict['candidates'][number]) => string
 }): React.JSX.Element {
     return (
-        <PageFrame>
-            <Panel title={HISTORY_TEXT.statePages.conflict.heading} description={props.payload.message}>
+        <FramedPanelState title={HISTORY_TEXT.statePages.conflict.heading} description={props.payload.message}>
                 <div className="candidate-list">
                     {props.payload.candidates.map((candidate) => (
                         <Link
@@ -56,7 +39,6 @@ export function TestHistoryConflictState(props: {
                         </Link>
                     ))}
                 </div>
-            </Panel>
-        </PageFrame>
+        </FramedPanelState>
     )
 }

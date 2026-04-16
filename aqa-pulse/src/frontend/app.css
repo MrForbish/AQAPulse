@@ -1373,6 +1373,11 @@ th {
     max-width: min(100%, 42ch);
 }
 
+.cluster-preview-react {
+    display: grid;
+    gap: 8px;
+}
+
 .cluster-tests-react {
     max-width: min(100%, 52ch);
 }

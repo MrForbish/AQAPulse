@@ -5,6 +5,7 @@ import { formatDate, formatDuration, formatPercent } from '../../../shared/forma
 import { formatDelta, formatScore, getScoreTone } from '../../../shared/dashboard-helpers'
 import { ru } from '../../../shared/i18n/ru'
 import { MetricCard } from '../../shared/ui'
+import { DashboardClusterMetricHint } from './dashboard-cluster-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -94,7 +95,14 @@ export function DashboardMetricsSection(props: {
             <MetricCard label={DASHBOARD_TEXT.metrics.failedTests} labelMetricKey="failedTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.failedTests} value={String(props.summary.kpis.failedTests)} tone={props.summary.kpis.failedTests > 0 ? 'danger' : 'default'} hint={formatDelta(props.summary.trend.failedTestsDelta, 'падений')} />
             <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTests} value={String(props.summary.kpis.flakyTests)} tone={props.summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(props.summary.trend.flakyTestsDelta, 'flaky')} />
             <MetricCard label={DASHBOARD_TEXT.metrics.runDuration} labelMetricKey="runDuration" labelTooltip={`${DASHBOARD_METRIC_DESCRIPTIONS.runDuration} ${DASHBOARD_METRIC_DESCRIPTIONS.medianDuration}`} value={formatDuration(props.summary.kpis.totalDurationMs)} hint={formatDuration(props.summary.kpis.medianDurationMs)} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters} value={String(props.summary.kpis.errorClusterCount)} tone={props.summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'} hint={props.summary.errorClusters[0]?.message ?? DASHBOARD_TEXT.states.notesEmpty} />
+            <MetricCard
+                label={DASHBOARD_TEXT.metrics.errorClusters}
+                labelMetricKey="errorClusters"
+                labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters}
+                value={String(props.summary.kpis.errorClusterCount)}
+                tone={props.summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'}
+                hint={<DashboardClusterMetricHint cluster={props.summary.errorClusters[0]} emptyLabel={DASHBOARD_TEXT.states.notesEmpty} />}
+            />
             <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={props.summary.managerSummary.releaseReadiness.level} />
         </section>
     )

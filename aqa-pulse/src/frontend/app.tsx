@@ -5,7 +5,7 @@ import React from 'react'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { readBootstrapFromDocument, RuntimeProvider, useRuntime } from './runtime'
 import { FrontendErrorBoundary } from './shared/error-boundary'
-import { LoadingView, PageFrame } from './shared/ui'
+import { FramedLoadingState } from './shared/route-states'
 
 const DashboardPage = React.lazy(async () => ({
     default: (await import('./features/dashboard/dashboard-page.js')).DashboardPage,
@@ -91,11 +91,7 @@ function AppBody(): React.JSX.Element {
  * Route-level fallback скрывает детали lazy-loading и оставляет единое поведение загрузки для всех страниц.
  */
 function RouteLoadingFallback(): React.JSX.Element {
-    return (
-        <PageFrame>
-            <LoadingView label="Загружаем интерфейс..." />
-        </PageFrame>
-    )
+    return <FramedLoadingState label="Загружаем интерфейс..." />
 }
 
 function WorkspaceDashboardRoute(): React.JSX.Element {

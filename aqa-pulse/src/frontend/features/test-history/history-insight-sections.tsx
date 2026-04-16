@@ -10,7 +10,7 @@ import {
 } from '../../../shared/test-history-helpers'
 import { EmptyState, Panel } from '../../shared/ui'
 import { AttemptDiagnostics } from './attempt-diagnostics'
-import { HistoryTimelinePanel } from './history-overview'
+import { HistoryTimelinePanel } from './history-incident-panels'
 import {
     EventSnapshot,
     PreviousUnstableEventsList,

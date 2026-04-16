@@ -2,7 +2,9 @@ import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
 import { SegmentedTabs } from '../../shared/ui'
 import { ru } from '../../../shared/i18n/ru'
-import { FlakyTab, OverviewTab, PerformanceTab } from './dashboard-core-tabs'
+import { OverviewTab } from './dashboard-core-tabs'
+import { FlakyTab } from './dashboard-flaky-tab'
+import { PerformanceTab } from './dashboard-performance-tab'
 import { AiModule, BusinessModule, CodeQualityModule, TeamModule } from './dashboard-modules'
 
 const DASHBOARD_TEXT = ru.dashboard

@@ -928,6 +928,42 @@ th {
     background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(7, 15, 27, 0.84));
 }
 
+.incident-panel .signal-grid,
+.incident-panel .incident-grid-react {
+    align-items: stretch;
+}
+
+.incident-panel .signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.incident-panel .incident-grid-react {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.incident-panel .signal-grid > *,
+.incident-panel .incident-grid-react > * {
+    min-width: 0;
+}
+
+.incident-panel .detail-card-react,
+.incident-panel .metric-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: 100%;
+}
+
+.incident-panel .anchor-link-row {
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.incident-panel .metric-hint {
+    margin-top: auto;
+    padding-top: 10px;
+}
+
 .panel-info {
     border-color: rgba(14, 165, 233, 0.18);
     background: linear-gradient(180deg, rgba(14, 165, 233, 0.08), rgba(7, 15, 27, 0.84));
@@ -1651,6 +1687,10 @@ th {
     .filters-grid,
     .signal-grid,
     .incident-grid-react {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .incident-panel .incident-grid-react {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }

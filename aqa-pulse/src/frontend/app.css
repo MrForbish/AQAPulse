@@ -925,6 +925,19 @@ th {
     background: rgba(3, 9, 18, 0.9);
 }
 
+.attachment-image-trigger-react {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+}
+
+.attachment-image-trigger-react:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 4px;
+    border-radius: 16px;
+}
+
 .attachment-image-hint-react,
 .attachment-preview-loading-react,
 .attachment-preview-error-react {
@@ -951,6 +964,73 @@ th {
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 12px;
     line-height: 1.6;
+}
+
+.image-lightbox-react[hidden] {
+    display: none;
+}
+
+.image-lightbox-react {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+}
+
+.image-lightbox-backdrop-react {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(2, 6, 15, 0.82);
+}
+
+.image-lightbox-dialog-react {
+    position: relative;
+    z-index: 1;
+    width: min(92vw, 1080px);
+    max-height: 90vh;
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 24px;
+    border: 1px solid rgba(133, 157, 194, 0.22);
+    background: linear-gradient(180deg, rgba(12, 22, 39, 0.96), rgba(7, 15, 27, 0.94));
+    box-shadow: var(--shadow-lg);
+}
+
+.image-lightbox-header-react {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.image-lightbox-title-react {
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+.image-lightbox-close-react {
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 999px;
+    border: 1px solid rgba(133, 157, 194, 0.18);
+    background: rgba(10, 21, 38, 0.78);
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.image-lightbox-body-react {
+    overflow: auto;
+}
+
+.image-lightbox-image-react {
+    width: 100%;
+    max-height: calc(90vh - 120px);
+    object-fit: contain;
+    border-radius: 18px;
+    background: rgba(3, 9, 18, 0.96);
 }
 
 .attachment-thumb {

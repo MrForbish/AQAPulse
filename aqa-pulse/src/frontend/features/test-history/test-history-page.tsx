@@ -514,8 +514,27 @@ function AttachmentCard(props: { runId: string; attachment: TestHistoryAttachmen
     const imagePreviewAvailable = Boolean(href && isImageAttachment(props.attachment))
     const markdownPreviewAvailable = Boolean(href && isMarkdownAttachment(props.attachment) && canInlineMarkdownPreview(href))
     const imagePreviewHref = imagePreviewAvailable ? href : null
+    const [isImageLightboxOpen, setIsImageLightboxOpen] = React.useState(false)
     const [isMarkdownOpen, setIsMarkdownOpen] = React.useState(false)
     const [markdownState, setMarkdownState] = React.useState<{ status: 'idle' | 'loading' | 'success' | 'error'; content: string }>({ status: 'idle', content: '' })
+
+    React.useEffect(() => {
+        if (!isImageLightboxOpen) {
+            return
+        }
+
+        const abortLightbox = (event: KeyboardEvent): void => {
+            if (event.key === 'Escape') {
+                setIsImageLightboxOpen(false)
+            }
+        }
+
+        window.addEventListener('keydown', abortLightbox)
+
+        return () => {
+            window.removeEventListener('keydown', abortLightbox)
+        }
+    }, [isImageLightboxOpen])
 
     React.useEffect(() => {
         if (!isMarkdownOpen || !markdownPreviewAvailable || !href || markdownState.status !== 'idle') {
@@ -562,9 +581,15 @@ function AttachmentCard(props: { runId: string; attachment: TestHistoryAttachmen
                 <details className="attachment-preview-react compact-top">
                     <summary className="attachment-preview-summary-react">{HISTORY_TEXT.diagnostics.inlineImagePreview}</summary>
                     <div className="attachment-preview-body-react">
-                        <a href={imagePreviewHref} target="_blank" rel="noreferrer">
+                        <button
+                            type="button"
+                            className="attachment-image-trigger-react"
+                            data-image-lightbox-trigger
+                            aria-label={HISTORY_TEXT.diagnostics.expandImageHint}
+                            onClick={() => setIsImageLightboxOpen(true)}
+                        >
                             <img className="attachment-image-preview-react" src={imagePreviewHref} alt={props.attachment.name} loading="lazy" />
-                        </a>
+                        </button>
                         <div className="attachment-image-hint-react">{HISTORY_TEXT.diagnostics.expandImageHint}</div>
                     </div>
                 </details>
@@ -578,6 +603,34 @@ function AttachmentCard(props: { runId: string; attachment: TestHistoryAttachmen
                         {markdownState.status === 'success' ? <pre className="attachment-markdown-preview-react">{markdownState.content}</pre> : null}
                     </div>
                 </details>
+            ) : null}
+            {imagePreviewHref ? (
+                <div className="image-lightbox-react" hidden={!isImageLightboxOpen} data-image-lightbox>
+                    <button
+                        type="button"
+                        className="image-lightbox-backdrop-react"
+                        data-image-lightbox-close
+                        aria-label={HISTORY_TEXT.diagnostics.closeImageLightbox}
+                        onClick={() => setIsImageLightboxOpen(false)}
+                    />
+                    <div className="image-lightbox-dialog-react" role="dialog" aria-modal="true" aria-label={HISTORY_TEXT.diagnostics.imageLightboxTitle}>
+                        <div className="image-lightbox-header-react">
+                            <div className="image-lightbox-title-react" data-image-lightbox-title>{props.attachment.name || HISTORY_TEXT.diagnostics.imageLightboxTitle}</div>
+                            <button
+                                type="button"
+                                className="image-lightbox-close-react"
+                                data-image-lightbox-close
+                                aria-label={HISTORY_TEXT.diagnostics.closeImageLightbox}
+                                onClick={() => setIsImageLightboxOpen(false)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="image-lightbox-body-react">
+                            <img className="image-lightbox-image-react" data-image-lightbox-image src={imagePreviewHref} alt={props.attachment.name} loading="eager" />
+                        </div>
+                    </div>
+                </div>
             ) : null}
         </article>
     )

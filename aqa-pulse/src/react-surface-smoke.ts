@@ -88,9 +88,12 @@ async function main(): Promise<void> {
     const summary = store.getSummary()
     const firstTestTitle = requireFirstTestTitle(latestReport)
     const testHistoryPayload = store.getTestHistory(firstTestTitle, {})
+    const attachmentTestTitle = 'Checkout > retries after payment gateway timeout'
+    const attachmentTestHistoryPayload = store.getTestHistory(attachmentTestTitle, {})
     const navigationBaseTest = summary.currentRunTests.all[0] ?? null
 
     assert(testHistoryPayload && !('candidates' in testHistoryPayload), 'React smoke expects a concrete test history payload.')
+    assert(attachmentTestHistoryPayload && !('candidates' in attachmentTestHistoryPayload), 'React smoke expects an attachment-rich concrete test history payload.')
     assert(navigationBaseTest, 'React smoke expects at least one current-run test for navigation smoke.')
 
     const navigationSyntheticTest = {
@@ -233,6 +236,7 @@ async function main(): Promise<void> {
 
     await verifyStaticHashDeepLinkRoute(reactModule)
     await verifyStaticDashboardNavigation(navigationSummary, navigationTestHistoryPayload)
+    await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
     await verifyErrorBoundaryRecovery(reactModule)
 
@@ -656,6 +660,135 @@ async function verifyWorkspaceLoginBootstrapRedirect(workspaceSlug: string): Pro
         setGlobalValue('Event', previousEvent)
         setGlobalValue('MouseEvent', previousMouseEvent)
         dom.window.close()
+    }
+}
+
+async function verifyTestHistoryAttachmentLightbox(
+    reactModule: typeof import('aqa-pulse/react'),
+    requestedTitle: string,
+    testHistoryPayload: TestHistoryResponse,
+): Promise<void> {
+    const previewablePayload = injectImagePreviewUrlForSmoke(testHistoryPayload)
+    const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-lightbox' })
+    const previousWindow = globalThis.window
+    const previousDocument = globalThis.document
+    const previousNavigator = globalThis.navigator
+    const previousHTMLElement = globalThis.HTMLElement
+    const previousNode = globalThis.Node
+    const previousMutationObserver = globalThis.MutationObserver
+    const previousEvent = globalThis.Event
+    const previousMouseEvent = globalThis.MouseEvent
+
+    let root: Root | null = null
+
+    try {
+        setGlobalValue('window', dom.window)
+        setGlobalValue('document', dom.window.document)
+        setGlobalValue('navigator', dom.window.navigator)
+        setGlobalValue('HTMLElement', dom.window.HTMLElement)
+        setGlobalValue('Node', dom.window.Node)
+        setGlobalValue('MutationObserver', dom.window.MutationObserver)
+        setGlobalValue('Event', dom.window.Event)
+        setGlobalValue('MouseEvent', dom.window.MouseEvent)
+
+        const container = dom.window.document.getElementById('root')
+        assert(container, 'Attachment lightbox smoke needs root container.')
+
+        root = createRoot(container)
+
+        await act(async () => {
+            root!.render(
+                React.createElement(
+                    MemoryRouter,
+                    { initialEntries: [`/test/${encodeURIComponent(requestedTitle)}`] },
+                    React.createElement(
+                        reactModule.RuntimeProvider,
+                        {
+                            bootstrap: createBootstrap({
+                                route: { kind: 'test-history', workspaceSlug: null, testName: requestedTitle },
+                                initialRequestUrl: `/test/${encodeURIComponent(requestedTitle)}`,
+                                initialTestHistoryPayload: previewablePayload,
+                            }),
+                            children: React.createElement(reactModule.TestHistoryPage, { workspaceSlug: null, requestedTitle }),
+                        },
+                    ),
+                ),
+            )
+            await flushMicrotasks()
+        })
+
+        const imagePreviewTrigger = container.querySelector('[data-image-lightbox-trigger]')
+        assert(imagePreviewTrigger, `Attachment lightbox smoke expects at least one image preview trigger. Actual DOM: ${container.innerHTML}`)
+
+        await clickElement(imagePreviewTrigger, dom.window)
+        await waitForCondition(() => {
+            const lightbox = container.querySelector('[data-image-lightbox]') as HTMLElement | null
+            return Boolean(lightbox && !lightbox.hidden)
+        }, () => container.innerHTML)
+
+        const lightboxTitle = container.querySelector('[data-image-lightbox-title]')
+        assert(lightboxTitle?.textContent && lightboxTitle.textContent.length > 0, 'Attachment lightbox smoke expects image title in dialog header.')
+
+        const lightboxClose = container.querySelector('.image-lightbox-close-react')
+        assert(lightboxClose, 'Attachment lightbox smoke expects close button.')
+        await clickElement(lightboxClose, dom.window)
+        await waitForCondition(() => {
+            const lightbox = container.querySelector('[data-image-lightbox]') as HTMLElement | null
+            return Boolean(lightbox && lightbox.hidden)
+        }, () => container.innerHTML)
+    } finally {
+        if (root) {
+            await act(async () => {
+                root!.unmount()
+            })
+        }
+
+        setGlobalValue('window', previousWindow)
+        setGlobalValue('document', previousDocument)
+        setGlobalValue('navigator', previousNavigator)
+        setGlobalValue('HTMLElement', previousHTMLElement)
+        setGlobalValue('Node', previousNode)
+        setGlobalValue('MutationObserver', previousMutationObserver)
+        setGlobalValue('Event', previousEvent)
+        setGlobalValue('MouseEvent', previousMouseEvent)
+        dom.window.close()
+    }
+}
+
+function injectImagePreviewUrlForSmoke(payload: TestHistoryResponse): TestHistoryResponse {
+    let hasInjectedPreviewUrl = false
+
+    return {
+        ...payload,
+        latestRun: payload.latestRun ? cloneHistoryItemWithPreviewUrl(payload.latestRun, () => {
+            hasInjectedPreviewUrl = true
+        }) : null,
+        history: payload.history.map((item) => cloneHistoryItemWithPreviewUrl(item, () => {
+            hasInjectedPreviewUrl = true
+        })),
+    }
+
+    function cloneHistoryItemWithPreviewUrl(
+        item: TestHistoryResponse['history'][number],
+        markInjected: () => void,
+    ): TestHistoryResponse['history'][number] {
+        return {
+            ...item,
+            attemptDetails: item.attemptDetails.map((attempt) => ({
+                ...attempt,
+                attachments: attempt.attachments.map((attachment) => {
+                    if (!hasInjectedPreviewUrl && (attachment.contentType?.toLowerCase() ?? '') === 'image/png') {
+                        markInjected()
+                        return {
+                            ...attachment,
+                            url: 'https://example.test/payment-timeout.png',
+                        }
+                    }
+
+                    return attachment
+                }),
+            })),
+        }
     }
 }
 

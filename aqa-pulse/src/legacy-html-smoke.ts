@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     }
 
     try {
-        const legacyRuntimePath = pathToFileURL(path.join(__dirname, '../dist-ts/legacy-html-runtime.js')).href
+        const legacyRuntimePath = pathToFileURL(path.resolve(__dirname, '../../aqa-pulse-client/dist/index.js')).href
         const legacyRuntime = await import(legacyRuntimePath)
         const dashboardHtml = legacyRuntime.renderDashboardHtml(summary, { basePath: '/legacy' })
         const historyHtml = legacyRuntime.renderTestHistoryHtml(testHistoryPayload, firstTest.title, {}, {
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
         assertIncludes(metricHeadingHtml, 'Smoke heading', 'Legacy metric heading helper should still render headings.')
 
         assert.equal(warnMessages.length, 1, `Legacy runtime should warn once, got ${warnMessages.length}: ${warnMessages.join(' | ')}`)
-        assertIncludes(warnMessages[0] ?? '', 'legacy HTML renderer compatibility layer', 'Legacy runtime warning text changed unexpectedly.')
+        assertIncludes(warnMessages[0] ?? '', 'aqa-pulse-client is a legacy compatibility package', 'Legacy runtime warning text changed unexpectedly.')
     } finally {
         console.warn = originalWarn
         fs.rmSync(tempRoot, { recursive: true, force: true })

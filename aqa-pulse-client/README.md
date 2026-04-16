@@ -21,6 +21,8 @@
 Пакет содержит только клиентский runtime-код и публичные декларации типов.
 Backend-логика, CLI, API-сервер и файловая обработка в пакет не публикуются.
 
+Начиная с текущей схемы, compatibility renderer собирается из собственного source tree внутри `aqa-pulse-client/src`, а не копируется из build output пакета `aqa-pulse`.
+
 Важно: API этого пакета поддерживается как compatibility layer. Новые React-фичи, auth flow и self-hosted UI в него не портируются автоматически.
 
 Важно: если клиенту нужно **поставить AQA Pulse у себя**, ему обычно нужен не `aqa-pulse-client`, а `aqa-pulse-server`.

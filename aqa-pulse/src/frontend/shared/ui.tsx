@@ -162,6 +162,7 @@ export interface TraceDisclosureProps {
     emptyLabel?: string
     dialogTitle?: string
     badgeLabel?: string
+    showBadge?: boolean
     compact?: boolean
     compactSize?: 'tight' | 'comfortable'
     variant?: 'default' | 'cluster' | 'table'
@@ -255,7 +256,7 @@ export function TraceDisclosure(props: TraceDisclosureProps): React.JSX.Element 
                 onClick={() => setIsOpen(true)}
             >
                 <span className={['trace-disclosure-copy-react', 'mono-cell', compactClassName, variantClassName].filter(Boolean).join(' ')}>{previewText}</span>
-                <span className="trace-disclosure-pill-react">{props.badgeLabel ?? 'trace'}</span>
+                {props.showBadge === false ? null : <span className="trace-disclosure-pill-react">{props.badgeLabel ?? 'trace'}</span>}
             </button>
             {disclosureDialog}
         </>

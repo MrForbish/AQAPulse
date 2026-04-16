@@ -1,10 +1,12 @@
-/** @deprecated Legacy HTML renderer compatibility layer. New UI work ships through the React runtime in aqa-pulse-server. */
-export { renderDashboardHtml } from './render-dashboard'
-/** @deprecated Legacy HTML renderer compatibility layer. New UI work ships through the React runtime in aqa-pulse-server. */
-export { renderTestHistoryHtml } from './render-test-history'
-/** @deprecated Legacy HTML renderer compatibility layer. Kept for string-based HTML consumers only. */
-export { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
-export { formatDate, formatDuration, formatPercent } from './shared/formatting'
-export { ru } from './shared/i18n/ru'
-export type { DashboardAdvancedMetrics, DashboardAvailableFilters, DashboardFilters, DashboardKpis, DashboardRunMetadata, DashboardSummary } from './dashboard-utils'
-export type { TestHistoryConflict, TestHistoryResponse } from './api-store'
+import { renderDashboardHtml as renderDashboardHtmlImpl } from './render-dashboard';
+import { renderMetricHeading as renderMetricHeadingImpl } from './render-metric-info';
+import { renderTestHistoryHtml as renderTestHistoryHtmlImpl } from './render-test-history';
+import { formatDate, formatDuration, formatPercent } from './shared/formatting';
+import { ru } from './shared/i18n/ru';
+export declare function renderDashboardHtml(...args: Parameters<typeof renderDashboardHtmlImpl>): ReturnType<typeof renderDashboardHtmlImpl>;
+export declare function renderTestHistoryHtml(...args: Parameters<typeof renderTestHistoryHtmlImpl>): ReturnType<typeof renderTestHistoryHtmlImpl>;
+export declare function renderMetricHeading(...args: Parameters<typeof renderMetricHeadingImpl>): ReturnType<typeof renderMetricHeadingImpl>;
+export declare const METRIC_INFO_STYLES: string;
+export { formatDate, formatDuration, formatPercent, ru };
+export type { DashboardAdvancedMetrics, DashboardAvailableFilters, DashboardFilters, DashboardKpis, DashboardRunMetadata, DashboardSummary, } from './dashboard-utils';
+export type { TestHistoryConflict, TestHistoryResponse } from './api-store';

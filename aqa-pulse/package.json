@@ -73,7 +73,7 @@
     "generate": "npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
     "generate:history-demo": "npm run parse -- ./fixtures/sample-llm-report-previous.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit abcdef123456 --author \"QA Bot\" && npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit fedcba654321 --author \"QA Bot\" && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
     "smoke:exports": "npm run compile && ts-node src/export-surface-smoke.ts",
-    "smoke:legacy-html": "npm run compile && ts-node src/legacy-html-smoke.ts",
+    "smoke:legacy-html": "npm --prefix ../aqa-pulse-client run build && ts-node src/legacy-html-smoke.ts",
     "smoke:react": "npm run compile && ts-node src/react-surface-smoke.ts",
     "smoke:static-export": "npm run generate:history-demo && ts-node src/static-export-smoke.ts",
     "clean:package": "node -e \"const fs=require('fs'); if(fs.existsSync('dist-ts')) fs.rmSync('dist-ts',{recursive:true,force:true});\"",

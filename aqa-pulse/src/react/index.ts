@@ -1,15 +1,17 @@
 export {
+    readBootstrapFromDocument,
+    RuntimeProvider,
+    useRuntime,
+} from '../frontend/runtime'
+export {
     buildArtifactBaseUrl,
     buildDashboardHref,
     buildSummaryApiUrl,
     buildTestHistoryApiUrl,
     buildTestHistoryHref,
-    readBootstrapFromDocument,
     readFiltersFromSearchParams,
-    RuntimeProvider,
     type FrontendFilters,
-    useRuntime,
-} from '../frontend/runtime'
+} from '../frontend/navigation'
 export {
     loginAsAdmin,
     logoutAdmin,

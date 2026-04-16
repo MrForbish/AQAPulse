@@ -7,6 +7,7 @@
 - Основной пользовательский интерфейс AQA Pulse теперь развивается через React runtime.
 - Self-hosted сценарий идет через `aqa-pulse-server`.
 - `aqa-pulse-client` остается только как compatibility layer для существующих интеграций со string-based HTML renderer API.
+- Исходники deprecated compatibility renderer теперь живут в самом `aqa-pulse-client`; пакет `aqa-pulse` больше не держит этот renderer как часть собственного source/build surface.
 - Legacy renderer API уже помечен как deprecated и будет постепенно выводиться из активного продукта.
 - Backend/domain/infra модули вроде `contracts.ts`, `jwt.ts`, `sqlite-migrate.ts` не мигрируют в React: они остаются серверным и операционным слоем, который новый UI использует через API, bootstrap и shared contracts.
 
@@ -52,6 +53,7 @@
 Но нужно учитывать ограничения:
 
 - пакет больше не является основным продуктовым surface;
+- ownership этого compatibility flow теперь сосредоточен внутри `aqa-pulse-client`, а не в `aqa-pulse`;
 - новые auth flow и UI-фичи туда не переносятся;
 - runtime уже предупреждает о deprecated-статусе этих API;
 - дальнейшая миграция должна идти в сторону `aqa-pulse-server` или React/static runtime.

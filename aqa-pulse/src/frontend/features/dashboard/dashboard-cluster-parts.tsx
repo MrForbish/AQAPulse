@@ -37,6 +37,7 @@ export function DashboardClusterMetricHint(props: {
                 text={props.cluster.sampleMessage ?? props.cluster.message}
                 dialogTitle="Пример ошибки из кластера"
                 badgeLabel="sample"
+                showBadge={false}
                 variant="cluster"
             />
         </div>
@@ -57,6 +58,7 @@ export function DashboardClusterCard(props: { cluster: DashboardErrorCluster }):
                     text={props.cluster.sampleMessage ?? props.cluster.message}
                     dialogTitle="Пример ошибки из кластера"
                     badgeLabel="sample"
+                    showBadge={false}
                     variant="cluster"
                 />
             </div>

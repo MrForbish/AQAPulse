@@ -1,5 +1,5 @@
 /**
- * Назначение: общий frontend runtime для bootstrap, navigation helpers и доступа к текущему route/session состоянию.
+ * Назначение: общий frontend runtime для bootstrap и доступа к текущему route/session состоянию.
  */
 import React from 'react'
 import {
@@ -7,15 +7,6 @@ import {
     parseFrontendBootstrap,
     type FrontendBootstrapData,
 } from '../frontend-bootstrap'
-import {
-    buildArtifactBaseUrl as buildSharedArtifactBaseUrl,
-    buildSummaryApiUrl as buildSharedSummaryApiUrl,
-    buildWorkspaceDashboardHref,
-    buildWorkspaceTestHistoryHref,
-    buildTestHistoryApiUrl as buildSharedTestHistoryApiUrl,
-    readFiltersFromSearchParams as readSharedFiltersFromSearchParams,
-    type QueryFilters,
-} from '../shared/navigation'
 
 const RuntimeContext = React.createContext<FrontendBootstrapData>(createEmptyFrontendBootstrap())
 
@@ -37,32 +28,3 @@ export function RuntimeProvider(props: { bootstrap: FrontendBootstrapData; child
 export function useRuntime(): FrontendBootstrapData {
     return React.useContext(RuntimeContext)
 }
-
-export function buildDashboardHref(workspaceSlug: string | null, filters: FrontendFilters): string {
-    return buildWorkspaceDashboardHref(workspaceSlug, filters)
-}
-
-export function buildSummaryApiUrl(workspaceSlug: string | null, filters: FrontendFilters): string {
-    return buildSharedSummaryApiUrl(workspaceSlug, filters)
-}
-
-export function buildTestHistoryHref(workspaceSlug: string | null, testName: string, filters: FrontendFilters): string {
-    return buildWorkspaceTestHistoryHref(workspaceSlug, testName, filters)
-}
-
-export function buildTestHistoryApiUrl(workspaceSlug: string | null, testName: string, filters: FrontendFilters): string {
-    return buildSharedTestHistoryApiUrl(workspaceSlug, testName, filters)
-}
-
-export function buildArtifactBaseUrl(workspaceSlug: string | null): string {
-    return buildSharedArtifactBaseUrl(workspaceSlug)
-}
-
-/**
- * Frontend читает фильтры тем же кодом, что и backend/legacy renderers, чтобы query-параметры не расходились между runtime слоями.
- */
-export function readFiltersFromSearchParams(searchParams: URLSearchParams): FrontendFilters {
-    return readSharedFiltersFromSearchParams(searchParams)
-}
-
-export type FrontendFilters = QueryFilters

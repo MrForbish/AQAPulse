@@ -1,4 +1,4 @@
-import { buildDashboardHref } from '../../runtime'
+import { buildDashboardHref } from '../../navigation'
 import { useDashboardPageModel } from '../../hooks/use-dashboard-page-model'
 import { resetDashboardFilters, updateDashboardSearchParam } from './dashboard-query-state'
 import type { DashboardPageContentProps } from './dashboard-page-content'

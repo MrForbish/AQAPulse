@@ -1,6 +1,6 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useDashboardSummaryData } from './use-dashboard-summary'
-import { readFiltersFromSearchParams } from '../runtime'
+import { readFiltersFromSearchParams } from '../navigation'
 import { useDashboardRuntimeBootstrapState } from '../runtime-hooks'
 import { prepareDashboardSummaryRequest } from '../features/dashboard/dashboard-page-model-helpers'
 

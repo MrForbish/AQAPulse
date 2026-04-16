@@ -31,7 +31,11 @@
 
 `renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как compatibility layer.
 
-Файлы вроде `src/render-dashboard.ts` и `src/render-test-history.ts` не являются кандидатами на «перенос в React»: React UI уже живёт отдельно, а эти модули удерживаются только как deprecated implementation detail для старых интеграций.
+Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит legacy HTML renderer в стандартный build output.
+
+Legacy smoke теперь тоже проверяет уже собранный `aqa-pulse-client`, так что исходники string-based renderer больше не принадлежат пакету `aqa-pulse`.
+
+Исходники deprecated string-based renderer больше не живут в `aqa-pulse`: теперь они принадлежат `aqa-pulse-client` и не участвуют в основном React/runtime build этого пакета.
 
 Файлы уровня `src/backend/contracts.ts`, `src/backend/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
 

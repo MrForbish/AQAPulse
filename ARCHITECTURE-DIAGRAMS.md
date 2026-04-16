@@ -81,14 +81,14 @@ flowchart LR
         USER[Browser User] --> SERVER
 
         subgraph Repo[AQAPulse repo]
-                COREPKG[aqa-pulse\ncore analytics + SSR renderers + backend runtime]
+            COREPKG[aqa-pulse\ncore analytics + React runtime + backend runtime]
                 SERVERPKG[aqa-pulse-server\nself-hosted bundle + Docker + docs]
-                CLIENTPKG[aqa-pulse-client\nclient package / packaging]
+            CLIENTPKG[aqa-pulse-client\nlegacy compatibility package + source]
         end
 
         SERVERPKG -. build/runtime bundle from .-> COREPKG
         SERVER --> COREPKG
-        CLIENTPKG -. packaging sidecar .- COREPKG
+        CLIENTPKG -. compatibility-only companion .- COREPKG
 
         SERVER --> STORAGE[(file / sqlite / postgres)]
         SERVER --> WS[Workspace registry + workspace data]

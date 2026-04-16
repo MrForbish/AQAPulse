@@ -1,5 +1,5 @@
 import type { DashboardSummary } from '../../../dashboard-utils'
-import { buildSummaryApiUrl, readFiltersFromSearchParams, type FrontendFilters } from '../../runtime'
+import { buildSummaryApiUrl, readFiltersFromSearchParams, type FrontendFilters } from '../../navigation'
 import { readDashboardSelectedFilters, resolveDashboardActiveTab } from './dashboard-query-state'
 import type { DashboardTabId } from './dashboard-tab-content'
 

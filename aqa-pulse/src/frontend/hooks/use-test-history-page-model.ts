@@ -1,6 +1,6 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTestHistoryData } from './use-test-history'
-import { readFiltersFromSearchParams } from '../runtime'
+import { readFiltersFromSearchParams } from '../navigation'
 import { useTestHistoryRuntimeBootstrapState } from '../runtime-hooks'
 import { prepareTestHistoryDataRequest } from '../features/test-history/test-history-page-model-helpers'
 

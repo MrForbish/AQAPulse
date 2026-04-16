@@ -10,7 +10,7 @@ import type {
 } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import { formatCommit, formatScore, formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
-import { buildTestHistoryHref } from '../../runtime'
+import { buildTestHistoryHref } from '../../navigation'
 import { EmptyState, OverflowText, Panel, StatusBadge, TraceDisclosure } from '../../shared/ui'
 
 export function DashboardTable(props: {

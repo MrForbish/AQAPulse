@@ -5,7 +5,7 @@ import {
     buildTestHistoryApiUrl,
     readFiltersFromSearchParams,
     type FrontendFilters,
-} from '../../runtime'
+} from '../../navigation'
 
 export interface TestHistoryDataRequestPreparation {
     filters: FrontendFilters

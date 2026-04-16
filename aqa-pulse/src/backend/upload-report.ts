@@ -4,6 +4,7 @@
 import { getErrorMessage } from '../shared/error-utils'
 import { loadReporterReport, type DashboardRunMetadata } from '../dashboard-utils'
 import type { IngestionRequestPayload, IngestionResult } from './contracts'
+import { prepareReporterReportForUpload } from './upload-report-artifacts'
 
 export interface UploadReportOptions {
     baseUrl: string
@@ -58,7 +59,12 @@ async function main(): Promise<void> {
 
 export async function uploadReportToWorkspace(options: UploadReportOptions): Promise<IngestionResult> {
     const accessToken = await exchangeWorkspaceApiKey(options)
-    const report = loadReporterReport(options.reportPath)
+    const report = prepareReporterReportForUpload(loadReporterReport(options.reportPath), {
+        reportPath: options.reportPath,
+        preparedReportPath: normalizeOptionalText(process.env.AQA_PULSE_PREPARED_REPORT_PATH),
+        debugAttachmentsSummary: isEnabledFlag(process.env.AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY),
+        inlineAttachmentsTotalMaxSizeBytes: parsePositiveInteger(process.env.AQA_PULSE_INLINE_ATTACHMENTS_TOTAL_MAX_SIZE_BYTES),
+    })
     const payload: IngestionRequestPayload = {
         report,
         metadata: {
@@ -254,6 +260,11 @@ function printHelp(): void {
     console.log('  --commit <value>                Явная commit metadata')
     console.log('  --author <value>                Явный author metadata')
     console.log('  --json                          Печатать результат в JSON')
+    console.log('')
+    console.log('Дополнительные env для attachment-aware upload:')
+    console.log('  AQA_PULSE_PREPARED_REPORT_PATH                   Сохранить подготовленный payload report в JSON')
+    console.log('  AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY=true         Печатать debug summary по найденным attachment')
+    console.log('  AQA_PULSE_INLINE_ATTACHMENTS_TOTAL_MAX_SIZE_BYTES Общий budget inline attachment в байтах')
 }
 
 function normalizeBaseUrl(value: string | undefined): string {
@@ -298,4 +309,18 @@ function requireNonEmptyText(value: string | undefined, label: string): string {
 
 function normalizeOptionalText(value: string | null | undefined): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function parsePositiveInteger(value: string | undefined): number | null {
+    if (!value || value.trim().length === 0) {
+        return null
+    }
+
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function isEnabledFlag(value: string | undefined): boolean {
+    const normalized = normalizeOptionalText(value)?.toLowerCase()
+    return normalized === '1' || normalized === 'true' || normalized === 'yes'
 }

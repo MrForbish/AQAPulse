@@ -82,7 +82,7 @@ function printCommandHelp(commandName) {
 
     if (commandName === 'upload-report') {
         console.log('aqa-pulse-server upload-report [--report <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
-        console.log('Делает exchange workspace API key -> ingestion JWT и отправляет report в backend ingestion endpoint.')
+        console.log('Делает exchange workspace API key -> ingestion JWT, подготавливает local Playwright attachments и отправляет report в backend ingestion endpoint.')
     }
 }
 

@@ -80,3 +80,5 @@ npm run update:docker -- --build-package
 - `aqa-pulse-server sqlite-backup [backupDirectory]`
 - `aqa-pulse-server upload-report [--report <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]`
 
+`upload-report` подходит и для обычного JSON upload, и для Playwright artifact-aware upload: если рядом с report доступны `test-results-*` output directories или markdown/screenshots attachments, CLI подготовит их для ingestion перед отправкой.
+

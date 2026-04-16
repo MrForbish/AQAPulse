@@ -62,6 +62,7 @@
     "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse-server является внутренним и не предназначен для публикации.'); process.exit(1)\""
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "express": "^5.2.1"
   }
 }

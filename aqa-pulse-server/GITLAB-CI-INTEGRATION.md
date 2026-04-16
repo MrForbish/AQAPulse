@@ -103,6 +103,33 @@ CLI читает из env:
 
 А metadata по умолчанию берёт из CI env (`CI_COMMIT_REF_NAME`, `CI_COMMIT_SHA`, `GITLAB_USER_NAME` и т.д.).
 
+Если рядом с report лежат Playwright artifacts/output directories, CLI сам попробует подтянуть screenshot и markdown attachments в payload перед ingestion. Это как раз путь для project-level aggregation job, где нужен не только summary JSON, но и контекст падения.
+
+Дополнительные env:
+
+- `AQA_PULSE_PREPARED_REPORT_PATH` — сохранить подготовленный report после attachment enrichment
+- `AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY=true` — напечатать debug summary по attachment discovery
+- `AQA_PULSE_INLINE_ATTACHMENTS_TOTAL_MAX_SIZE_BYTES` — общий inline budget для attachment content
+
+### Для текущего multi-job GitLab flow
+
+Твой сценарий с `ui-purchase`, `ui-cpu`, `ui-first`, `ui-second` остаётся валидным, но разделение ответственности теперь такое:
+
+- merge и orchestration между несколькими GitLab jobs остаются в project-specific script/CI logic;
+- финальный upload merged report лучше делать через `aqa-pulse-server upload-report`.
+
+То есть для aggregation job нормальный path такой:
+
+```bash
+node ./merge-aqa-pulse-reports.js --project-kind ui --allow-missing --output test-results/dashboard/ui-merged.json test-results/dashboard/ui-purchase.json test-results/dashboard/ui-cpu.json test-results/dashboard/ui-first.json test-results/dashboard/ui-second.json
+export PW_LLM_REPORT="test-results/dashboard/ui-merged.json"
+export AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY="true"
+export AQA_PULSE_PREPARED_REPORT_PATH="test-results/dashboard/ui-merged.prepared.json"
+aqa-pulse-server upload-report --report "$PW_LLM_REPORT"
+```
+
+Для API aggregation аналогично, только без UI-specific merge списка.
+
 ## Reusable template
 
 В пакете уже есть reusable snippet:

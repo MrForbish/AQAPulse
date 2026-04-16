@@ -139,7 +139,7 @@ async function main(): Promise<void> {
             },
         ),
         '/?tab=codeQuality',
-    ), ['Доступные сигналы уже сейчас', 'Migration status'])
+    ), ['Problem hotspots', 'Failure hotspots'])
 
     renderMarkup('test history page', renderWithRouter(
         React.createElement(

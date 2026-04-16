@@ -626,6 +626,108 @@ th {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
 }
 
+.stacked-bar-fill.is-good,
+.module-pill.is-good {
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+}
+
+.stacked-bar-fill.is-warn,
+.module-pill.is-warn {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.stacked-bar-fill.is-danger,
+.module-pill.is-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #fb7185 100%);
+}
+
+.stacked-bar-fill.is-accent,
+.module-pill.is-accent {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+}
+
+.compact-top {
+    margin-top: 12px;
+}
+
+.module-header-row,
+.summary-line,
+.stacked-bar-copy-spread,
+.readiness-item-header,
+.cost-breakdown-head-react,
+.module-pills {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.module-pills {
+    justify-content: flex-start;
+}
+
+.module-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    color: #09111f;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.callout-card,
+.formula-card-react,
+.detail-card-react,
+.readiness-item,
+.cost-breakdown-item-react {
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(133, 157, 194, 0.12);
+    background: rgba(7, 15, 27, 0.72);
+}
+
+.callout-card.is-good {
+    border-color: rgba(16, 185, 129, 0.18);
+}
+
+.callout-card.is-warn {
+    border-color: rgba(245, 158, 11, 0.18);
+}
+
+.callout-card.is-danger {
+    border-color: rgba(239, 68, 68, 0.18);
+}
+
+.formula-card-react strong,
+.detail-card-react strong,
+.readiness-item strong,
+.cost-breakdown-item-react strong {
+    color: var(--text-main);
+}
+
+.formula-card-react p,
+.readiness-item p,
+.callout-card p {
+    margin-top: 8px;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.split-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.readiness-list,
+.cost-breakdown-stack {
+    display: grid;
+    gap: 12px;
+}
+
 .signal-grid,
 .incident-grid-react {
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -1040,6 +1040,25 @@ th {
     color: var(--text-main);
 }
 
+.detail-card-react .metric-label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.detail-card-react strong {
+    display: block;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.detail-card-react-meta {
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
 .formula-card-react p,
 .readiness-item p,
 .callout-card p {

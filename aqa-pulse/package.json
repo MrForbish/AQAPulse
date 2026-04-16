@@ -83,7 +83,7 @@
     "smoke": "ts-node src/cleanup-smoke.ts && npm run generate:history-demo && npm run typecheck",
     "smoke:full": "npm run smoke && npm run smoke:static-export && npm run smoke:exports && npm run smoke:react && npm run self-hosted:smoke:auth",
     "prepack": "npm run compile",
-    "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse является внутренним и не предназначен для публикации. Для публичного browser-safe surface используй aqa-pulse-browser, для deprecated renderer path — aqa-pulse-client.'); process.exit(1)\"",
+    "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse является внутренним и не предназначен для публикации. Для публичного browser-safe surface используй aqa-pulse-browser, для product UI и self-hosted flow - aqa-pulse-server или React/static runtime.'); process.exit(1)\"",
     "pack:check": "npm pack --dry-run",
     "publish:check": "npm publish --dry-run",
     "server:pack:check": "npm --prefix ../aqa-pulse-server run pack:check"

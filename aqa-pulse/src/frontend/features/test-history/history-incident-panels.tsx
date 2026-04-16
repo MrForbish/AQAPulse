@@ -16,6 +16,9 @@ export function IncidentSummaryPanel(props: {
 }): React.JSX.Element {
     const incidentLead = extractIncidentLead(props.incidentSummary.summary)
     const incidentPrimarySignal = props.incidentSummary.failureStepErrorMessage ?? props.incidentSummary.latestErrorMessage ?? null
+    const failureStepTitle = props.incidentSummary.failureStepTitle
+    const failureStepCategory = props.incidentSummary.failureStepCategory
+    const failureStepValue = failureStepTitle ?? failureStepCategory ?? HISTORY_TEXT.incident.notCaptured
     const failureStepAnchor = findIncidentStepAnchor(props.history, props.incidentSummary.failureStepTitle)
 
     return (
@@ -34,12 +37,9 @@ export function IncidentSummaryPanel(props: {
             {incidentLead ? <div className="incident-summary-lead-react compact-top">{incidentLead}</div> : null}
             <div className="signal-grid compact-top">
                 <div className="detail-card-react">
-                    <span className="metric-label">{HISTORY_TEXT.incident.categoryLabel}</span>
-                    <strong>{HISTORY_TEXT.incident.category[props.incidentSummary.category]}</strong>
-                </div>
-                <div className="detail-card-react">
                     <span className="metric-label">{HISTORY_TEXT.incident.failureStepLabel}</span>
-                    <strong>{props.incidentSummary.failureStepTitle ?? props.incidentSummary.failureStepCategory ?? HISTORY_TEXT.incident.notCaptured}</strong>
+                    <strong>{failureStepValue}</strong>
+                    {failureStepTitle && failureStepCategory ? <div className="detail-card-react-meta">{failureStepCategory}</div> : null}
                     {failureStepAnchor ? (
                         <div className="anchor-link-row compact-top">
                             <a className="ghost-link" href={`#${failureStepAnchor}`}>{HISTORY_TEXT.incident.jumpToFailureStep}</a>

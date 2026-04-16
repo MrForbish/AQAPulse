@@ -49,6 +49,7 @@ function assertExport(moduleValue: Record<string, unknown>, exportName: string, 
 function assertNoCompatibilityBuildDependency(): void {
     const packageRoot = path.resolve(__dirname, '..')
     const repoRoot = path.resolve(packageRoot, '..')
+    const removedClientPackagePath = path.resolve(repoRoot, 'aqa-pulse-client')
     const aqaPulsePackageJson = readJsonFile(path.resolve(packageRoot, 'package.json'))
     const serverPackageJson = readJsonFile(path.resolve(repoRoot, 'aqa-pulse-server', 'package.json'))
     const serverBuildPackagePath = path.resolve(repoRoot, 'aqa-pulse-server', 'scripts', 'build-package.js')
@@ -57,6 +58,7 @@ function assertNoCompatibilityBuildDependency(): void {
     const serverScripts = readScripts(serverPackageJson)
 
     assert(!('smoke:compatibility-html' in aqaPulseScripts), 'aqa-pulse must not keep smoke:compatibility-html in package scripts')
+    assert(!fs.existsSync(removedClientPackagePath), 'repo must not keep the removed aqa-pulse-client package')
     assert(!String(serverScripts.build ?? '').includes('aqa-pulse-client'), 'aqa-pulse-server build must not depend on aqa-pulse-client')
     assert(!serverBuildPackage.includes('aqa-pulse-client'), 'aqa-pulse-server/scripts/build-package.js must not copy files from aqa-pulse-client')
     assert(!serverBuildPackage.includes('render-dashboard.js'), 'aqa-pulse-server/scripts/build-package.js must not package deprecated renderer files')

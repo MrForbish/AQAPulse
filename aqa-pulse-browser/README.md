@@ -2,7 +2,7 @@
 
 `aqa-pulse-browser` — публичный browser-safe package для интеграций, которым нужны shared utilities, metric heading helpers, locale, bootstrap helpers и публичные типы AQA Pulse без deprecated HTML renderer API.
 
-Этот пакет зеркалит browser-safe surface внутреннего `aqa-pulse/client`, но публикуется отдельно и не тянет compatibility renderer.
+Этот пакет зеркалит browser-safe surface внутреннего `aqa-pulse/client`, но публикуется отдельно и не тянет product UI/runtime bundle.
 
 Что входит:
 
@@ -24,7 +24,7 @@
 - `renderDashboardHtml(...)`
 - `renderTestHistoryHtml(...)`
 
-Эти compatibility renderer APIs остаются только в `aqa-pulse-client` и считаются deprecated removal path.
+Эти старые string-based renderer APIs больше не публикуются. Для актуального UI-потока используй `aqa-pulse-server` или React/static runtime из `aqa-pulse`.
 
 Когда использовать:
 
@@ -35,5 +35,5 @@
 Когда не использовать:
 
 - если нужен self-hosted продукт целиком: используй `aqa-pulse-server`;
-- если нужен deprecated HTML renderer flow: это всё ещё `aqa-pulse-client`;
+- если нужен полноценный dashboard/test-history UI: используй `aqa-pulse-server` или embedded/static React runtime, а не browser helper package;
 - если ты работаешь внутри monorepo и можешь использовать private `aqa-pulse/react`, `aqa-pulse/hooks`, `aqa-pulse/types` напрямую.

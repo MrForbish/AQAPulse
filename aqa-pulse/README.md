@@ -29,15 +29,15 @@
 
 `aqa-pulse` больше не экспортирует string-based HTML renderers.
 
-`renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как deprecated compatibility layer.
+Исторический string-based HTML renderer path удалён из активной поставки repo; для product UI используй `aqa-pulse-server`, а для offline/embedded сценариев - React/static runtime из `aqa-pulse`.
 
 Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale и публичные Dashboard/TestHistory types для новых интеграций теперь публикуются через `aqa-pulse-browser`, а не через deprecated renderer package.
 
 Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит compatibility HTML renderer в стандартный build output.
 
-Исходники deprecated string-based renderer больше не живут в `aqa-pulse`: теперь они принадлежат `aqa-pulse-client` и не участвуют в основном React/runtime build этого пакета.
+Исходники deprecated string-based renderer больше не живут в `aqa-pulse` и больше не поддерживаются как отдельный package surface.
 
-`npm run smoke:full` теперь тоже не зависит от сборки `aqa-pulse-client`: negative checks в export-surface smoke следят, чтобы main package и self-hosted packaging не тянули compatibility renderer обратно.
+`npm run smoke:full` теперь тоже не зависит от compatibility renderer path: negative checks в export-surface smoke следят, чтобы main package и self-hosted packaging не тянули удалённый renderer обратно.
 
 Файлы уровня `src/backend/contracts.ts`, `src/backend/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
 

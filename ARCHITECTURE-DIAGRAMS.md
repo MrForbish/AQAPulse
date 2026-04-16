@@ -84,13 +84,11 @@ flowchart LR
             COREPKG[aqa-pulse\ncore analytics + React runtime + backend runtime]
                 SERVERPKG[aqa-pulse-server\nself-hosted bundle + Docker + docs]
             BROWSERPKG[aqa-pulse-browser\npublic browser-safe utilities + types]
-            CLIENTPKG[aqa-pulse-client\ndeprecated compatibility package + source]
         end
 
         SERVERPKG -. build/runtime bundle from .-> COREPKG
         SERVER --> COREPKG
         BROWSERPKG -. publishable browser-safe surface .- COREPKG
-        CLIENTPKG -. deprecated renderer-only companion .- COREPKG
 
         SERVER --> STORAGE[(file / sqlite / postgres)]
         SERVER --> WS[Workspace registry + workspace data]

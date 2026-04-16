@@ -5,25 +5,33 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import type { DashboardErrorCluster, DashboardSummary } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
-import { ru } from '../../../shared/i18n/ru'
 import {
     averageDashboardNumber,
     buildBusinessMetricReadiness,
     buildReleaseConfidenceBreakdown,
     formatAssumptionValue,
+    formatCommit,
     formatCostShare,
     formatCostShareWidth,
+    formatCurrency,
     formatDailyRatio,
+    formatMinutes,
     formatNullableDays,
     formatNullableMinutes,
     formatNullablePercent,
+    formatScore,
+    formatStatusLabel,
     getBusinessDriverInsightBody,
     getBusinessDriverInsightTitle,
     getBusinessImpactLabel,
     getBusinessScenarioStatusHint,
     getBusinessScenarioStatusLabel,
     getManagerChangeLabel,
-} from '../../../render-dashboard-sections'
+    getScoreTone,
+    getStatusTone,
+    roundOne,
+} from '../../../shared/dashboard-helpers'
+import { ru } from '../../../shared/i18n/ru'
 import { buildTestHistoryHref } from '../../runtime'
 import { EmptyState, MetricCard, Panel, StatusBadge } from '../../shared/ui'
 
@@ -496,64 +504,6 @@ function CostBreakdownItem(props: { label: string; value: string; width: string 
             </div>
         </div>
     )
-}
-
-function getScoreTone(value: number): 'default' | 'good' | 'warn' | 'danger' {
-    if (value >= 80) {
-        return 'good'
-    }
-
-    if (value >= 60) {
-        return 'warn'
-    }
-
-    return 'danger'
-}
-
-function getStatusTone(status: string, flaky: boolean): 'neutral' | 'good' | 'warn' | 'danger' {
-    if (flaky) {
-        return 'warn'
-    }
-
-    const normalized = status.trim().toLowerCase()
-
-    if (normalized === 'passed') {
-        return 'good'
-    }
-
-    if (normalized === 'failed' || normalized === 'timedout' || normalized === 'timed out' || normalized === 'interrupted') {
-        return 'danger'
-    }
-
-    return 'neutral'
-}
-
-function formatStatusLabel(status: string, flaky: boolean): string {
-    if (flaky) {
-        return DASHBOARD_TEXT.statusLabels.flaky
-    }
-
-    return DASHBOARD_TEXT.statusLabels[status as keyof typeof DASHBOARD_TEXT.statusLabels] ?? status
-}
-
-function formatCurrency(value: number | null): string {
-    return value === null ? '—' : `${value.toFixed(2)} ₽`
-}
-
-function formatScore(value: number): string {
-    return `${roundOne(value)} / 100`
-}
-
-function formatCommit(commit: string | null): string {
-    return commit ? commit.slice(0, 8) : '—'
-}
-
-function formatMinutes(value: number): string {
-    return `${value.toFixed(2)} мин`
-}
-
-function roundOne(value: number): number {
-    return Math.round(value * 10) / 10
 }
 
 function mapReadinessTone(status: 'ready' | 'partial' | 'pending'): 'good' | 'warn' | 'danger' {

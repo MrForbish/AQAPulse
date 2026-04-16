@@ -495,6 +495,62 @@ input {
     font-size: 28px;
 }
 
+.status-switcher,
+.summary-strip {
+    display: grid;
+    gap: 12px;
+}
+
+.status-switcher {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.status-switch-button,
+.summary-strip-item {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(133, 157, 194, 0.12);
+    background: rgba(7, 15, 27, 0.72);
+}
+
+.status-switch-button {
+    color: var(--text-main);
+    text-align: left;
+    cursor: pointer;
+}
+
+.status-switch-button span,
+.summary-strip-item span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.status-switch-button strong,
+.summary-strip-item strong {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+}
+
+.status-switch-button.is-active {
+    border-color: rgba(23, 190, 187, 0.36);
+    background: rgba(23, 190, 187, 0.12);
+}
+
+.summary-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.summary-strip-text {
+    display: block;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-main);
+    word-break: break-word;
+}
+
 .table-wrap {
     overflow: auto;
 }
@@ -821,6 +877,11 @@ th {
     color: #ffd487;
 }
 
+.inline-note.is-info {
+    border-color: rgba(14, 165, 233, 0.24);
+    color: #9ddcff;
+}
+
 .evidence-chip {
     display: inline-flex;
     align-items: center;
@@ -851,6 +912,8 @@ th {
     }
 
     .status-strip,
+    .status-switcher,
+    .summary-strip,
     .filters-grid,
     .signal-grid,
     .incident-grid-react {
@@ -866,6 +929,8 @@ th {
 
     .metrics-grid,
     .status-strip,
+    .status-switcher,
+    .summary-strip,
     .filters-grid,
     .signal-grid,
     .incident-grid-react {

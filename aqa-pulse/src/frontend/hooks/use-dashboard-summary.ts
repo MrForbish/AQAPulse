@@ -1,9 +1,15 @@
+/**
+ * Назначение: загружает dashboard summary и переиспользует bootstrap-данные только для исходного shell URL.
+ */
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { DashboardSummary } from '../../dashboard-utils'
 import { buildWorkspaceLoginHref } from '../shared/navigation'
 import { isUnauthorizedError, readErrorMessage, requestJson } from '../shared/http'
 
+/**
+ * Static export не делает runtime fetch summary, а server/workspace маршруты могут переходить между фильтрами и slug, поэтому хук отдельно отслеживает, к какому URL уже привязаны текущие данные.
+ */
 export function useDashboardSummaryData(props: {
     workspaceSlug: string | null
     apiUrl: string

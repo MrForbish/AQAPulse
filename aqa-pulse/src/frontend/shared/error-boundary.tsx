@@ -1,3 +1,6 @@
+/**
+ * Назначение: route-level error boundary для React shell с retry/reload recovery вместо падения всего frontend runtime.
+ */
 import React from 'react'
 import { ErrorView, PageFrame } from './ui'
 
@@ -10,6 +13,9 @@ interface FrontendErrorBoundaryState {
     instanceKey: number
 }
 
+/**
+ * Boundary сбрасывает subtree через `instanceKey`, чтобы retry пересоздавал весь route-узел, а не пытался продолжить со старым повреждённым state.
+ */
 export class FrontendErrorBoundary extends React.Component<FrontendErrorBoundaryProps, FrontendErrorBoundaryState> {
     state: FrontendErrorBoundaryState = {
         error: null,
@@ -27,6 +33,9 @@ export class FrontendErrorBoundary extends React.Component<FrontendErrorBoundary
         console.error('[AQA Pulse] Frontend route render failed.', error, errorInfo)
     }
 
+    /**
+     * Retry идёт через remount subtree: для route-level ошибок это надёжнее, чем пытаться локально восстановить часть уже сломанного дерева.
+     */
     private handleRetry = (): void => {
         this.setState((currentState) => ({
             error: null,
@@ -34,6 +43,9 @@ export class FrontendErrorBoundary extends React.Component<FrontendErrorBoundary
         }))
     }
 
+    /**
+     * Reload остаётся запасным путём для случаев, когда ошибка вызвана глобальным runtime состоянием, а не только одним React subtree.
+     */
     private handleReload = (): void => {
         if (typeof window !== 'undefined') {
             window.location.reload()

@@ -1,8 +1,14 @@
+/**
+ * Назначение: страница обмена raw workspace API key на ingestion JWT для self-hosted и client onboarding сценариев.
+ */
 import React from 'react'
 import { ErrorView, Panel } from '../../shared/ui'
 import { AuthShell } from './auth-shell'
 import { useWorkspaceApiKeyExchangeAction } from './admin-hooks'
 
+/**
+ * После exchange страница сразу показывает готовые operational details, чтобы оператор мог без ручной сборки составить Authorization header и ingestion endpoint.
+ */
 export function WorkspaceApiKeyExchangePage(props: { workspaceSlug: string }): React.JSX.Element {
     const { errorMessage, exchangeResult, isSubmitting, submit } = useWorkspaceApiKeyExchangeAction(props.workspaceSlug)
 

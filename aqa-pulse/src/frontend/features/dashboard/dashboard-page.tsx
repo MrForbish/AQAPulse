@@ -1,3 +1,6 @@
+/**
+ * Назначение: React dashboard-страница с табами, KPI, графиками и переходами в test history для standalone и workspace режимов.
+ */
 import React from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { DashboardErrorCluster, DashboardSummary } from '../../../dashboard-utils'
@@ -26,6 +29,9 @@ const DASHBOARD_TABS = [
     { id: 'ai', label: DASHBOARD_TEXT.tabs.ai },
 ] as const
 
+/**
+ * Dashboard умеет переиспользовать bootstrap summary только когда URL и workspace совпадают с исходным shell, чтобы не показывать устаревшие данные после client-side navigation.
+ */
 export function DashboardPage(props: { workspaceSlug: string | null }): React.JSX.Element {
     const runtime = useRuntime()
     const location = useLocation()

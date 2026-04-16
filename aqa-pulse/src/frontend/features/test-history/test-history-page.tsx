@@ -1,3 +1,6 @@
+/**
+ * Назначение: React-страница истории теста с conflict-state, diagnostics и timeline для standalone и server маршрутов.
+ */
 import React from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { TestHistoryAttachment, TestHistoryConflict, TestHistoryResponse } from '../../../api-store'
@@ -16,6 +19,9 @@ import { EmptyState, ErrorView, LoadingView, MetricCard, PageFrame, Panel, Statu
 const HISTORY_TEXT = ru.testHistory
 const DASHBOARD_TEXT = ru.dashboard
 
+/**
+ * Страница принимает `requestedTitle` из router-слоя, а дальше сама решает, можно ли переиспользовать bootstrap payload или нужен повторный fetch/static resolve для нового URL.
+ */
 export function TestHistoryPage(props: { workspaceSlug: string | null; requestedTitle: string }): React.JSX.Element {
     const runtime = useRuntime()
     const location = useLocation()
@@ -212,6 +218,9 @@ function EventSnapshot(props: { run: TestHistoryResponse['history'][number] }): 
     )
 }
 
+/**
+ * Attempt diagnostics остаются внутри страницы, потому что им нужно одновременно знать про историю попыток, artifact policy и static/server режим открытия вложений.
+ */
 function AttemptDiagnostics(props: {
     runId: string
     attempts: TestHistoryResponse['history'][number]['attemptDetails']
@@ -223,6 +232,9 @@ function AttemptDiagnostics(props: {
     }
 
     return (
+/**
+ * Static mode не умеет безопасно отдавать архивные артефакты, поэтому attachment href строится только для server/runtime сценария или когда attachment уже содержит внешний URL.
+ */
         <div className="attempt-list-react">
             {props.attempts.map((attempt) => (
                 <details key={attempt.attempt} className="attempt-card" open={attempt.attempt === props.attempts[0]?.attempt}>

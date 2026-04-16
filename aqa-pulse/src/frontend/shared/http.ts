@@ -1,3 +1,6 @@
+/**
+ * Назначение: минимальный HTTP-слой frontend runtime для JSON-запросов и нормализации transport-ошибок.
+ */
 export class HttpError extends Error {
     constructor(
         public readonly status: number,
@@ -9,6 +12,9 @@ export class HttpError extends Error {
     }
 }
 
+/**
+ * JSON helper централизует проверку `response.ok`, чтобы hooks не дублировали разбор payload и формирование HttpError.
+ */
 export async function requestJson<T>(input: string, init: RequestInit = {}): Promise<T> {
     const { response, payload } = await requestJsonResponse(input, init)
 
@@ -63,6 +69,9 @@ function tryParseJson(value: string): unknown {
     }
 }
 
+/**
+ * Собирает единый JSON-friendly RequestInit, чтобы credentials и Accept заголовки были одинаковыми во всех frontend fetch-вызовах.
+ */
 function buildJsonRequestInit(init: RequestInit): RequestInit {
     return {
         credentials: 'include',

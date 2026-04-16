@@ -1,3 +1,6 @@
+/**
+ * Назначение: общий auth-shell layout для admin/workspace логина и API-key exchange сценариев.
+ */
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PageFrame, Panel } from '../../shared/ui'
@@ -10,6 +13,9 @@ export interface AuthShellProps {
     footerLink?: { href: string; label: string }
 }
 
+/**
+ * AuthShell выносит общий layout отдельно от конкретных form-action hooks, чтобы login/exchange страницы различались только полями и submit-логикой.
+ */
 export function AuthShell(props: AuthShellProps): React.JSX.Element {
     return (
         <PageFrame>

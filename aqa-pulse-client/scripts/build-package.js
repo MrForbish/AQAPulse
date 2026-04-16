@@ -1,4 +1,6 @@
-// Purpose: assemble the legacy compatibility package from the compiled aqa-pulse output and keep its public runtime browser-only.
+/**
+ * Назначение: собирает legacy compatibility package из compiled output `aqa-pulse` и следит, чтобы его runtime оставался browser-only.
+ */
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -84,7 +86,9 @@ function cleanDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true })
 }
 
-// The compatibility package must not accidentally pull server/runtime-only modules, otherwise old HTML consumers would stop being browser-safe.
+/**
+ * Compatibility package не должен случайно подтянуть server/runtime-only зависимости, иначе старые HTML consumers перестанут быть browser-safe.
+ */
 function assertNoForbiddenRuntimeImports(filePath) {
     const content = fs.readFileSync(filePath, 'utf8')
 

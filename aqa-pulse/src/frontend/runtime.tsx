@@ -1,3 +1,6 @@
+/**
+ * Назначение: общий frontend runtime для bootstrap, navigation helpers и доступа к текущему route/session состоянию.
+ */
 import React from 'react'
 import {
     createEmptyFrontendBootstrap,
@@ -16,11 +19,17 @@ import {
 
 const RuntimeContext = React.createContext<FrontendBootstrapData>(createEmptyFrontendBootstrap())
 
+/**
+ * Читает bootstrap из inline script в документе, чтобы React стартовал из server/static shell без отдельного prefetch запроса.
+ */
 export function readBootstrapFromDocument(documentRef: Document = document): FrontendBootstrapData {
     const scriptElement = documentRef.getElementById('aqa-pulse-bootstrap')
     return parseFrontendBootstrap(scriptElement?.textContent)
 }
 
+/**
+ * Держит bootstrap как единый runtime context, чтобы feature-хуки и страницы не тащили напрямую DOM или глобалы браузера.
+ */
 export function RuntimeProvider(props: { bootstrap: FrontendBootstrapData; children: React.ReactNode }): React.JSX.Element {
     return <RuntimeContext.Provider value={props.bootstrap}>{props.children}</RuntimeContext.Provider>
 }
@@ -49,6 +58,9 @@ export function buildArtifactBaseUrl(workspaceSlug: string | null): string {
     return buildSharedArtifactBaseUrl(workspaceSlug)
 }
 
+/**
+ * Frontend читает фильтры тем же кодом, что и backend/legacy renderers, чтобы query-параметры не расходились между runtime слоями.
+ */
 export function readFiltersFromSearchParams(searchParams: URLSearchParams): FrontendFilters {
     return readSharedFiltersFromSearchParams(searchParams)
 }

@@ -1,3 +1,6 @@
+/**
+ * Назначение: корневой React app, который выбирает BrowserRouter или HashRouter и раскладывает bootstrap route по feature-страницам.
+ */
 import React from 'react'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { readBootstrapFromDocument, RuntimeProvider, useRuntime } from './runtime'
@@ -5,29 +8,32 @@ import { FrontendErrorBoundary } from './shared/error-boundary'
 import { LoadingView, PageFrame } from './shared/ui'
 
 const DashboardPage = React.lazy(async () => ({
-    default: (await import('./features/dashboard/dashboard-page')).DashboardPage,
+    default: (await import('./features/dashboard/dashboard-page.js')).DashboardPage,
 }))
 
 const TestHistoryPage = React.lazy(async () => ({
-    default: (await import('./features/test-history/test-history-page')).TestHistoryPage,
+    default: (await import('./features/test-history/test-history-page.js')).TestHistoryPage,
 }))
 
 const AdminDashboardPage = React.lazy(async () => ({
-    default: (await import('./features/admin/admin-dashboard-page')).AdminDashboardPage,
+    default: (await import('./features/admin/admin-dashboard-page.js')).AdminDashboardPage,
 }))
 
 const AdminLoginPage = React.lazy(async () => ({
-    default: (await import('./features/admin/admin-login-page')).AdminLoginPage,
+    default: (await import('./features/admin/admin-login-page.js')).AdminLoginPage,
 }))
 
 const WorkspaceLoginPage = React.lazy(async () => ({
-    default: (await import('./features/admin/workspace-login-page')).WorkspaceLoginPage,
+    default: (await import('./features/admin/workspace-login-page.js')).WorkspaceLoginPage,
 }))
 
 const WorkspaceApiKeyExchangePage = React.lazy(async () => ({
-    default: (await import('./features/admin/workspace-api-key-page')).WorkspaceApiKeyExchangePage,
+    default: (await import('./features/admin/workspace-api-key-page.js')).WorkspaceApiKeyExchangePage,
 }))
 
+/**
+ * Читает bootstrap один раз из DOM и передаёт его во всё приложение через RuntimeProvider, чтобы клиентский роутинг стартовал из того же состояния, которое сервер или static export уже заложили в HTML shell.
+ */
 export function App(): React.JSX.Element {
     const bootstrap = React.useMemo(() => readBootstrapFromDocument(), [])
 
@@ -38,6 +44,9 @@ export function App(): React.JSX.Element {
     )
 }
 
+/**
+ * Static export живёт на HashRouter, а server/self-hosted сценарии — на BrowserRouter, поэтому разветвление по `route.kind` централизовано здесь, а не размазано по feature-модулям.
+ */
 function AppBody(): React.JSX.Element {
     const runtime = useRuntime()
 
@@ -78,6 +87,9 @@ function AppBody(): React.JSX.Element {
     )
 }
 
+/**
+ * Route-level fallback скрывает детали lazy-loading и оставляет единое поведение загрузки для всех страниц.
+ */
 function RouteLoadingFallback(): React.JSX.Element {
     return (
         <PageFrame>
@@ -87,6 +99,9 @@ function RouteLoadingFallback(): React.JSX.Element {
 }
 
 function WorkspaceDashboardRoute(): React.JSX.Element {
+/**
+ * Маршрут test-history держит только URL→props mapping, а сам feature-модуль остаётся изолированным от knowledge о router params.
+ */
     const params = useParams<{ slug: string }>()
     return <DashboardPage workspaceSlug={params.slug ?? null} />
 }

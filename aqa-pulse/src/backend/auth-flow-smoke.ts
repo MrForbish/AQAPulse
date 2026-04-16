@@ -1,3 +1,6 @@
+/**
+ * Назначение: end-to-end smoke для admin/workspace auth flow и bootstrap contract React shell в self-hosted режиме.
+ */
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as os from 'node:os'
@@ -45,6 +48,9 @@ interface JsonResponse<T> {
     payload: T | null
 }
 
+/**
+ * Прогоняет полный happy-path и ключевые guard-сценарии: admin login, workspace provisioning, user login, ingestion и доступ к React shell/API с корректным bootstrap состоянием.
+ */
 export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Promise<void> {
     const scenarioName = options.scenarioName ?? 'auth-flow'
     const scenarioId = `${scenarioName}-${Date.now()}`
@@ -489,6 +495,9 @@ function requirePayload<T>(result: JsonResponse<T>, label: string): T {
     return result.payload
 }
 
+/**
+ * React shell передаёт bootstrap через inline script, поэтому smoke читает HTML как есть и валидирует именно тот контракт, который увидит браузер до гидрации.
+ */
 function extractBootstrapFromHtml(html: string): FrontendBootstrapData {
     const scriptMatch = html.match(/<script[^>]*id=(['"])aqa-pulse-bootstrap\1[^>]*>([\s\S]*?)<\/script>/i)
 
@@ -499,6 +508,9 @@ function extractBootstrapFromHtml(html: string): FrontendBootstrapData {
     return parseFrontendBootstrap(scriptMatch[2])
 }
 
+/**
+ * Сверяет initialSessionStatus из bootstrap отдельно от JSON session endpoint, чтобы не пропустить рассинхрон между SSR-shell и последующими API-вызовами клиента.
+ */
 function assertBootstrapSession(actual: FrontendSessionStatus | null, expected: FrontendSessionStatus, label: string): void {
     assert(actual !== null, `${label}: initialSessionStatus должен присутствовать.`)
     assert(actual.scope === expected.scope, `${label}: ожидался scope=${expected.scope}, получен ${actual.scope}.`)
@@ -553,6 +565,9 @@ function assertIncludes(value: string, expectedFragment: string, label: string):
     }
 }
 
+/**
+ * Некоторые платформы могут склеивать несколько Set-Cookie значений в один header, поэтому smoke извлекает нужный cookie по имени, а не полагается на позицию в строке.
+ */
 function extractCookieHeader(response: Response, cookieName: string): string {
     const setCookieHeader = response.headers.get('set-cookie')
 

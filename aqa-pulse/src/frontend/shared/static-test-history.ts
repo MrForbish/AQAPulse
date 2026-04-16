@@ -1,3 +1,6 @@
+/**
+ * Назначение: загружает и резолвит test history из static-data для офлайн-режима без API.
+ */
 import type { TestHistoryConflict, TestHistoryResponse } from '../../api-store'
 
 interface StaticTestHistoryIndex {
@@ -15,6 +18,16 @@ interface StaticTestHistoryIndexEntry {
 
 let staticTestHistoryIndexPromise: Promise<StaticTestHistoryIndex> | null = null
 
+/**
+ * Нужен для smoke/integration сценариев, где за один процесс последовательно проверяются разные static index payload и модульный кэш нужно сбросить между кейсами.
+ */
+export function resetStaticTestHistoryIndexCache(): void {
+    staticTestHistoryIndexPromise = null
+}
+
+/**
+ * Возвращает точный payload для static test-history, а при неоднозначном title собирает conflict-ответ в том же формате, что и runtime API.
+ */
 export async function loadStaticTestHistoryPayload(options: {
     title: string
     branch?: string | null
@@ -52,6 +65,9 @@ export async function loadStaticTestHistoryPayload(options: {
     return matches[0].payload
 }
 
+/**
+ * Индекс кэшируется на уровне модуля, чтобы переходы между test history страницами в static mode не перечитывали один и тот же JSON повторно.
+ */
 function loadStaticTestHistoryIndex(): Promise<StaticTestHistoryIndex> {
     if (!staticTestHistoryIndexPromise) {
         staticTestHistoryIndexPromise = fetch(resolveStaticTestHistoryIndexUrl(), {
@@ -87,6 +103,9 @@ function readBrowserLocationHref(): string | null {
     return maybeLocation.href.split('#')[0] ?? maybeLocation.href
 }
 
+/**
+ * Конфликтный ответ должен содержать только уникальные project/file combinations, иначе UI покажет дубликаты из разных архивных прогонов.
+ */
 function deduplicateCandidates(matches: StaticTestHistoryIndexEntry[]): Array<{ title: string; file: string; project: string }> {
     const candidateMap = new Map<string, { title: string; file: string; project: string }>()
 

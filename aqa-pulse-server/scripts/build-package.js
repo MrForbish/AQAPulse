@@ -1,4 +1,6 @@
-// Purpose: assemble the self-hosted server package, including backend runtime files and the compiled React web bundle.
+/**
+ * Назначение: собирает self-hosted server package вместе с backend runtime и compiled React web bundle.
+ */
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -134,7 +136,9 @@ function cleanDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true })
 }
 
-// These assertions lock in the React-shell routing contract so packaging changes cannot silently regress workspace dashboard/test-history bootstrap behavior.
+/**
+ * Эти проверки фиксируют routing/bootstrap contract React shell, чтобы packaging-изменения не ломали молча workspace dashboard/test-history поведение.
+ */
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(sourceRoot, 'backend', 'app.js')
     const compiledHistoryRendererPath = path.resolve(sourceRoot, 'render-test-history.js')

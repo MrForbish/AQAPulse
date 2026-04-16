@@ -1,8 +1,14 @@
+/**
+ * Назначение: admin React-страница для provisioning workspace, API keys и workspace users в едином shell.
+ */
 import React from 'react'
 import { useRuntime } from '../../runtime'
 import { EmptyState, ErrorView, LoadingView, PageFrame, Panel } from '../../shared/ui'
 import { type DashboardActionResult, useAdminDashboardState } from './admin-hooks'
 
+/**
+ * Dashboard reuses bootstrap-loaded workspaces when они уже встроены в HTML shell, но сохраняет живые CRUD-action handlers как отдельный hook-слой.
+ */
 export function AdminDashboardPage(): React.JSX.Element {
     const runtime = useRuntime()
     const {
@@ -89,6 +95,9 @@ export function AdminDashboardPage(): React.JSX.Element {
     )
 }
 
+/**
+ * Workspace card группирует provisioning actions по конкретному slug, чтобы busy/result state можно было привязывать к отдельной сущности, а не ко всей странице целиком.
+ */
 function WorkspaceCard(props: {
     workspace: {
         slug: string
@@ -162,6 +171,9 @@ function WorkspaceCard(props: {
     )
 }
 
+/**
+ * Action result выводится в одном формате для create workspace, API key и user token, чтобы оператор мог копировать важные provisioning данные из одного и того же UI-паттерна.
+ */
 function ActionResultPanel(props: { actionResult: DashboardActionResult }): React.JSX.Element {
     const toneClass = props.actionResult.tone === 'error'
         ? 'panel-error'

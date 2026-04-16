@@ -1,3 +1,6 @@
+/**
+ * Назначение: набор базовых frontend UI primitives для layout, state views и повторно используемых control-элементов.
+ */
 import React from 'react'
 
 export interface PageFrameProps {
@@ -61,6 +64,9 @@ export interface SegmentedTabsProps {
     onChange: (value: string) => void
 }
 
+/**
+ * Tab control intentionally остаётся dumb-компонентом: он рендерит только active state и callback, а URL/state синхронизацию держит feature-слой dashboard.
+ */
 export function SegmentedTabs(props: SegmentedTabsProps): React.JSX.Element {
     return (
         <div className="segmented-tabs" role="tablist" aria-label="Категории метрик">
@@ -99,6 +105,9 @@ export interface ErrorViewProps {
     action?: React.ReactNode
 }
 
+/**
+ * Унифицированный error state нужен и route-level boundary, и feature-страницам, чтобы ошибка transport/render выглядела одинаково во всём React shell.
+ */
 export function ErrorView(props: ErrorViewProps): React.JSX.Element {
     return (
         <Panel className="panel-error">

@@ -1,3 +1,6 @@
+/**
+ * Назначение: поднимает self-hosted/saas HTTP-приложение с React shell, JSON API, auth и ingestion-маршрутами.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import express, { type NextFunction, type Request, type Response } from 'express'
@@ -22,6 +25,9 @@ import { ingestReporterRun } from './run-ingestion.service'
 import { createBackendStorage, type BackendStorage } from './storage'
 import { WorkspaceRegistry } from './workspace-registry'
 
+/**
+ * Собирает единый Express app для admin/workspace сценариев: React shell отдаётся из одного места, а bootstrap/session данные заполняются на основе текущего запроса.
+ */
 export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Express {
     const app = express()
     const config = resolveSaasAppConfig(options)
@@ -647,6 +653,9 @@ function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage): 
     })
 }
 
+/**
+ * Workspace read model инициализируется лениво, потому что новый workspace может быть создан до первого ingestion, а React UI уже должен уметь открывать пустой dashboard без падения по отсутствующим summary/history файлам.
+ */
 function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: BackendStorage): void {
     const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
     const history = workspaceStorage.readHistory()
@@ -729,6 +738,9 @@ function readAdminBootstrapSession(request: Request, config: SaasAppConfig): Fro
     }
 }
 
+/**
+ * Bootstrap session для workspace учитывает и admin cookie, и workspace user cookie: администратор должен проходить в workspace shell без отдельного логина, а обычный пользователь — только в пределах своего slug.
+ */
 function readWorkspaceBootstrapSession(request: Request, workspaceSlug: string, config: SaasAppConfig): FrontendBootstrapData['initialSessionStatus'] {
     if (!config.requireWorkspaceAuth) {
         return { scope: 'workspace', authenticated: true, authRequired: false, workspaceSlug }
@@ -786,6 +798,9 @@ function ensureDevBootstrapEnabled(config: SaasAppConfig) {
     }
 }
 
+/**
+ * Ingestion endpoint принимает либо обёрнутый `{ report, metadata }`, либо сырой reporter root, чтобы CLI/self-hosted интеграции могли эволюционировать без жёсткой привязки к одному payload shape.
+ */
 function normalizeIngestionPayload(body: unknown): IngestionRequestPayload | null {
     if (!body || typeof body !== 'object') {
         return null
@@ -838,6 +853,9 @@ function pickOptionalString(value: unknown): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
+/**
+ * Раздача артефактов жёстко нормализует путь относительно конкретного run directory, чтобы исключить path traversal и не позволить скачивать файлы соседних прогонов.
+ */
 function sendArtifactFile(response: Response, artifactsRootPath: string, runId: string, requestedPath: string | undefined): void {
     if (!requestedPath) {
         response.status(400).json({ error: 'Нужно передать query-параметр path.' })

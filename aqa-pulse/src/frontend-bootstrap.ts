@@ -1,3 +1,6 @@
+/**
+ * Назначение: описывает bootstrap-контракт между HTML shell и React runtime для route, session и initial data.
+ */
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
 import type { WorkspaceDescriptor } from './backend/contracts'
 import type { DashboardSummary } from './dashboard-utils'
@@ -29,6 +32,9 @@ export interface FrontendBootstrapData {
     initialSessionStatus: FrontendSessionStatus | null
 }
 
+/**
+ * Возвращает безопасный bootstrap по умолчанию для случаев, когда shell ещё не встроил данные или bootstrap оказался повреждён.
+ */
 export function createEmptyFrontendBootstrap(): FrontendBootstrapData {
     return {
         route: { kind: 'dashboard', workspaceSlug: null },
@@ -40,6 +46,9 @@ export function createEmptyFrontendBootstrap(): FrontendBootstrapData {
     }
 }
 
+/**
+ * Парсит bootstrap максимально терпимо: сломанный inline JSON не должен валить клиент, а должен откатывать runtime к пустому состоянию.
+ */
 export function parseFrontendBootstrap(rawValue: string | null | undefined): FrontendBootstrapData {
     if (!rawValue || rawValue.trim().length === 0 || rawValue === FRONTEND_BOOTSTRAP_PLACEHOLDER) {
         return createEmptyFrontendBootstrap()
@@ -63,10 +72,16 @@ export function parseFrontendBootstrap(rawValue: string | null | undefined): Fro
     }
 }
 
+/**
+ * Вставляет bootstrap как inline JSON в HTML template с экранированием опасных символов, чтобы shell оставался безопасным для `<script>`-контекста.
+ */
 export function injectFrontendBootstrap(templateHtml: string, bootstrap: FrontendBootstrapData): string {
     return templateHtml.replace(FRONTEND_BOOTSTRAP_PLACEHOLDER, serializeInlineBootstrap(bootstrap))
 }
 
+/**
+ * Нормализует route descriptor из сырого JSON так, чтобы неизвестные или частично заполненные маршруты откатывались к безопасному runtime shape, а не ломали router ветвление.
+ */
 function normalizeRouteDescriptor(route: FrontendBootstrapData['route'] | undefined): FrontendRouteDescriptor {
     if (!route) {
         return { kind: 'dashboard', workspaceSlug: null }

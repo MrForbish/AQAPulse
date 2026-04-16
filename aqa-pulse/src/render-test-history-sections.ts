@@ -1,4 +1,6 @@
-// Purpose: shared HTML renderer sections for legacy test-history pages, including incident summaries and attempt diagnostics.
+/**
+ * Назначение: общие HTML-секции legacy test-history renderer, включая incident summary и attempt diagnostics.
+ */
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
@@ -32,7 +34,9 @@ const METRIC_DESCRIPTIONS = {
 
 const HISTORY_TEXT = ru.testHistory
 
-// This block condenses the latest incident into a single operator-friendly summary card.
+/**
+ * Сворачивает последний инцидент в одну обзорную карточку, чтобы оператору не приходилось вручную собирать картину из timeline и diagnostics.
+ */
 export function renderIncidentSummary(
     incidentSummary: TestHistoryResponse['incidentSummary'],
     history: TestHistoryResponse['history'],
@@ -377,7 +381,9 @@ export function renderAttemptDiagnostics(history: TestHistoryResponse['history']
     `
 }
 
-// The diagnostics card intentionally duplicates latest and latest-unstable contexts so an engineer can compare the current state with the last bad run without scanning the whole table.
+/**
+ * Карточка diagnostics намеренно рендерит и последний запуск, и последний нестабильный эпизод, чтобы можно было сравнить текущее состояние с последним плохим run без просмотра всей истории.
+ */
 export function renderAttemptDiagnosticsCard(
     item: TestHistoryResponse['history'][number],
     title: string,
@@ -523,7 +529,9 @@ export function renderStepDetail(
     `
 }
 
-// Incident summaries point to failure steps by title, so the lookup normalizes both the incident payload and rendered steps to keep anchors stable across whitespace/casing differences.
+/**
+ * Incident summary ссылается на шаг падения по title, поэтому поиск нормализует и payload, и шаги в рендере, чтобы anchor не ломался из-за регистра или пробелов.
+ */
 export function findIncidentStepAnchor(
     history: TestHistoryResponse['history'],
     failureStepTitle: string | null,

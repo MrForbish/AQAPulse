@@ -1,3 +1,6 @@
+/**
+ * Назначение: собирает React static shell и сопутствующие offline-данные для standalone dashboard/test-history режима.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { ApiStore, type TestHistoryResponse } from './api-store'
@@ -58,6 +61,9 @@ interface StaticTestHistoryIndexEntry {
 	payload: TestHistoryResponse
 }
 
+/**
+ * Строит индекс всех доступных test-history payload, чтобы static mode мог открывать deep links без серверного API.
+ */
 function buildStaticTestHistoryIndex(): StaticTestHistoryIndex {
 	const storage = new DashboardReadStorage({
 		summaryPath: inputPath,
@@ -86,6 +92,9 @@ function buildStaticTestHistoryIndex(): StaticTestHistoryIndex {
 	}
 }
 
+/**
+ * Проходит по архивным прогонам и собирает уникальные test/project/file candidates, из которых потом строится offline index.
+ */
 function collectStaticTestHistoryCandidates(storage: FileSystemDashboardReadStorage): Array<{
 	title: string
 	project: string
@@ -156,6 +165,9 @@ function collectStaticTestHistoryCandidates(storage: FileSystemDashboardReadStor
 		})
 }
 
+/**
+ * Кладёт в индекс только однозначно разрешённые payload: conflict-ответы в static index не сохраняются, чтобы не раздувать артефакт неоднозначными дубликатами.
+ */
 function appendStaticHistoryEntry(
 	entries: StaticTestHistoryIndexEntry[],
 	store: ApiStore,
@@ -185,6 +197,9 @@ function normalizeStaticText(value: string | undefined): string | null {
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
+/**
+ * Готовит отдельную static-web копию Vite bundle и переписывает абсолютные self-hosted asset URLs в относительные standalone-пути.
+ */
 function prepareStaticFrontendAssets(sourceDirectoryPath: string, targetDirectoryPath: string): void {
 	fs.rmSync(targetDirectoryPath, { recursive: true, force: true })
 	fs.cpSync(sourceDirectoryPath, targetDirectoryPath, { recursive: true })

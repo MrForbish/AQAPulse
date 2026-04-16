@@ -1,3 +1,6 @@
+/**
+ * Назначение: thin frontend API-layer для admin/workspace auth, provisioning и session endpoints.
+ */
 import type {
     WorkspaceDescriptor,
     WorkspaceProvisioningResult,
@@ -32,6 +35,9 @@ export interface SessionStatusResponse {
     workspace?: string
 }
 
+/**
+ * API helper-слой intentionally остаётся тонким: hooks управляют navigation/state, а этот модуль только сериализует запросы к backend contract.
+ */
 export async function loginAsAdmin(token: string): Promise<AdminLoginResponse> {
     return requestJson('/auth/admin/login', {
         method: 'POST',
@@ -97,6 +103,7 @@ export async function exchangeWorkspaceApiKey(slug: string, token: string): Prom
         body: JSON.stringify({ token }),
     })
 }
+
 export async function readAdminSessionStatus(): Promise<SessionStatusResponse> {
     return requestJson('/auth/admin/session')
 }

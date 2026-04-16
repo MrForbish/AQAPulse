@@ -1,3 +1,6 @@
+/**
+ * Назначение: frontend hooks для admin/workspace auth, session redirect и provisioning actions поверх React shell.
+ */
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type {
@@ -27,6 +30,9 @@ export interface DashboardActionResult {
     details: Record<string, string>
 }
 
+/**
+ * Redirect hook сначала использует bootstrap session, чтобы не делать лишний HTTP roundtrip после server-rendered shell, и только затем падает обратно на session endpoint.
+ */
 export function useAdminLoginRedirect(): { isCheckingSession: boolean } {
     const runtime = useRuntime()
     const navigate = useNavigate()
@@ -72,6 +78,9 @@ export function useAdminLoginRedirect(): { isCheckingSession: boolean } {
     return { isCheckingSession }
 }
 
+/**
+ * Workspace redirect зависит от slug, поэтому bootstrap session принимается только если она действительно относится к текущему workspace route.
+ */
 export function useWorkspaceLoginRedirect(workspaceSlug: string): { isCheckingSession: boolean } {
     const runtime = useRuntime()
     const navigate = useNavigate()
@@ -119,6 +128,9 @@ export function useWorkspaceLoginRedirect(workspaceSlug: string): { isCheckingSe
     return { isCheckingSession }
 }
 
+/**
+ * Submit hook изолирует login navigation от формы, чтобы страница могла оставаться чистым view-компонентом без transport-логики.
+ */
 export function useAdminLoginAction(): {
     isSubmitting: boolean
     errorMessage: string | null
@@ -171,6 +183,9 @@ export function useWorkspaceLoginAction(workspaceSlug: string): {
     return { isSubmitting, errorMessage, submit }
 }
 
+/**
+ * Exchange hook хранит последний выданный JWT рядом с loading/error state, чтобы страница могла показать готовые onboarding-данные сразу после успешного запроса.
+ */
 export function useWorkspaceApiKeyExchangeAction(workspaceSlug: string): {
     isSubmitting: boolean
     errorMessage: string | null
@@ -199,6 +214,9 @@ export function useWorkspaceApiKeyExchangeAction(workspaceSlug: string): {
     return { isSubmitting, errorMessage, exchangeResult, submit }
 }
 
+/**
+ * Admin dashboard state объединяет initial bootstrap data, lazy loading registry и все provisioning actions в одном hook, чтобы page-компонент оставался декларативным и не управлял вручную множеством form/result состояний.
+ */
 export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] | null): {
     workspaces: WorkspaceDescriptor[]
     isLoading: boolean
@@ -413,6 +431,9 @@ function mapWorkspaceUserProvisioningDetails(result: WorkspaceUserProvisioningRe
     }
 }
 
+/**
+ * Merge по slug позволяет переиспользовать один и тот же helper и для create-потока, и для обновления существующего workspace после выдачи новых ключей/пользователей.
+ */
 function mergeWorkspace(currentWorkspaces: WorkspaceDescriptor[], nextWorkspace: WorkspaceDescriptor, placeFirst = false): WorkspaceDescriptor[] {
     const remainingWorkspaces = currentWorkspaces.filter((workspace) => workspace.slug !== nextWorkspace.slug)
     return placeFirst ? [nextWorkspace, ...remainingWorkspaces] : [...remainingWorkspaces, nextWorkspace]

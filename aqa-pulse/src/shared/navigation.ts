@@ -1,9 +1,15 @@
+/**
+ * Назначение: единая сборка href и query/filter routing для legacy renderers, React runtime и static mode.
+ */
 export interface QueryFilters {
     branch?: string | null
     project?: string | null
     file?: string | null
 }
 
+/**
+ * Собирает dashboard href так, чтобы одна и та же фильтрация одинаково работала в standalone, workspace и embedded сценариях.
+ */
 export function buildWorkspaceDashboardHref(workspaceSlug: string | null, filters: QueryFilters): string {
     const pathname = workspaceSlug ? `/w/${encodeURIComponent(workspaceSlug)}` : '/'
     return appendQueryString(pathname, filters)
@@ -64,6 +70,9 @@ export function buildWorkspaceLoginHref(workspaceSlug: string): string {
     return `/w/${encodeURIComponent(workspaceSlug)}/login`
 }
 
+/**
+ * Нормализует фильтры из URLSearchParams в общий QueryFilters shape, чтобы runtime и renderer-слои не расходились по трактовке пустых значений.
+ */
 export function readFiltersFromSearchParams(searchParams: URLSearchParams): QueryFilters {
     return {
         branch: normalizeOptionalFilter(searchParams.get('branch')),
@@ -72,6 +81,9 @@ export function readFiltersFromSearchParams(searchParams: URLSearchParams): Quer
     }
 }
 
+/**
+ * Централизует сериализацию query filters, чтобы изменение набора фильтров происходило в одном месте и не расходилось между HTML и React слоями.
+ */
 export function buildQueryString(filters: QueryFilters): string {
     const searchParams = new URLSearchParams()
 

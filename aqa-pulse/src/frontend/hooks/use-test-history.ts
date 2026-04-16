@@ -1,3 +1,6 @@
+/**
+ * Назначение: загружает test-history payload из API или static-data и синхронизирует его с текущим route URL.
+ */
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { TestHistoryConflict, TestHistoryResponse } from '../../api-store'
@@ -5,6 +8,9 @@ import { buildWorkspaceLoginHref } from '../shared/navigation'
 import { HttpError, isUnauthorizedError, readErrorMessage, readPayloadErrorMessage, requestJsonResponse } from '../shared/http'
 import { loadStaticTestHistoryPayload } from '../shared/static-test-history'
 
+/**
+ * Хук хранит `loadedRequestUrl`, чтобы bootstrap payload использовался ровно для того URL, с которым был отрендерен shell, и не подмешивался в следующий client-side переход.
+ */
 export function useTestHistoryData(props: {
     workspaceSlug: string | null
     apiUrl: string
@@ -26,6 +32,9 @@ export function useTestHistoryData(props: {
     const [isLoading, setIsLoading] = React.useState<boolean>(() => !props.initialPayload)
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
+    /**
+     * В static mode идёт resolve из local index, а в server mode — обычный JSON fetch; обе ветки сходятся к одному payload shape, чтобы страница не дублировала transport-логику.
+     */
     React.useEffect(() => {
         if (loadedRequestUrl === props.currentRequestUrl) {
             return undefined

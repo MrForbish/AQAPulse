@@ -1,8 +1,14 @@
+/**
+ * Назначение: workspace login-страница для входа по user token и перехода в dashboard конкретного slug.
+ */
 import React from 'react'
 import { LoadingView, PageFrame, ErrorView } from '../../shared/ui'
 import { AuthShell } from './auth-shell'
 import { useWorkspaceLoginAction, useWorkspaceLoginRedirect } from './admin-hooks'
 
+/**
+ * Страница сначала сверяет bootstrap/session состояние для конкретного workspace slug, а уже потом показывает форму ввода token.
+ */
 export function WorkspaceLoginPage(props: { workspaceSlug: string }): React.JSX.Element {
     const { isCheckingSession } = useWorkspaceLoginRedirect(props.workspaceSlug)
     const { errorMessage, isSubmitting, submit } = useWorkspaceLoginAction(props.workspaceSlug)

@@ -7,6 +7,7 @@
     DashboardSummary,
 } from './dashboard-utils'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
+import { DASHBOARD_METRIC_DESCRIPTIONS as METRIC_DESCRIPTIONS } from './shared/dashboard-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import {
     averageDashboardNumber as averageDashboardNumberShared,
@@ -55,7 +56,6 @@ import { ru } from './shared/i18n/ru'
 import { escapeHtml } from './shared/text-utils'
 
 const DASHBOARD_TEXT = ru.dashboard
-const METRIC_DESCRIPTIONS = DASHBOARD_TEXT.tooltips
 
 
 export function renderProblematicTestRow(test: DashboardProblematicTest, filters: DashboardSummary['filters'], testDetailsBasePath: string): string {

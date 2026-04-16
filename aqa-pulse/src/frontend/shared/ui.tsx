@@ -2,7 +2,7 @@
  * Назначение: набор базовых frontend UI primitives для layout, state views и повторно используемых control-элементов.
  */
 import React from 'react'
-import { resolveMetricIcon } from '../../shared/metric-info'
+import { renderMetricIconSvg, resolveMetricIcon } from '../../shared/metric-info'
 
 export interface PageFrameProps {
     children: React.ReactNode
@@ -83,7 +83,7 @@ export function MetricHeading(props: MetricHeadingProps): React.JSX.Element {
 
     return (
         <span className={className}>
-            {icon ? <span className="metric-icon-react" aria-hidden="true">{icon}</span> : null}
+            {icon ? <span className="metric-icon-react" aria-hidden="true" dangerouslySetInnerHTML={{ __html: renderMetricIconSvg(icon) }} /> : null}
             <span>{props.label}</span>
             {props.description ? (
                 <span className="metric-info-react">

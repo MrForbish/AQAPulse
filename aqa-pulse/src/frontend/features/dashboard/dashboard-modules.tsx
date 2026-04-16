@@ -31,6 +31,7 @@ import {
     getStatusTone,
     roundOne,
 } from '../../../shared/dashboard-helpers'
+import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
 import { buildTestHistoryHref } from '../../runtime'
 import { EmptyState, MetricCard, Panel, StatusBadge } from '../../shared/ui'
@@ -45,14 +46,14 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
 
     return (
         <div className="page-grid">
-            <MetricCard label={DASHBOARD_TEXT.metrics.timeToDetect} value={formatNullableMinutes(summary.businessMetrics.timeToDetect.minutes)} hint={DASHBOARD_TEXT.business.timeToDetectHint} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} value={formatNullableDays(summary.businessMetrics.timeToFixFlaky.averageDays)} hint={`${DASHBOARD_TEXT.business.timeToFixHintPrefix}: ${summary.businessMetrics.timeToFixFlaky.resolvedIncidents}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.costOfFlakiness} value={formatCurrency(costMetrics.totalRub)} tone={getCostTone(costMetrics.totalRub)} hint={`${DASHBOARD_TEXT.business.costPerActiveDay}: ${formatCurrency(costMetrics.costPerActiveDayRub)}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} value={formatDailyRatio(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay)} tone={summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${summary.businessMetrics.developerFriction.extraRetries}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={DASHBOARD_TEXT.business.releaseConfidenceHint} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.automationRoi} value={formatNullablePercent(summary.businessMetrics.automationRoi.percent)} hint={DASHBOARD_TEXT.business.automationRoiHint} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.timeToDetect} labelMetricKey="timeToDetect" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToDetect} value={formatNullableMinutes(summary.businessMetrics.timeToDetect.minutes)} hint={DASHBOARD_TEXT.business.timeToDetectHint} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={formatNullableDays(summary.businessMetrics.timeToFixFlaky.averageDays)} hint={`${DASHBOARD_TEXT.business.timeToFixHintPrefix}: ${summary.businessMetrics.timeToFixFlaky.resolvedIncidents}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.costOfFlakiness} labelMetricKey="costOfFlakiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness} value={formatCurrency(costMetrics.totalRub)} tone={getCostTone(costMetrics.totalRub)} hint={`${DASHBOARD_TEXT.business.costPerActiveDay}: ${formatCurrency(costMetrics.costPerActiveDayRub)}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} labelMetricKey="developerFriction" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.developerFriction} value={formatDailyRatio(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay)} tone={summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${summary.businessMetrics.developerFriction.extraRetries}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={DASHBOARD_TEXT.business.releaseConfidenceHint} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.automationRoi} labelMetricKey="automationRoi" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.automationRoi} value={formatNullablePercent(summary.businessMetrics.automationRoi.percent)} hint={DASHBOARD_TEXT.business.automationRoiHint} />
 
-            <Panel title={DASHBOARD_TEXT.business.summaryTitle} description={DASHBOARD_TEXT.business.summaryDescription} className="span-2">
+            <Panel title={DASHBOARD_TEXT.business.summaryTitle} titleMetricKey="costOfFlakiness" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness} description={DASHBOARD_TEXT.business.summaryDescription} className="span-2">
                 <div className="module-header-row">
                     <div className="module-pills">
                         <span className={`module-pill is-${mapScenarioTone(summary)}`}>{getBusinessScenarioStatusLabel(costMetrics.assumptions)}</span>
@@ -72,7 +73,7 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.business.releaseConfidenceBreakdownTitle} description={DASHBOARD_TEXT.business.releaseConfidenceBreakdownDescription}>
+            <Panel title={DASHBOARD_TEXT.business.releaseConfidenceBreakdownTitle} titleMetricKey="releaseConfidenceScore" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceBreakdownTitle} description={DASHBOARD_TEXT.business.releaseConfidenceBreakdownDescription}>
                 <div className="stacked-bars compact-top">
                     {releaseConfidenceBreakdown.components.map((component) => (
                         <div key={component.label} className="stacked-bar-item">
@@ -92,7 +93,7 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.business.readinessTitle} description={DASHBOARD_TEXT.business.readinessDescription}>
+            <Panel title={DASHBOARD_TEXT.business.readinessTitle} titleMetricKey="releaseConfidenceScore" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} description={DASHBOARD_TEXT.business.readinessDescription}>
                 <div className="readiness-list compact-top">
                     {readinessItems.map((item) => (
                         <article key={item.label} className="readiness-item">
@@ -106,7 +107,7 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.costSection} description={DASHBOARD_TEXT.business.costScenarioDescription} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.costSection} titleMetricKey="costSection" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness} description={DASHBOARD_TEXT.business.costScenarioDescription} className="span-2">
                 <div className="split-grid compact-top">
                     <div className="stack-list">
                         <FormulaCard title={DASHBOARD_TEXT.business.ciCost} body={DASHBOARD_TEXT.business.ciFormula} />
@@ -126,7 +127,7 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.configAssumptions} description={DASHBOARD_TEXT.business.editorHint}>
+            <Panel title={DASHBOARD_TEXT.metrics.configAssumptions} titleMetricKey="configAssumptions" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.configAssumptions} description={DASHBOARD_TEXT.business.editorHint}>
                 <div className="stack-list compact-top">
                     <DetailRow label={DASHBOARD_TEXT.business.ciMinuteCost} value={formatAssumptionValue(costMetrics.assumptions.ciMinuteCostRub, '₽/мин')} />
                     <DetailRow label={DASHBOARD_TEXT.business.devHourCost} value={formatAssumptionValue(costMetrics.assumptions.developerHourlyCostRub, '₽/час')} />
@@ -134,7 +135,7 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.manager.summaryTitle} description={DASHBOARD_TEXT.manager.summaryDescription}>
+            <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription}>
                 <div className="signal-grid compact-top">
                     <SignalSummaryCard label={DASHBOARD_TEXT.manager.releaseReadiness} value={formatScore(summary.managerSummary.releaseReadiness.score)} hint={summary.managerSummary.releaseReadiness.level} tone={mapManagerTone(summary.managerSummary.releaseReadiness.level)} />
                     <SignalSummaryCard label={DASHBOARD_TEXT.manager.qualityRisk} value={formatScore(summary.managerSummary.qualityRisk.score)} hint={summary.managerSummary.qualityRisk.level} tone={mapManagerTone(summary.managerSummary.qualityRisk.level)} />
@@ -178,12 +179,12 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
 
     return (
         <div className="page-grid">
-            <MetricCard label="Problem hotspots" value={String(summary.topProblematicTests.length)} tone={summary.topProblematicTests.length > 0 ? 'warn' : 'good'} hint="Текущий backlog по тестам с максимальным риском" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.flakyScore} value={summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(summary.flakyAnalytics.averageFlakyScore)} tone={summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getScoreTone(summary.flakyAnalytics.averageFlakyScore)} hint="Средний исторический сигнал нестабильности" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Повторяемые patterns падений" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.leadingPhase} value={summary.performance.phaseBreakdown[0]?.label ?? '—'} hint={summary.performance.phaseBreakdown[0] ? formatPercent(summary.performance.phaseBreakdown[0].sharePercent) : DASHBOARD_TEXT.states.noChanges} />
+            <MetricCard label="Problem hotspots" labelMetricKey="problematicTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} value={String(summary.topProblematicTests.length)} tone={summary.topProblematicTests.length > 0 ? 'warn' : 'good'} hint="Текущий backlog по тестам с максимальным риском" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.flakyScore} labelMetricKey="flakyScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyScore} value={summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(summary.flakyAnalytics.averageFlakyScore)} tone={summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getScoreTone(summary.flakyAnalytics.averageFlakyScore)} hint="Средний исторический сигнал нестабильности" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Повторяемые patterns падений" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.leadingPhase} labelMetricKey="leadingPhase" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} value={summary.performance.phaseBreakdown[0]?.label ?? '—'} hint={summary.performance.phaseBreakdown[0] ? formatPercent(summary.performance.phaseBreakdown[0].sharePercent) : DASHBOARD_TEXT.states.noChanges} />
 
-            <Panel title="Failure hotspots" description="Проблемные сценарии, которые прямо сейчас формируют основной backlog по качеству тестового кода." className="span-2">
+            <Panel title="Failure hotspots" titleMetricKey="problematicTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} description="Проблемные сценарии, которые прямо сейчас формируют основной backlog по качеству тестового кода." className="span-2">
                 {summary.topProblematicTests.length > 0 ? (
                     <div className="table-wrap compact-top">
                         <table>
@@ -218,7 +219,7 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
                 )}
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription}>
+            <Panel title={DASHBOARD_TEXT.metrics.phaseBreakdown} titleMetricKey="phaseBreakdown" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription}>
                 <div className="stacked-bars compact-top">
                     {summary.performance.phaseBreakdown.map((item) => (
                         <div key={item.label} className="stacked-bar-item">
@@ -234,7 +235,7 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription}>
+            <Panel title={DASHBOARD_TEXT.metrics.suiteDuration} titleMetricKey="suiteDuration" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription}>
                 <div className="stacked-bars compact-top">
                     {summary.performance.suiteDuration.map((item) => (
                         <div key={item.label} className="stacked-bar-item">
@@ -250,7 +251,7 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.topSlowestTests} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.topSlowestTests} titleMetricKey="topSlowestTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests} className="span-2">
                 <div className="table-wrap compact-top">
                     <table>
                         <thead>
@@ -287,12 +288,12 @@ export function TeamModule(props: { summary: DashboardSummary; workspaceSlug: st
 
     return (
         <div className="page-grid">
-            <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} value={formatDailyRatio(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay)} tone={summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.unstableRuns}: ${summary.businessMetrics.developerFriction.unstableRuns}`} />
-            <MetricCard label="Активные блокеры" value={String(summary.managerSummary.blockers.length)} tone={summary.managerSummary.blockers.length > 0 ? 'danger' : 'good'} hint="Критичные сигналы для команды" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
-            <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} hint={summary.managerSummary.deliveryRisk.level} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} labelMetricKey="developerFriction" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.developerFriction} value={formatDailyRatio(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay)} tone={summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.unstableRuns}: ${summary.businessMetrics.developerFriction.unstableRuns}`} />
+            <MetricCard label="Активные блокеры" labelMetricKey="problematicTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} value={String(summary.managerSummary.blockers.length)} tone={summary.managerSummary.blockers.length > 0 ? 'danger' : 'good'} hint="Критичные сигналы для команды" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
+            <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} hint={summary.managerSummary.deliveryRisk.level} />
 
-            <Panel title={DASHBOARD_TEXT.manager.summaryTitle} description={DASHBOARD_TEXT.manager.summaryDescription}>
+            <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription}>
                 <div className="signal-grid compact-top">
                     <SignalSummaryCard label={DASHBOARD_TEXT.manager.releaseReadiness} value={formatScore(summary.managerSummary.releaseReadiness.score)} hint={summary.managerSummary.releaseReadiness.level} tone={mapManagerTone(summary.managerSummary.releaseReadiness.level)} />
                     <SignalSummaryCard label={DASHBOARD_TEXT.manager.qualityRisk} value={formatScore(summary.managerSummary.qualityRisk.score)} hint={summary.managerSummary.qualityRisk.level} tone={mapManagerTone(summary.managerSummary.qualityRisk.level)} />
@@ -332,7 +333,7 @@ export function TeamModule(props: { summary: DashboardSummary; workspaceSlug: st
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.recentRuns} className="span-2">
+            <Panel title={DASHBOARD_TEXT.metrics.recentRuns} titleMetricKey="recentRuns" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.recentRuns} className="span-2">
                 <div className="table-wrap compact-top">
                     <table>
                         <thead>
@@ -374,12 +375,12 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
 
     return (
         <div className="page-grid">
-            <MetricCard label={DASHBOARD_TEXT.metrics.topFlakyTests} value={String(summary.flakyAnalytics.topFlakyTests.length)} tone={summary.flakyAnalytics.topFlakyTests.length > 0 ? 'warn' : 'default'} hint="Risk ranking candidates" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Root-cause clusters available" />
-            <MetricCard label="Signal coverage" value={`${signalCoverage}%`} tone={signalCoverage >= 75 ? 'good' : signalCoverage >= 45 ? 'warn' : 'danger'} hint="Готовность данных для heuristics/ML" />
-            <MetricCard label="First flake to fix" value={summary.flakyAnalytics.firstFlakeToFix ? `${summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} hint="Исторический feedback loop" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.topFlakyTests} labelMetricKey="topFlakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests} value={String(summary.flakyAnalytics.topFlakyTests.length)} tone={summary.flakyAnalytics.topFlakyTests.length > 0 ? 'warn' : 'default'} hint="Risk ranking candidates" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Root-cause clusters available" />
+            <MetricCard label="Signal coverage" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.signalCoverage} value={`${signalCoverage}%`} tone={signalCoverage >= 75 ? 'good' : signalCoverage >= 45 ? 'warn' : 'danger'} hint="Готовность данных для heuristics/ML" />
+            <MetricCard label="First flake to fix" labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={summary.flakyAnalytics.firstFlakeToFix ? `${summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} hint="Исторический feedback loop" />
 
-            <Panel title="Risk ranking" description="Текущий React-модуль уже может ранжировать тесты для последующего root-cause и next-run risk scoring." className="span-2">
+            <Panel title="Risk ranking" titleMetricKey="topFlakyTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests} description="Текущий React-модуль уже может ранжировать тесты для последующего root-cause и next-run risk scoring." className="span-2">
                 {summary.flakyAnalytics.topFlakyTests.length > 0 ? (
                     <div className="table-wrap compact-top">
                         <table>
@@ -412,7 +413,7 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
                 )}
             </Panel>
 
-            <Panel title="Root-cause clusters" description="Повторяемые ошибки уже можно использовать как базу для кластеризации, объяснений и рекомендаций." className="span-2">
+            <Panel title="Root-cause clusters" titleMetricKey="errorClusters" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} description="Повторяемые ошибки уже можно использовать как базу для кластеризации, объяснений и рекомендаций." className="span-2">
                 <div className="cluster-list compact-top">
                     {summary.errorClusters.length > 0 ? summary.errorClusters.map((cluster) => (
                         <ClusterCard key={cluster.message} cluster={cluster} />
@@ -420,7 +421,7 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
                 </div>
             </Panel>
 
-            <Panel title="Model readiness" description="Эта секция показывает, насколько текущий ingestion уже даёт сигналы для heuristic/AI слоя.">
+            <Panel title="Model readiness" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.modelReadiness} description="Эта секция показывает, насколько текущий ingestion уже даёт сигналы для heuristic/AI слоя.">
                 <div className="readiness-list compact-top">
                     <ReadinessCard label="История запусков" value={`${summary.history.totalRuns}`} hint="База для аномалий, risk ranking и trend моделей" tone={summary.history.totalRuns >= 5 ? 'good' : 'warn'} />
                     <ReadinessCard label="Error clusters" value={`${summary.errorClusters.length}`} hint="База для группировки root cause и retrieval" tone={summary.errorClusters.length > 0 ? 'good' : 'warn'} />
@@ -456,7 +457,7 @@ function ClusterCard(props: { cluster: DashboardErrorCluster }): React.JSX.Eleme
 }
 
 function SignalSummaryCard(props: { label: string; value: string; hint: string; tone?: 'default' | 'good' | 'warn' | 'danger' }): React.JSX.Element {
-    return <MetricCard label={props.label} value={props.value} hint={props.hint} tone={props.tone} />
+    return <MetricCard label={props.label} labelTooltip={resolveDashboardMetricDescription(props.label)} value={props.value} hint={props.hint} tone={props.tone} />
 }
 
 function ReadinessCard(props: { label: string; value: string; hint: string; tone: 'good' | 'warn' | 'danger' }): React.JSX.Element {
@@ -599,4 +600,36 @@ function buildAiSignalCoverage(summary: DashboardSummary): number {
     ]
 
     return roundOne(averageDashboardNumber(signals))
+}
+
+function resolveDashboardMetricDescription(label: string): string | undefined {
+    if (label === DASHBOARD_TEXT.metrics.timeToDetect) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.timeToDetect
+    }
+
+    if (label === DASHBOARD_TEXT.metrics.timeToFixFlaky) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky
+    }
+
+    if (label === DASHBOARD_TEXT.metrics.releaseConfidenceScore) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore
+    }
+
+    if (label === DASHBOARD_TEXT.metrics.developerFriction) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.developerFriction
+    }
+
+    if (label === DASHBOARD_TEXT.manager.deliveryRisk) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk
+    }
+
+    if (label === DASHBOARD_TEXT.manager.releaseReadiness) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.releaseReadiness
+    }
+
+    if (label === DASHBOARD_TEXT.manager.qualityRisk) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.qualityRisk
+    }
+
+    return undefined
 }

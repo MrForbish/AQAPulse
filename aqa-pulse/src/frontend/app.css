@@ -127,6 +127,19 @@ input {
     box-shadow: var(--shadow-md);
 }
 
+.panel,
+.metric-card {
+    position: relative;
+    z-index: 0;
+}
+
+.panel:hover,
+.panel:focus-within,
+.metric-card:hover,
+.metric-card:focus-within {
+    z-index: 3;
+}
+
 .hero-meta-card,
 .filters-block,
 .panel {
@@ -164,15 +177,23 @@ input {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    line-height: 1;
-    transform: translateY(-1px);
+    width: 15px;
+    height: 15px;
+    color: #7dd3fc;
+    flex: 0 0 auto;
+}
+
+.metric-icon-react svg {
+    width: 15px;
+    height: 15px;
+    display: block;
 }
 
 .metric-info-react {
     position: relative;
     display: inline-flex;
     align-items: center;
+    z-index: 1;
 }
 
 .metric-info-button-react {
@@ -221,6 +242,7 @@ input {
 .metric-info-react:focus-within .metric-tooltip-react {
     opacity: 1;
     pointer-events: auto;
+    z-index: 20;
     transform: translateX(-50%) translateY(0);
 }
 

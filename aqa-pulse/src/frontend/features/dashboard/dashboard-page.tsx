@@ -3,6 +3,7 @@
  */
 import React from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
+import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import { formatDelta, formatScore, getScoreTone } from '../../../shared/dashboard-helpers'
 import { ru } from '../../../shared/i18n/ru'
@@ -139,12 +140,12 @@ export function DashboardPage(props: { workspaceSlug: string | null }): React.JS
             </section>
 
             <section className="metrics-grid">
-                <MetricCard label={DASHBOARD_TEXT.metrics.passRate} labelMetricKey="passRate" labelTooltip={DASHBOARD_TEXT.tooltips.passRate} value={formatPercent(summary.kpis.passRate)} tone="good" hint={`${summary.kpis.passedTests} / ${summary.kpis.totalTests}`} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.failedTests} labelMetricKey="failedTests" labelTooltip={DASHBOARD_TEXT.tooltips.failedTests} value={String(summary.kpis.failedTests)} tone={summary.kpis.failedTests > 0 ? 'danger' : 'default'} hint={formatDelta(summary.trend.failedTestsDelta, 'падений')} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_TEXT.tooltips.flakyTests} value={String(summary.kpis.flakyTests)} tone={summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(summary.trend.flakyTestsDelta, 'flaky')} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.runDuration} labelMetricKey="runDuration" labelTooltip={`${DASHBOARD_TEXT.tooltips.runDuration} ${DASHBOARD_TEXT.tooltips.medianDuration}`} value={formatDuration(summary.kpis.totalDurationMs)} hint={formatDuration(summary.kpis.medianDurationMs)} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_TEXT.tooltips.errorClusters} value={String(summary.kpis.errorClusterCount)} tone={summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'} hint={summary.errorClusters[0]?.message ?? DASHBOARD_TEXT.states.notesEmpty} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_TEXT.tooltips.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
+                <MetricCard label={DASHBOARD_TEXT.metrics.passRate} labelMetricKey="passRate" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.passRate} value={formatPercent(summary.kpis.passRate)} tone="good" hint={`${summary.kpis.passedTests} / ${summary.kpis.totalTests}`} />
+                <MetricCard label={DASHBOARD_TEXT.metrics.failedTests} labelMetricKey="failedTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.failedTests} value={String(summary.kpis.failedTests)} tone={summary.kpis.failedTests > 0 ? 'danger' : 'default'} hint={formatDelta(summary.trend.failedTestsDelta, 'падений')} />
+                <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTests} value={String(summary.kpis.flakyTests)} tone={summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(summary.trend.flakyTestsDelta, 'flaky')} />
+                <MetricCard label={DASHBOARD_TEXT.metrics.runDuration} labelMetricKey="runDuration" labelTooltip={`${DASHBOARD_METRIC_DESCRIPTIONS.runDuration} ${DASHBOARD_METRIC_DESCRIPTIONS.medianDuration}`} value={formatDuration(summary.kpis.totalDurationMs)} hint={formatDuration(summary.kpis.medianDurationMs)} />
+                <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters} value={String(summary.kpis.errorClusterCount)} tone={summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'} hint={summary.errorClusters[0]?.message ?? DASHBOARD_TEXT.states.notesEmpty} />
+                <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
             </section>
 
             <SegmentedTabs activeTab={activeTab} items={DASHBOARD_TABS.map((item) => ({ id: item.id, label: item.label }))} onChange={(value) => updateSearchParams(setSearchParams, 'tab', value, true)} />

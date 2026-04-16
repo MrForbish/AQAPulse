@@ -142,7 +142,7 @@ async function main(): Promise<void> {
             },
         ),
         '/?tab=codeQuality',
-    ), ['Problem hotspots', 'Failure hotspots'])
+    ), ['Problem hotspots', 'Failure hotspots', 'metric-info-button-react'])
 
     renderMarkup('test history page', renderWithRouter(
         React.createElement(

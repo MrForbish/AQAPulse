@@ -46,6 +46,8 @@ Playwright job
   -> отправляет POST /api/workspaces/:slug/ingestions
 ```
 
+Важно: это backend ingestion flow. Его не нужно и не следует переносить в React: React dashboard/test-history только читает уже сохранённые summary/history payload через bootstrap и JSON API.
+
 ## Минимальный shell snippet
 
 Ниже пример для Linux runner/job container.
@@ -84,6 +86,23 @@ curl --silent --show-error --fail \
   --data @test-results/dashboard/ingestion-payload.json
 ```
 
+## Upload через CLI, если у тебя есть `aqa-pulse-server`
+
+Если CI job работает внутри этого monorepo или у тебя есть доступ к собранному `aqa-pulse-server`, можно использовать готовый backend CLI вместо inline shell glue:
+
+```bash
+aqa-pulse-server upload-report --report test-results/dashboard/data.json
+```
+
+CLI читает из env:
+
+- `AQA_PULSE_BASE_URL`
+- `AQA_PULSE_WORKSPACE_SLUG`
+- `AQA_PULSE_WORKSPACE_API_KEY`
+- `PW_LLM_REPORT` как fallback для пути к report
+
+А metadata по умолчанию берёт из CI env (`CI_COMMIT_REF_NAME`, `CI_COMMIT_SHA`, `GITLAB_USER_NAME` и т.д.).
+
 ## Reusable template
 
 В пакете уже есть reusable snippet:
@@ -91,6 +110,8 @@ curl --silent --show-error --fail \
 ```text
 template/gitlab/aqa-pulse-upload.gitlab-ci.yml
 ```
+
+Теперь template self-contained: ему не нужен внешний `npm run aqa-pulse:upload` script в репозитории клиента.
 
 ## Как лучше встраивать upload
 

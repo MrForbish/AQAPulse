@@ -17,8 +17,8 @@
 #     - job: run api tests
 #       artifacts: true
 #
-# Если upload нужен прямо внутри тестовой job, используй только script-block ниже
-# как copy/paste reference и вызывай `npm run aqa-pulse:upload` после генерации report.
+# Если upload нужен прямо внутри тестовой job, можно использовать script-block ниже
+# как copy/paste reference без отдельного repo-specific npm script.
 
 .aqa_pulse_upload_job:
   stage: Tests
@@ -34,7 +34,36 @@
         echo "AQA Pulse upload skipped: не найден report $PW_LLM_REPORT" >&2
         exit 1
       fi
-    - npm run aqa-pulse:upload
+    - |
+      INGESTION_JWT=$(curl --silent --show-error --fail \
+        -X POST "$AQA_PULSE_BASE_URL/auth/workspaces/$AQA_PULSE_WORKSPACE_SLUG/api-keys/login" \
+        -H "Content-Type: application/json" \
+        -d "{\"token\":\"$AQA_PULSE_WORKSPACE_API_KEY\"}" \
+        | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { const parsed = JSON.parse(body); process.stdout.write(parsed.accessToken); });")
+    - |
+      node -e "
+      const fs = require('fs');
+      const reportPath = process.env.PW_LLM_REPORT;
+      const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+      const payload = {
+        report,
+        metadata: {
+          branch: process.env.CI_COMMIT_REF_NAME || null,
+          commit: process.env.CI_COMMIT_SHA || null,
+          author: process.env.GITLAB_USER_NAME || process.env.CI_COMMIT_AUTHOR || 'GitLab CI'
+        },
+        sourceFile: process.env.CI_PROJECT_PATH && process.env.CI_PIPELINE_ID && process.env.CI_JOB_NAME
+          ? 'gitlab://' + process.env.CI_PROJECT_PATH + '/' + process.env.CI_PIPELINE_ID + '/' + process.env.CI_JOB_NAME
+          : 'gitlab://manual-upload'
+      };
+      fs.writeFileSync('test-results/dashboard/ingestion-payload.json', JSON.stringify(payload));
+      "
+    - |
+      curl --silent --show-error --fail \
+        -X POST "$AQA_PULSE_BASE_URL/api/workspaces/$AQA_PULSE_WORKSPACE_SLUG/ingestions" \
+        -H "Authorization: Bearer $INGESTION_JWT" \
+        -H "Content-Type: application/json" \
+        --data @test-results/dashboard/ingestion-payload.json
   artifacts:
     when: always
     paths:

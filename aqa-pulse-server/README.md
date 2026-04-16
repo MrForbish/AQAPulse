@@ -78,4 +78,5 @@ npm run update:docker -- --build-package
 - `aqa-pulse-server bootstrap-demo`
 - `aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]`
 - `aqa-pulse-server sqlite-backup [backupDirectory]`
+- `aqa-pulse-server upload-report [--report <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]`
 

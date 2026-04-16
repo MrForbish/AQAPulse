@@ -45,6 +45,7 @@ export {
 } from './auth'
 export { resolveSaasAppConfig, type SaasAppConfig } from './config'
 export { ingestReporterRun } from './run-ingestion.service'
+export { uploadReportToWorkspace, type UploadReportOptions } from './upload-report'
 export {
     createBackendStorage,
     FileSystemBackendStorage,

@@ -251,18 +251,6 @@ export function renderTabButton(id: string, label: string, isActive = false): st
     return `<button class="tab-button${isActive ? ' is-active' : ''}" type="button" role="tab" aria-selected="${isActive ? 'true' : 'false'}" data-tab-button="${escapeHtml(id)}">${escapeHtml(label)}</button>`
 }
 
-export function renderPlaceholderPanel(title: string, description: string, metrics: readonly string[]): string {
-    return `
-        <div class="placeholder-card">
-            <div class="placeholder-title">${escapeHtml(title)}</div>
-            <div class="muted">${escapeHtml(description)}</div>
-            <ul class="placeholder-list">
-                ${metrics.map((metric) => `<li>${escapeHtml(metric)}</li>`).join('')}
-            </ul>
-        </div>
-    `
-}
-
 export function renderPhaseLegend(items: DashboardPhaseBreakdownItem[]): string {
     const visibleItems = items.filter((item) => item.durationMs > 0)
 

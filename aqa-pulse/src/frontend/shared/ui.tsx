@@ -104,6 +104,85 @@ export function StatusBadge(props: StatusBadgeProps): React.JSX.Element {
     return <span className={`status-badge is-${props.tone ?? 'neutral'}`}>{props.label}</span>
 }
 
+export interface SummaryStripItemProps {
+    label: string
+    value: string
+    muted?: boolean
+}
+
+export interface SummaryStripProps {
+    items: SummaryStripItemProps[]
+    className?: string
+}
+
+export function SummaryStrip(props: SummaryStripProps): React.JSX.Element {
+    const className = ['summary-strip', props.className].filter(Boolean).join(' ')
+
+    return (
+        <div className={className}>
+            {props.items.map((item) => (
+                <article key={`${item.label}-${item.value}`} className="summary-strip-item">
+                    <span>{item.label}</span>
+                    <strong className={item.muted ? 'summary-strip-text' : ''}>{item.value}</strong>
+                </article>
+            ))}
+        </div>
+    )
+}
+
+export interface NarrativeListItem {
+    id: string
+    title: string
+    body: string
+    pillLabel?: string
+    pillTone?: 'neutral' | 'good' | 'warn' | 'danger' | 'accent'
+    pillStyle?: 'status-badge' | 'module-pill'
+    value?: string
+    meta?: string | null
+}
+
+export interface NarrativeListProps {
+    items: NarrativeListItem[]
+    emptyState?: EmptyStateProps
+    className?: string
+}
+
+export function NarrativeList(props: NarrativeListProps): React.JSX.Element {
+    const className = ['stack-list', props.className].filter(Boolean).join(' ')
+
+    if (props.items.length === 0) {
+        return (
+            <div className={className}>
+                {props.emptyState ? <EmptyState title={props.emptyState.title} message={props.emptyState.message} /> : null}
+            </div>
+        )
+    }
+
+    return (
+        <div className={className}>
+            {props.items.map((item) => (
+                <article key={item.id} className="stack-item">
+                    <div className="stack-item-header">
+                        <strong>{item.title}</strong>
+                        {item.pillLabel
+                            ? item.pillStyle === 'module-pill'
+                                ? <span className={`module-pill is-${item.pillTone ?? 'accent'}`}>{item.pillLabel}</span>
+                                : <StatusBadge label={item.pillLabel} tone={item.pillTone} />
+                            : null}
+                    </div>
+                    {item.value ? (
+                        <div className="summary-line compact-top">
+                            <span>{item.value}</span>
+                        </div>
+                    ) : null}
+                    <p>{item.body}</p>
+                    {item.meta ? <div className="subtle-copy">{item.meta}</div> : null}
+                </article>
+            ))}
+        </div>
+    )
+}
+
 export interface SegmentedTabsProps {
     activeTab: string
     items: Array<{ id: string; label: string }>

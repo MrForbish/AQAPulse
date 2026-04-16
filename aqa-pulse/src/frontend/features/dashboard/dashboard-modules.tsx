@@ -34,7 +34,7 @@ import {
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
 import { buildTestHistoryHref } from '../../runtime'
-import { EmptyState, MetricCard, Panel, StatusBadge } from '../../shared/ui'
+import { EmptyState, MetricCard, NarrativeList, Panel, StatusBadge } from '../../shared/ui'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -144,31 +144,32 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
             </Panel>
 
             <Panel title={DASHBOARD_TEXT.manager.blockersTitle} className="span-2">
-                <div className="stack-list compact-top">
-                    {summary.managerSummary.blockers.length > 0 ? summary.managerSummary.blockers.map((blocker, index) => (
-                        <article key={`${blocker.kind}-${index}`} className="stack-item">
-                            <div className="stack-item-header">
-                                <strong>{blocker.title}</strong>
-                                <StatusBadge label={blocker.value} tone={blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'} />
-                            </div>
-                            <p>{blocker.details}</p>
-                        </article>
-                    )) : <EmptyState title="Блокеров нет" message={DASHBOARD_TEXT.manager.noBlockers} />}
-                </div>
+                <NarrativeList
+                    className="compact-top"
+                    items={summary.managerSummary.blockers.map((blocker, index) => ({
+                        id: `${blocker.kind}-${index}`,
+                        title: blocker.title,
+                        pillLabel: blocker.value,
+                        pillTone: blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent',
+                        body: blocker.details,
+                    }))}
+                    emptyState={{ title: 'Блокеров нет', message: DASHBOARD_TEXT.manager.noBlockers }}
+                />
             </Panel>
 
             <Panel title={DASHBOARD_TEXT.manager.changesTitle} className="span-2">
-                <div className="stack-list compact-top">
-                    {summary.managerSummary.changes.length > 0 ? summary.managerSummary.changes.map((change) => (
-                        <article key={`${change.label}-${change.value}`} className="stack-item">
-                            <div className="stack-item-header">
-                                <strong>{change.label}</strong>
-                                <span className={`module-pill is-${mapChangeTone(change.direction)}`}>{getManagerChangeLabel(change.direction)} {change.value}</span>
-                            </div>
-                            <p>{change.details}</p>
-                        </article>
-                    )) : <EmptyState title="Изменений нет" message={DASHBOARD_TEXT.states.noChanges} />}
-                </div>
+                <NarrativeList
+                    className="compact-top"
+                    items={summary.managerSummary.changes.map((change) => ({
+                        id: `${change.label}-${change.value}`,
+                        title: change.label,
+                        pillLabel: `${getManagerChangeLabel(change.direction)} ${change.value}`,
+                        pillTone: mapChangeTone(change.direction),
+                        pillStyle: 'module-pill',
+                        body: change.details,
+                    }))}
+                    emptyState={{ title: 'Изменений нет', message: DASHBOARD_TEXT.states.noChanges }}
+                />
             </Panel>
         </div>
     )
@@ -302,35 +303,34 @@ export function TeamModule(props: { summary: DashboardSummary; workspaceSlug: st
             </Panel>
 
             <Panel title={DASHBOARD_TEXT.manager.blockersTitle} className="span-2">
-                <div className="stack-list compact-top">
-                    {summary.managerSummary.blockers.length > 0 ? summary.managerSummary.blockers.map((blocker, index) => (
-                        <article key={`${blocker.kind}-${index}`} className="stack-item">
-                            <div className="stack-item-header">
-                                <strong>{blocker.title}</strong>
-                                <StatusBadge label={blocker.value} tone={blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'} />
-                            </div>
-                            <p>{blocker.details}</p>
-                            {blocker.testTitle ? <div className="subtle-copy">{blocker.testTitle}</div> : null}
-                        </article>
-                    )) : <EmptyState title="Блокеров нет" message={DASHBOARD_TEXT.manager.noBlockers} />}
-                </div>
+                <NarrativeList
+                    className="compact-top"
+                    items={summary.managerSummary.blockers.map((blocker, index) => ({
+                        id: `${blocker.kind}-${index}`,
+                        title: blocker.title,
+                        pillLabel: blocker.value,
+                        pillTone: blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent',
+                        body: blocker.details,
+                        meta: blocker.testTitle,
+                    }))}
+                    emptyState={{ title: 'Блокеров нет', message: DASHBOARD_TEXT.manager.noBlockers }}
+                />
             </Panel>
 
             <Panel title={DASHBOARD_TEXT.manager.changesTitle} className="span-2">
-                <div className="stack-list compact-top">
-                    {summary.managerSummary.changes.length > 0 ? summary.managerSummary.changes.map((change) => (
-                        <article key={`${change.label}-${change.value}`} className="stack-item">
-                            <div className="stack-item-header">
-                                <strong>{change.label}</strong>
-                                <span className={`module-pill is-${mapChangeTone(change.direction)}`}>{getManagerChangeLabel(change.direction)}</span>
-                            </div>
-                            <div className="summary-line compact-top">
-                                <span>{change.value}</span>
-                            </div>
-                            <p>{change.details}</p>
-                        </article>
-                    )) : <EmptyState title="Изменений нет" message={DASHBOARD_TEXT.states.noChanges} />}
-                </div>
+                <NarrativeList
+                    className="compact-top"
+                    items={summary.managerSummary.changes.map((change) => ({
+                        id: `${change.label}-${change.value}`,
+                        title: change.label,
+                        pillLabel: getManagerChangeLabel(change.direction),
+                        pillTone: mapChangeTone(change.direction),
+                        pillStyle: 'module-pill',
+                        value: change.value,
+                        body: change.details,
+                    }))}
+                    emptyState={{ title: 'Изменений нет', message: DASHBOARD_TEXT.states.noChanges }}
+                />
             </Panel>
 
             <Panel title={DASHBOARD_TEXT.metrics.recentRuns} titleMetricKey="recentRuns" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.recentRuns} className="span-2">

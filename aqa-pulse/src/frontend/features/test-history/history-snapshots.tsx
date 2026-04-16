@@ -12,7 +12,7 @@ import {
     formatTemplate,
     getUnstableEventLabel,
 } from '../../../shared/test-history-helpers'
-import { StatusBadge } from '../../shared/ui'
+import { StatusBadge, TraceDisclosure } from '../../shared/ui'
 
 const HISTORY_TEXT = ru.testHistory
 
@@ -25,9 +25,13 @@ export function EventSnapshot(props: { run: TestHistoryResponse['history'][numbe
                     <StatusBadge label={formatStatusLabel(props.run.status, props.run.flaky)} tone={getStatusTone(props.run.status, props.run.flaky)} />
                 </div>
                 <div className="subtle-copy">{props.run.branch ?? '—'} • {formatCommit(props.run.commit)} • {formatDuration(props.run.durationMs)} • {props.run.author ?? '—'}</div>
-                <div className={props.run.errorMessage ? 'mono-cell compact-top' : 'event-description compact-top'}>
-                    {props.run.errorMessage ?? (props.run.flaky ? HISTORY_TEXT.texts.latestFlakyDescription : 'Ошибок не зафиксировано.')}
-                </div>
+                {props.run.errorMessage ? (
+                    <TraceDisclosure previewText={props.run.errorMessage} text={props.run.errorMessage} badgeLabel="event" />
+                ) : (
+                    <div className="event-description compact-top">
+                        {props.run.flaky ? HISTORY_TEXT.texts.latestFlakyDescription : 'Ошибок не зафиксировано.'}
+                    </div>
+                )}
                 <div className="anchor-link-row compact-top">
                     <a className="ghost-link" href={`#${buildHistoryRowAnchor(props.run.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
                 </div>
@@ -46,9 +50,13 @@ export function PreviousUnstableEventsList(props: { runs: TestHistoryResponse['h
                         <StatusBadge label={getUnstableEventLabel(run)} tone={getStatusTone(run.status, run.flaky)} />
                     </div>
                     <div className="subtle-copy">{run.branch ?? '—'} • {formatCommit(run.commit)} • {formatDuration(run.durationMs)}</div>
-                    <div className={run.errorMessage ? 'mono-cell compact-top' : 'event-description compact-top'}>
-                        {run.errorMessage ?? (run.flaky ? HISTORY_TEXT.texts.retryFlakyDescription : formatTemplate(HISTORY_TEXT.texts.statusPrefix, { status: formatStatusLabel(run.status, false) }))}
-                    </div>
+                    {run.errorMessage ? (
+                        <TraceDisclosure previewText={run.errorMessage} text={run.errorMessage} badgeLabel="event" />
+                    ) : (
+                        <div className="event-description compact-top">
+                            {run.flaky ? HISTORY_TEXT.texts.retryFlakyDescription : formatTemplate(HISTORY_TEXT.texts.statusPrefix, { status: formatStatusLabel(run.status, false) })}
+                        </div>
+                    )}
                     <div className="anchor-link-row compact-top">
                         <a className="ghost-link" href={`#${buildHistoryRowAnchor(run.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
                     </div>

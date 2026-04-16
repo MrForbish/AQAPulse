@@ -26,9 +26,12 @@ import { ChartCard, type FrontendChartData } from '../../shared/chart-card'
 import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge, SummaryStrip } from '../../shared/ui'
 import {
     DashboardCurrentRunTestRow,
+    DashboardEmptyTableRow,
     DashboardErrorClusterRow,
     DashboardProblematicTestRow,
     DashboardSlowTestRow,
+    DashboardTable,
+    DashboardTablePanel,
     DashboardTestHistoryLink,
 } from './dashboard-test-table-parts'
 
@@ -72,29 +75,25 @@ export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug
                 <BreakdownTable labelColumn={DASHBOARD_TEXT.tables.group} items={props.summary.performance.suiteDuration} emptyMessage={DASHBOARD_TEXT.states.performanceBreakdownEmpty} />
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.topSlowestTestsP1} titleMetricKey="topSlowestTestsP1" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests} className="span-2">
-                {props.summary.performance.slowestTests.length > 0 ? (
-                    <div className="table-wrap compact-top">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{DASHBOARD_TEXT.tables.test}</th>
-                                    <th>{DASHBOARD_TEXT.tables.file}</th>
-                                    <th>{DASHBOARD_TEXT.tables.status}</th>
-                                    <th>{DASHBOARD_TEXT.tables.flaky}</th>
-                                    <th>{DASHBOARD_TEXT.tables.duration}</th>
-                                    <th>{DASHBOARD_TEXT.tables.lastError}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {props.summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <EmptyState title="Медленные тесты не обнаружены" message={DASHBOARD_TEXT.states.slowTestsEmpty} />
-                )}
-            </Panel>
+            <DashboardTablePanel
+                title={DASHBOARD_TEXT.metrics.topSlowestTestsP1}
+                titleMetricKey="topSlowestTestsP1"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests}
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.tables.status,
+                    DASHBOARD_TEXT.tables.flaky,
+                    DASHBOARD_TEXT.tables.duration,
+                    DASHBOARD_TEXT.tables.lastError,
+                ]}
+                rowCount={props.summary.performance.slowestTests.length}
+                emptyTitle="Медленные тесты не обнаружены"
+                emptyMessage={DASHBOARD_TEXT.states.slowTestsEmpty}
+            >
+                {props.summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
+            </DashboardTablePanel>
         </div>
     )
 }
@@ -112,81 +111,69 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
             <ChartCard title={DASHBOARD_TEXT.metrics.flakyTrend} titleMetricKey="flakyTrend" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTrend} type="bar" data={buildBarChart(props.summary.charts.flakyTrend.labels, props.summary.charts.flakyTrend.values, '#d97706')} />
             <ChartCard title={DASHBOARD_TEXT.metrics.clusterDistribution} titleMetricKey="clusterDistribution" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} type="bar" data={buildBarChart(props.summary.charts.errorClusters.labels, props.summary.charts.errorClusters.values, '#ef4444')} />
 
-            <Panel title={DASHBOARD_TEXT.metrics.problematicTests} titleMetricKey="problematicTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} className="span-2">
-                {props.summary.topProblematicTests.length > 0 ? (
-                    <div className="table-wrap compact-top">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{DASHBOARD_TEXT.tables.test}</th>
-                                    <th>{DASHBOARD_TEXT.tables.file}</th>
-                                    <th>{DASHBOARD_TEXT.tables.status}</th>
-                                    <th>{DASHBOARD_TEXT.tables.flaky}</th>
-                                    <th>Failure Rate</th>
-                                    <th>{DASHBOARD_TEXT.tables.duration}</th>
-                                    <th>{DASHBOARD_TEXT.tables.reason}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {props.summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <EmptyState title="Проблемные тесты не обнаружены" message={DASHBOARD_TEXT.states.problematicTestsEmpty} />
-                )}
-            </Panel>
+            <DashboardTablePanel
+                title={DASHBOARD_TEXT.metrics.problematicTests}
+                titleMetricKey="problematicTests"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests}
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.tables.status,
+                    DASHBOARD_TEXT.tables.flaky,
+                    'Failure Rate',
+                    DASHBOARD_TEXT.tables.duration,
+                    DASHBOARD_TEXT.tables.reason,
+                ]}
+                rowCount={props.summary.topProblematicTests.length}
+                emptyTitle="Проблемные тесты не обнаружены"
+                emptyMessage={DASHBOARD_TEXT.states.problematicTestsEmpty}
+            >
+                {props.summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
+            </DashboardTablePanel>
 
             <div className={`inline-note${flakyInsight.tone === 'warn' ? ' is-warning' : flakyInsight.tone === 'info' ? ' is-info' : ''} span-2`}>
                 <strong>{flakyInsight.title}</strong>
                 <div className="compact-top">{flakyInsight.body}</div>
             </div>
 
-            <Panel title={DASHBOARD_TEXT.metrics.topFlakyTests} titleMetricKey="topFlakyTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests} className="span-2">
-                {props.summary.flakyAnalytics.topFlakyTests.length > 0 ? (
-                    <div className="table-wrap compact-top">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{DASHBOARD_TEXT.tables.test}</th>
-                                    <th>{DASHBOARD_TEXT.tables.file}</th>
-                                    <th>{DASHBOARD_TEXT.metrics.flakyScore}</th>
-                                    <th>Fail Rate</th>
-                                    <th>MTBF</th>
-                                    <th>{DASHBOARD_TEXT.metrics.unstableRuns}</th>
-                                    <th>{DASHBOARD_TEXT.metrics.lastStatus}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {props.summary.flakyAnalytics.topFlakyTests.map((test) => <FlakyTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} />)}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <EmptyState title="Исторический список flaky-тестов пуст" message={getFlakyTopTestsEmptyState(props.summary)} />
-                )}
-            </Panel>
+            <DashboardTablePanel
+                title={DASHBOARD_TEXT.metrics.topFlakyTests}
+                titleMetricKey="topFlakyTests"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests}
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.metrics.flakyScore,
+                    'Fail Rate',
+                    'MTBF',
+                    DASHBOARD_TEXT.metrics.unstableRuns,
+                    DASHBOARD_TEXT.metrics.lastStatus,
+                ]}
+                rowCount={props.summary.flakyAnalytics.topFlakyTests.length}
+                emptyTitle="Исторический список flaky-тестов пуст"
+                emptyMessage={getFlakyTopTestsEmptyState(props.summary)}
+            >
+                {props.summary.flakyAnalytics.topFlakyTests.map((test) => <FlakyTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} />)}
+            </DashboardTablePanel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.errorClusters} titleMetricKey="errorClusters" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} className="span-2">
-                {props.summary.errorClusters.length > 0 ? (
-                    <div className="table-wrap compact-top">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{DASHBOARD_TEXT.tables.error}</th>
-                                    <th>{DASHBOARD_TEXT.tables.count}</th>
-                                    <th>{DASHBOARD_TEXT.tables.testExamples}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {props.summary.errorClusters.map((cluster) => <DashboardErrorClusterRow key={cluster.message} cluster={cluster} />)}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <EmptyState title="Падений не обнаружено" message={DASHBOARD_TEXT.states.failuresEmpty} />
-                )}
-            </Panel>
+            <DashboardTablePanel
+                title={DASHBOARD_TEXT.metrics.errorClusters}
+                titleMetricKey="errorClusters"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList}
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.error,
+                    DASHBOARD_TEXT.tables.count,
+                    DASHBOARD_TEXT.tables.testExamples,
+                ]}
+                rowCount={props.summary.errorClusters.length}
+                emptyTitle="Падений не обнаружено"
+                emptyMessage={DASHBOARD_TEXT.states.failuresEmpty}
+            >
+                {props.summary.errorClusters.map((cluster) => <DashboardErrorClusterRow key={cluster.message} cluster={cluster} />)}
+            </DashboardTablePanel>
         </div>
     )
 }
@@ -251,28 +238,19 @@ function CurrentRunTestsBrowser(props: { summary: DashboardSummary; workspaceSlu
                     </button>
                 ))}
             </div>
-            <div className="table-wrap compact-top">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>{DASHBOARD_TEXT.tables.test}</th>
-                            <th>{DASHBOARD_TEXT.tables.file}</th>
-                            <th>{DASHBOARD_TEXT.filters.project}</th>
-                            <th>{DASHBOARD_TEXT.tables.status}</th>
-                            <th>{DASHBOARD_TEXT.tables.flaky}</th>
-                            <th>{DASHBOARD_TEXT.tables.duration}</th>
-                            <th>{DASHBOARD_TEXT.tables.lastError}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {activeGroup.tests.length > 0 ? activeGroup.tests.map((test) => <DashboardCurrentRunTestRow key={`${activeGroup.id}-${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />) : (
-                            <tr>
-                                <td colSpan={7}>{DASHBOARD_TEXT.testsBrowser.empty}</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <DashboardTable
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.filters.project,
+                    DASHBOARD_TEXT.tables.status,
+                    DASHBOARD_TEXT.tables.flaky,
+                    DASHBOARD_TEXT.tables.duration,
+                    DASHBOARD_TEXT.tables.lastError,
+                ]}
+            >
+                {activeGroup.tests.length > 0 ? activeGroup.tests.map((test) => <DashboardCurrentRunTestRow key={`${activeGroup.id}-${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />) : <DashboardEmptyTableRow colSpan={7} message={DASHBOARD_TEXT.testsBrowser.empty} />}
+            </DashboardTable>
         </Panel>
     )
 }
@@ -291,74 +269,49 @@ function RecentRunsPanel(props: { summary: DashboardSummary }): React.JSX.Elemen
                     { label: DASHBOARD_TEXT.history.currentBranch, value: `${props.summary.runMetadata.branch ?? '—'} • ${DASHBOARD_TEXT.commitMeta}: ${formatCommit(props.summary.runMetadata.commit)} • ${DASHBOARD_TEXT.authorMeta}: ${props.summary.runMetadata.author ?? '—'}`, muted: true },
                 ]}
             />
-            <div className="table-wrap compact-top">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>{DASHBOARD_TEXT.tables.time}</th>
-                            <th>{DASHBOARD_TEXT.metrics.passRate}</th>
-                            <th>{DASHBOARD_TEXT.metrics.failures}</th>
-                            <th>{DASHBOARD_TEXT.metrics.flakyShort}</th>
-                            <th>{DASHBOARD_TEXT.tables.duration}</th>
-                            <th>{DASHBOARD_TEXT.tables.branch}</th>
-                            <th>{DASHBOARD_TEXT.tables.commit}</th>
-                            <th>{DASHBOARD_TEXT.tables.author}</th>
-                            <th>{DASHBOARD_TEXT.tables.source}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {props.summary.history.recentRuns.length > 0 ? props.summary.history.recentRuns.map((run) => (
-                            <tr key={run.id}>
-                                <td>{formatDate(run.reportTimestamp ?? run.generatedAt)}</td>
-                                <td>{formatPercent(run.passRate)}</td>
-                                <td>{run.failedTests}</td>
-                                <td>{run.flakyTests}</td>
-                                <td>{formatDuration(run.totalDurationMs)}</td>
-                                <td>{run.branch ?? '—'}</td>
-                                <td>{formatCommit(run.commit)}</td>
-                                <td>{run.author ?? '—'}</td>
-                                <td>{run.sourceFile}</td>
-                            </tr>
-                        )) : (
-                            <tr>
-                                <td colSpan={9}>{DASHBOARD_TEXT.states.historyEmpty}</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <DashboardTable
+                headers={[
+                    DASHBOARD_TEXT.tables.time,
+                    DASHBOARD_TEXT.metrics.passRate,
+                    DASHBOARD_TEXT.metrics.failures,
+                    DASHBOARD_TEXT.metrics.flakyShort,
+                    DASHBOARD_TEXT.tables.duration,
+                    DASHBOARD_TEXT.tables.branch,
+                    DASHBOARD_TEXT.tables.commit,
+                    DASHBOARD_TEXT.tables.author,
+                    DASHBOARD_TEXT.tables.source,
+                ]}
+            >
+                {props.summary.history.recentRuns.length > 0 ? props.summary.history.recentRuns.map((run) => (
+                    <tr key={run.id}>
+                        <td>{formatDate(run.reportTimestamp ?? run.generatedAt)}</td>
+                        <td>{formatPercent(run.passRate)}</td>
+                        <td>{run.failedTests}</td>
+                        <td>{run.flakyTests}</td>
+                        <td>{formatDuration(run.totalDurationMs)}</td>
+                        <td>{run.branch ?? '—'}</td>
+                        <td>{formatCommit(run.commit)}</td>
+                        <td>{run.author ?? '—'}</td>
+                        <td>{run.sourceFile}</td>
+                    </tr>
+                )) : <DashboardEmptyTableRow colSpan={9} message={DASHBOARD_TEXT.states.historyEmpty} />}
+            </DashboardTable>
         </Panel>
     )
 }
 
 function BreakdownTable(props: { labelColumn: string; items: DashboardDurationBreakdownItem[]; emptyMessage: string }): React.JSX.Element {
     return (
-        <div className="table-wrap compact-top">
-            <table>
-                <thead>
-                    <tr>
-                        <th>{props.labelColumn}</th>
-                        <th>{DASHBOARD_TEXT.tables.duration}</th>
-                        <th>{DASHBOARD_TEXT.tables.share}</th>
-                        <th>{DASHBOARD_TEXT.tables.tests}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {props.items.length > 0 ? props.items.map((item) => (
-                        <tr key={`${item.label}-${item.durationMs}`}>
-                            <td>{item.label}</td>
-                            <td>{formatDuration(item.durationMs)}</td>
-                            <td>{formatPercent(item.sharePercent)}</td>
-                            <td>{item.tests}</td>
-                        </tr>
-                    )) : (
-                        <tr>
-                            <td colSpan={4}>{props.emptyMessage}</td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
+        <DashboardTable headers={[props.labelColumn, DASHBOARD_TEXT.tables.duration, DASHBOARD_TEXT.tables.share, DASHBOARD_TEXT.tables.tests]}>
+            {props.items.length > 0 ? props.items.map((item) => (
+                <tr key={`${item.label}-${item.durationMs}`}>
+                    <td>{item.label}</td>
+                    <td>{formatDuration(item.durationMs)}</td>
+                    <td>{formatPercent(item.sharePercent)}</td>
+                    <td>{item.tests}</td>
+                </tr>
+            )) : <DashboardEmptyTableRow colSpan={4} message={props.emptyMessage} />}
+        </DashboardTable>
     )
 }
 

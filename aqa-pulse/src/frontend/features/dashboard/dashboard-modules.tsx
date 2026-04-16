@@ -34,8 +34,11 @@ import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-
 import { ru } from '../../../shared/i18n/ru'
 import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge } from '../../shared/ui'
 import {
+    DashboardEmptyTableRow,
     DashboardProblematicTestRow,
     DashboardSlowTestRow,
+    DashboardTable,
+    DashboardTablePanel,
     DashboardTestHistoryLink,
 } from './dashboard-test-table-parts'
 
@@ -188,30 +191,27 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
             <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Повторяемые patterns падений" />
             <MetricCard label={DASHBOARD_TEXT.metrics.leadingPhase} labelMetricKey="leadingPhase" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} value={summary.performance.phaseBreakdown[0]?.label ?? '—'} hint={summary.performance.phaseBreakdown[0] ? formatPercent(summary.performance.phaseBreakdown[0].sharePercent) : DASHBOARD_TEXT.states.noChanges} />
 
-            <Panel title="Failure hotspots" titleMetricKey="problematicTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} description="Проблемные сценарии, которые прямо сейчас формируют основной backlog по качеству тестового кода." className="span-2">
-                {summary.topProblematicTests.length > 0 ? (
-                    <div className="table-wrap compact-top">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{DASHBOARD_TEXT.tables.test}</th>
-                                    <th>{DASHBOARD_TEXT.tables.file}</th>
-                                    <th>{DASHBOARD_TEXT.tables.status}</th>
-                                    <th>{DASHBOARD_TEXT.tables.flaky}</th>
-                                    <th>Failure Rate</th>
-                                    <th>{DASHBOARD_TEXT.tables.duration}</th>
-                                    <th>{DASHBOARD_TEXT.tables.lastError}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <EmptyState title="Problem hotspots отсутствуют" message={DASHBOARD_TEXT.states.problematicTestsEmpty} />
-                )}
-            </Panel>
+            <DashboardTablePanel
+                title="Failure hotspots"
+                titleMetricKey="problematicTests"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests}
+                description="Проблемные сценарии, которые прямо сейчас формируют основной backlog по качеству тестового кода."
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.tables.status,
+                    DASHBOARD_TEXT.tables.flaky,
+                    'Failure Rate',
+                    DASHBOARD_TEXT.tables.duration,
+                    DASHBOARD_TEXT.tables.lastError,
+                ]}
+                rowCount={summary.topProblematicTests.length}
+                emptyTitle="Problem hotspots отсутствуют"
+                emptyMessage={DASHBOARD_TEXT.states.problematicTestsEmpty}
+            >
+                {summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
+            </DashboardTablePanel>
 
             <Panel title={DASHBOARD_TEXT.metrics.phaseBreakdown} titleMetricKey="phaseBreakdown" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription}>
                 <div className="stacked-bars compact-top">
@@ -245,25 +245,25 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
                 </div>
             </Panel>
 
-            <Panel title={DASHBOARD_TEXT.metrics.topSlowestTests} titleMetricKey="topSlowestTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests} className="span-2">
-                <div className="table-wrap compact-top">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>{DASHBOARD_TEXT.tables.test}</th>
-                                <th>{DASHBOARD_TEXT.tables.file}</th>
-                                <th>{DASHBOARD_TEXT.tables.status}</th>
-                                <th>{DASHBOARD_TEXT.tables.flaky}</th>
-                                <th>{DASHBOARD_TEXT.tables.duration}</th>
-                                <th>{DASHBOARD_TEXT.tables.lastError}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
-                        </tbody>
-                    </table>
-                </div>
-            </Panel>
+            <DashboardTablePanel
+                title={DASHBOARD_TEXT.metrics.topSlowestTests}
+                titleMetricKey="topSlowestTests"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests}
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.tables.status,
+                    DASHBOARD_TEXT.tables.flaky,
+                    DASHBOARD_TEXT.tables.duration,
+                    DASHBOARD_TEXT.tables.lastError,
+                ]}
+                rowCount={summary.performance.slowestTests.length}
+                emptyTitle="Медленные тесты не обнаружены"
+                emptyMessage={DASHBOARD_TEXT.states.slowTestsEmpty}
+            >
+                {summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
+            </DashboardTablePanel>
         </div>
     )
 }
@@ -318,36 +318,31 @@ export function TeamModule(props: { summary: DashboardSummary; workspaceSlug: st
             </Panel>
 
             <Panel title={DASHBOARD_TEXT.metrics.recentRuns} titleMetricKey="recentRuns" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.recentRuns} className="span-2">
-                <div className="table-wrap compact-top">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>{DASHBOARD_TEXT.tables.time}</th>
-                                <th>{DASHBOARD_TEXT.tables.branch}</th>
-                                <th>{DASHBOARD_TEXT.tables.commit}</th>
-                                <th>{DASHBOARD_TEXT.metrics.passRate}</th>
-                                <th>{DASHBOARD_TEXT.metrics.failedTests}</th>
-                                <th>{DASHBOARD_TEXT.metrics.flakyTests}</th>
-                                <th>{DASHBOARD_TEXT.tables.duration}</th>
-                                <th>Author</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {summary.history.recentRuns.map((run) => (
-                                <tr key={run.id}>
-                                    <td>{formatDate(run.reportTimestamp ?? run.generatedAt)}</td>
-                                    <td>{run.branch ?? '—'}</td>
-                                    <td>{formatCommit(run.commit)}</td>
-                                    <td>{formatPercent(run.passRate)}</td>
-                                    <td>{run.failedTests}</td>
-                                    <td>{run.flakyTests}</td>
-                                    <td>{formatDuration(run.totalDurationMs)}</td>
-                                    <td>{run.author ?? '—'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <DashboardTable
+                    headers={[
+                        DASHBOARD_TEXT.tables.time,
+                        DASHBOARD_TEXT.tables.branch,
+                        DASHBOARD_TEXT.tables.commit,
+                        DASHBOARD_TEXT.metrics.passRate,
+                        DASHBOARD_TEXT.metrics.failedTests,
+                        DASHBOARD_TEXT.metrics.flakyTests,
+                        DASHBOARD_TEXT.tables.duration,
+                        'Author',
+                    ]}
+                >
+                    {summary.history.recentRuns.length > 0 ? summary.history.recentRuns.map((run) => (
+                        <tr key={run.id}>
+                            <td>{formatDate(run.reportTimestamp ?? run.generatedAt)}</td>
+                            <td>{run.branch ?? '—'}</td>
+                            <td>{formatCommit(run.commit)}</td>
+                            <td>{formatPercent(run.passRate)}</td>
+                            <td>{run.failedTests}</td>
+                            <td>{run.flakyTests}</td>
+                            <td>{formatDuration(run.totalDurationMs)}</td>
+                            <td>{run.author ?? '—'}</td>
+                        </tr>
+                    )) : <DashboardEmptyTableRow colSpan={8} message={DASHBOARD_TEXT.states.historyEmpty} />}
+                </DashboardTable>
             </Panel>
         </div>
     )
@@ -364,38 +359,35 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
             <MetricCard label="Signal coverage" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.signalCoverage} value={`${signalCoverage}%`} tone={signalCoverage >= 75 ? 'good' : signalCoverage >= 45 ? 'warn' : 'danger'} hint="Готовность данных для heuristics/ML" />
             <MetricCard label="First flake to fix" labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={summary.flakyAnalytics.firstFlakeToFix ? `${summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} hint="Исторический feedback loop" />
 
-            <Panel title="Risk ranking" titleMetricKey="topFlakyTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests} description="Текущий React-модуль уже может ранжировать тесты для последующего root-cause и next-run risk scoring." className="span-2">
-                {summary.flakyAnalytics.topFlakyTests.length > 0 ? (
-                    <div className="table-wrap compact-top">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{DASHBOARD_TEXT.tables.test}</th>
-                                    <th>{DASHBOARD_TEXT.tables.file}</th>
-                                    <th>{DASHBOARD_TEXT.metrics.flakyScore}</th>
-                                    <th>Fail Rate</th>
-                                    <th>MTBF</th>
-                                    <th>{DASHBOARD_TEXT.metrics.lastStatus}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {summary.flakyAnalytics.topFlakyTests.map((test) => (
-                                    <tr key={`${test.project}-${test.file}-${test.title}`}>
-                                        <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
-                                        <td>{test.file}</td>
-                                        <td>{formatScore(test.flakyScore)}</td>
-                                        <td>{formatPercent(test.failRate)}</td>
-                                        <td>{test.mtbfDays === null ? '—' : `${test.mtbfDays.toFixed(2)} дн`}</td>
-                                        <td><StatusBadge label={formatStatusLabel(test.latestStatus, false)} tone={getStatusTone(test.latestStatus, false)} /></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <EmptyState title="Исторических сигналов мало" message={DASHBOARD_TEXT.states.flakyTestsEmpty} />
-                )}
-            </Panel>
+            <DashboardTablePanel
+                title="Risk ranking"
+                titleMetricKey="topFlakyTests"
+                titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests}
+                description="Текущий React-модуль уже может ранжировать тесты для последующего root-cause и next-run risk scoring."
+                className="span-2"
+                headers={[
+                    DASHBOARD_TEXT.tables.test,
+                    DASHBOARD_TEXT.tables.file,
+                    DASHBOARD_TEXT.metrics.flakyScore,
+                    'Fail Rate',
+                    'MTBF',
+                    DASHBOARD_TEXT.metrics.lastStatus,
+                ]}
+                rowCount={summary.flakyAnalytics.topFlakyTests.length}
+                emptyTitle="Исторических сигналов мало"
+                emptyMessage={DASHBOARD_TEXT.states.flakyTestsEmpty}
+            >
+                {summary.flakyAnalytics.topFlakyTests.map((test) => (
+                    <tr key={`${test.project}-${test.file}-${test.title}`}>
+                        <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
+                        <td>{test.file}</td>
+                        <td>{formatScore(test.flakyScore)}</td>
+                        <td>{formatPercent(test.failRate)}</td>
+                        <td>{test.mtbfDays === null ? '—' : `${test.mtbfDays.toFixed(2)} дн`}</td>
+                        <td><StatusBadge label={formatStatusLabel(test.latestStatus, false)} tone={getStatusTone(test.latestStatus, false)} /></td>
+                    </tr>
+                ))}
+            </DashboardTablePanel>
 
             <Panel title="Root-cause clusters" titleMetricKey="errorClusters" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} description="Повторяемые ошибки уже можно использовать как базу для кластеризации, объяснений и рекомендаций." className="span-2">
                 <div className="cluster-list compact-top">

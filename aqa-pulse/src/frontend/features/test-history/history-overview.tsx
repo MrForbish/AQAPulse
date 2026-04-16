@@ -103,7 +103,7 @@ export function IncidentSummaryPanel(props: {
                 </div>
                 <div className="detail-card-react">
                     <span className="metric-label">{HISTORY_TEXT.incident.primarySignalLabel}</span>
-                    <strong className="mono-cell">{incidentPrimarySignal ?? HISTORY_TEXT.incident.notCaptured}</strong>
+                    <TraceDisclosure text={incidentPrimarySignal} emptyLabel={HISTORY_TEXT.incident.notCaptured} badgeLabel="signal" />
                 </div>
             </div>
             <div className="incident-grid-react">

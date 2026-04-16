@@ -69,6 +69,18 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
             return undefined
         }
 
+        if (typeof ResizeObserver !== 'function') {
+            return undefined
+        }
+
+        try {
+            if (!canvasRef.current.getContext('2d')) {
+                return undefined
+            }
+        } catch {
+            return undefined
+        }
+
         let isDisposed = false
         let chart: ChartInstance | null = null
 

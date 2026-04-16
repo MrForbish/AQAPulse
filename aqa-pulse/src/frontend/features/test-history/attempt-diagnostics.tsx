@@ -12,7 +12,7 @@ import {
     isImageAttachment,
     isMarkdownAttachment,
 } from '../../../shared/test-history-helpers'
-import { EmptyState, OverflowText, StatusBadge } from '../../shared/ui'
+import { EmptyState, OverflowText, StatusBadge, TraceDisclosure } from '../../shared/ui'
 
 const HISTORY_TEXT = ru.testHistory
 
@@ -44,7 +44,7 @@ export function AttemptDiagnostics(props: {
                             <span className="meta-badge">{HISTORY_TEXT.diagnostics.steps}: {attempt.steps.length}</span>
                             <span className="meta-badge">{HISTORY_TEXT.diagnostics.attachments}: {attempt.attachments.length}</span>
                         </div>
-                        {attempt.errorMessage ? <div className="mono-cell">{attempt.errorMessage}</div> : null}
+                        {attempt.errorMessage ? <TraceDisclosure text={attempt.errorMessage} badgeLabel="attempt" /> : null}
                         {attempt.steps.length > 0 ? (
                             <details className="attempt-step-group-react" open={Boolean(attempt.errorMessage)}>
                                 <summary className="attachment-preview-summary-react">
@@ -322,7 +322,7 @@ function DiagnosticStepCard(props: { node: ReturnType<typeof buildDiagnosticStep
                         <span className="meta-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
                     </div>
                 ) : null}
-                {node.step.errorMessage ? <OverflowText as="div" text={node.step.errorMessage} className="mono-cell compact-top" lines={2} /> : null}
+                {node.step.errorMessage ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
             </div>
             {node.children.length > 0 ? (
                 <div className="step-tree-children-react">

@@ -10,7 +10,63 @@ import type {
 import { formatDuration, formatPercent } from '../../../shared/formatting'
 import { formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
 import { buildTestHistoryHref } from '../../runtime'
-import { OverflowText, StatusBadge, TraceDisclosure } from '../../shared/ui'
+import { EmptyState, OverflowText, Panel, StatusBadge, TraceDisclosure } from '../../shared/ui'
+
+export function DashboardTable(props: {
+    headers: React.ReactNode[]
+    children: React.ReactNode
+    className?: string
+}): React.JSX.Element {
+    return (
+        <div className={['table-wrap', 'compact-top', props.className].filter(Boolean).join(' ')}>
+            <table>
+                <thead>
+                    <tr>
+                        {props.headers.map((header, index) => <th key={`${String(header)}-${index}`}>{header}</th>)}
+                    </tr>
+                </thead>
+                <tbody>{props.children}</tbody>
+            </table>
+        </div>
+    )
+}
+
+export function DashboardEmptyTableRow(props: { colSpan: number; message: string }): React.JSX.Element {
+    return (
+        <tr>
+            <td colSpan={props.colSpan}>{props.message}</td>
+        </tr>
+    )
+}
+
+export function DashboardTablePanel(props: {
+    title: string
+    titleMetricKey?: string
+    titleTooltip?: string
+    description?: string
+    className?: string
+    headers: React.ReactNode[]
+    rowCount: number
+    emptyTitle: string
+    emptyMessage: string
+    children: React.ReactNode
+}): React.JSX.Element {
+    return (
+        <Panel
+            title={props.title}
+            titleMetricKey={props.titleMetricKey}
+            titleTooltip={props.titleTooltip}
+            description={props.description}
+            className={props.className}
+        >
+            {props.rowCount > 0 ? (
+                <DashboardTable headers={props.headers}>{props.children}</DashboardTable>
+            ) : (
+                <EmptyState title={props.emptyTitle} message={props.emptyMessage} />
+            )}
+        </Panel>
+    )
+}
 
 export function DashboardTestHistoryLink(props: {
     workspaceSlug: string | null

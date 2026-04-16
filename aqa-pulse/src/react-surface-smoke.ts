@@ -41,6 +41,12 @@ const { JSDOM } = require('jsdom') as {
     }
 }
 
+Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', {
+    configurable: true,
+    writable: true,
+    value: true,
+})
+
 /**
  * Сначала подготавливает реальные workspace summary/history данные, чтобы экспортируемые страницы тестировались на тех же контрактах, что и production runtime.
  */
@@ -287,6 +293,7 @@ async function verifyStaticHashDeepLinkRoute(reactModule: typeof import('aqa-pul
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
         url: `http://localhost/#/test/${encodeURIComponent(testTitle)}?project=${encodeURIComponent(project)}&file=${encodeURIComponent(file)}`,
     })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -411,6 +418,7 @@ async function verifyStaticDashboardNavigation(
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
         url: 'http://localhost/#/',
     })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -591,6 +599,7 @@ async function verifyWorkspaceLoginBootstrapRedirect(workspaceSlug: string): Pro
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
         url: `http://localhost/w/${workspaceSlug}/login`,
     })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -672,6 +681,7 @@ async function verifyDashboardTraceDisclosure(summary: ReturnType<ApiStore['getS
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
         url: 'http://localhost/trace-disclosure',
     })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -768,6 +778,7 @@ async function verifyTestHistoryAttachmentLightbox(
 ): Promise<void> {
     const previewablePayload = injectAttachmentPreviewUrlsForSmoke(testHistoryPayload)
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-lightbox' })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -863,6 +874,7 @@ async function verifyTestHistoryAttachmentMarkdownPreview(
 ): Promise<void> {
     const previewablePayload = injectAttachmentPreviewUrlsForSmoke(testHistoryPayload)
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-markdown-preview' })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -1014,6 +1026,7 @@ async function verifyTestHistoryNestedDiagnosticsStructure(
 ): Promise<void> {
     const nestedPayload = injectNestedDiagnosticsStepsForSmoke(testHistoryPayload)
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-nested-diagnostics' })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -1188,6 +1201,7 @@ async function navigateHash(windowRef: Window & typeof globalThis, hash: string)
  */
 async function verifyErrorBoundaryRecovery(reactModule: typeof import('aqa-pulse/react')): Promise<void> {
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
+    installCanvasContextStub(dom.window)
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
     const previousNavigator = globalThis.navigator
@@ -1305,6 +1319,76 @@ function setGlobalValue<K extends keyof typeof globalThis>(key: K, value: (typeo
         writable: true,
         value,
     })
+}
+
+function installCanvasContextStub(windowRef: Window & typeof globalThis): void {
+    const prototype = windowRef.HTMLCanvasElement?.prototype as ({ __aqaPulseCanvasStubInstalled?: boolean }) | undefined
+
+    if (!prototype || prototype.__aqaPulseCanvasStubInstalled) {
+        return
+    }
+
+    Object.defineProperty(prototype, 'getContext', {
+        configurable: true,
+        writable: true,
+        value(this: HTMLCanvasElement) {
+            return createCanvasContextStub(this)
+        },
+    })
+
+    Object.defineProperty(prototype, '__aqaPulseCanvasStubInstalled', {
+        configurable: true,
+        writable: true,
+        value: true,
+    })
+}
+
+function createCanvasContextStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+    const state: Record<string, unknown> = {
+        canvas,
+        fillStyle: '#000',
+        strokeStyle: '#000',
+        lineWidth: 1,
+        font: '12px sans-serif',
+        textAlign: 'left',
+        textBaseline: 'alphabetic',
+        globalAlpha: 1,
+        lineCap: 'butt',
+        lineJoin: 'miter',
+        lineDashOffset: 0,
+        miterLimit: 10,
+        shadowBlur: 0,
+        shadowColor: '#000',
+        shadowOffsetX: 0,
+        shadowOffsetY: 0,
+    }
+    const gradientStub = { addColorStop: () => undefined }
+
+    return new Proxy(state, {
+        get(target, property) {
+            if (typeof property === 'string' && property in target) {
+                return target[property]
+            }
+
+            if (property === 'measureText') {
+                return () => ({ width: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 })
+            }
+
+            if (property === 'createLinearGradient' || property === 'createRadialGradient') {
+                return () => gradientStub
+            }
+
+            if (property === 'createPattern') {
+                return () => null
+            }
+
+            return () => undefined
+        },
+        set(target, property, value) {
+            target[property as string] = value
+            return true
+        },
+    }) as unknown as CanvasRenderingContext2D
 }
 
 function requireFirstTestTitle(report: ReturnType<typeof loadReporterReport>): string {

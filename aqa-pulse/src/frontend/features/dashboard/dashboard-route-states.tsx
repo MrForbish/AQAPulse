@@ -4,7 +4,7 @@ import { ErrorView, LoadingView, PageFrame } from '../../shared/ui'
 export function DashboardLoadingState(): React.JSX.Element {
     return (
         <PageFrame>
-            <LoadingView label="Собираем React dashboard..." />
+            <LoadingView label="Снимаем показания с тестов... Пульс ровный." />
         </PageFrame>
     )
 }

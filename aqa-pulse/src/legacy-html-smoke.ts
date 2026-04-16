@@ -52,12 +52,15 @@ async function main(): Promise<void> {
     })
     const summary = store.getSummary()
     const firstTest = summary.currentRunTests.all[0] ?? null
+    const attachmentTestTitle = 'Checkout > retries after payment gateway timeout'
 
     assert(firstTest, 'Legacy HTML smoke expects at least one current-run test.')
 
     const testHistoryPayload = store.getTestHistory(firstTest.title, {})
+    const attachmentTestHistoryPayload = store.getTestHistory(attachmentTestTitle, {})
 
     assert(testHistoryPayload && !('candidates' in testHistoryPayload), 'Legacy HTML smoke expects a concrete test history payload.')
+    assert(attachmentTestHistoryPayload && !('candidates' in attachmentTestHistoryPayload), 'Legacy HTML smoke expects an attachment-rich concrete test history payload.')
 
     const warnMessages: string[] = []
     const originalWarn = console.warn
@@ -74,12 +77,70 @@ async function main(): Promise<void> {
             apiBasePath: '/legacy/api',
             artifactBasePath: '/legacy/artifacts',
         })
+        const nestedStepsPayload = {
+            ...attachmentTestHistoryPayload,
+            history: attachmentTestHistoryPayload.history.map((item, itemIndex) => itemIndex === 0
+                ? {
+                    ...item,
+                    attemptDetails: item.attemptDetails.map((attempt, attemptIndex) => attemptIndex === 0
+                        ? {
+                            ...attempt,
+                            steps: [
+                                {
+                                    title: 'Submit payment',
+                                    category: 'test.step',
+                                    depth: 1,
+                                    durationMs: 7200,
+                                    status: 'failed',
+                                    errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
+                                    isFailurePoint: true,
+                                },
+                                {
+                                    title: 'Wait for gateway response',
+                                    category: 'pw:api',
+                                    depth: 2,
+                                    durationMs: 3200,
+                                    status: 'failed',
+                                    errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
+                                    isFailurePoint: true,
+                                },
+                                {
+                                    title: 'Retry policy applied',
+                                    category: 'test.step',
+                                    depth: 2,
+                                    durationMs: 1800,
+                                    status: 'failed',
+                                    errorMessage: null,
+                                    isFailurePoint: false,
+                                },
+                                {
+                                    title: 'Capture timeout diagnostics',
+                                    category: 'pw:api',
+                                    depth: 2,
+                                    durationMs: 900,
+                                    status: 'passed',
+                                    errorMessage: null,
+                                    isFailurePoint: false,
+                                },
+                            ],
+                        }
+                        : attempt),
+                }
+                : item),
+        }
+        const nestedHistoryHtml = legacyRuntime.renderTestHistoryHtml(nestedStepsPayload, attachmentTestTitle, {}, {
+            basePath: '/legacy',
+            apiBasePath: '/legacy/api',
+            artifactBasePath: '/legacy/artifacts',
+        })
         const metricHeadingHtml = legacyRuntime.renderMetricHeading('Smoke heading', 'Smoke tooltip')
 
         assertIncludes(dashboardHtml, 'AQA Pulse — Unified Quality Assurance Platform', 'Legacy dashboard HTML title must be rendered.')
         assertIncludes(dashboardHtml, 'Ключевые сигналы', 'Legacy dashboard HTML should still include manager overview section.')
         assertIncludes(historyHtml, 'История прогонов теста', 'Legacy test history HTML should include the timeline section.')
         assertIncludes(historyHtml, 'Диагностика последнего запуска', 'Legacy test history HTML should include diagnostics section.')
+        assertIncludes(nestedHistoryHtml, 'step-tree-children', 'Legacy test history HTML should preserve nested diagnostics step groups.')
+        assertIncludes(nestedHistoryHtml, 'step-item-nested', 'Legacy test history HTML should mark nested diagnostics steps for parity with React UI.')
         assertIncludes(metricHeadingHtml, 'Smoke heading', 'Legacy metric heading helper should still render headings.')
 
         assert.equal(warnMessages.length, 1, `Legacy runtime should warn once, got ${warnMessages.length}: ${warnMessages.join(' | ')}`)

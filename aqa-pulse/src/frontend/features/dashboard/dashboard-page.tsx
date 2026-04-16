@@ -86,7 +86,7 @@ export function DashboardPage(props: { workspaceSlug: string | null }): React.JS
         <PageFrame>
             <section className="hero-block">
                 <div>
-                    <div className="eyebrow">React UI</div>
+                    <div className="eyebrow">TestOps</div>
                     <h1>{DASHBOARD_TEXT.title}</h1>
                     <p>
                         унифицированная экосистема для автоматизации тестирования, агрегации артефактов и контроля здоровья продукта на всех этапах CI/CD.

@@ -22,18 +22,9 @@ import {
     renderAttemptDiagnostics,
     renderAttemptDiagnosticsCard,
     renderAttemptDetail,
-    renderAttemptSteps,
     renderOverflowText,
-    renderStepDetail,
     findIncidentStepAnchor,
     normalizeAnchorLookupValue,
-    buildStepAnchor,
-    renderAttachmentDetail,
-    buildAttachmentHref,
-    isImageAttachment,
-    isMarkdownAttachment,
-    canInlineMarkdownPreview,
-    getAttachmentReference,
     findLatestStableRecovery,
     findCurrentStabilityStreak,
     findUnstableStreakBeforeRecovery,
@@ -385,12 +376,15 @@ export function renderTestHistoryHtml(
         .attempt-step-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
         .attempt-step-summary::-webkit-details-marker { display: none; }
         .attempt-step-body { max-height: min(360px, 42vh); overflow: auto; padding: 0 10px 10px; scrollbar-gutter: stable; }
-        .step-list, .attachment-list { display: grid; gap: 8px; }
+        .step-list, .attachment-list, .step-tree, .step-tree-children { display: grid; gap: 8px; }
+        .step-tree-children { margin-top: 8px; padding-top: 8px; padding-left: 14px; border-left: 1px solid #30363d; }
         .step-item, .attachment-item { padding: 10px 12px; border-radius: 8px; background: #161b22; border: 1px solid #21262d; }
         .step-item.step-item-failure { border-color: rgba(248, 81, 73, 0.45); background: linear-gradient(180deg, rgba(248, 81, 73, 0.12) 0%, #161b22 100%); }
+        .step-item.step-item-nested { background: #101927; }
         .step-item-header, .attachment-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
         .step-title, .attachment-title { color: #ffffff; font-size: 12px; font-weight: 500; }
         .step-meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .step-meta-copy { margin-top: 2px; }
         .step-error { margin-top: 8px; }
         .attachment-link { color: #58a6ff; text-decoration: none; font-size: 12px; }
         .attachment-link:hover { text-decoration: underline; }

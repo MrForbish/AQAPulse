@@ -1,8 +1,9 @@
 /**
- * Назначение: общие HTML-секции legacy test-history renderer, включая incident summary и attempt diagnostics.
+ * Назначение: общие HTML-секции legacy test-history renderer, кроме compatibility-only attachment/lightbox и nested-step helpers.
  */
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
+import { renderLegacyAttachmentDetail, renderLegacyAttemptSteps } from './render-test-history-legacy-only'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import {
     buildApiTestHistoryHrefFromBasePath,
@@ -12,10 +13,7 @@ import {
     normalizeOptionalFilter as normalizeSharedOptionalFilter,
 } from './shared/navigation'
 import {
-    buildAttachmentHref as buildSharedAttachmentHref,
     buildHistoryRowAnchor as buildSharedHistoryRowAnchor,
-    buildStepAnchor as buildSharedStepAnchor,
-    canInlineMarkdownPreview as canInlineSharedMarkdownPreview,
     findCurrentStabilityStreak as findSharedCurrentStabilityStreak,
     findIncidentStepAnchor as findSharedIncidentStepAnchor,
     findLatestStableRecovery as findSharedLatestStableRecovery,
@@ -23,12 +21,9 @@ import {
     formatCurrentStabilityDescription as formatSharedCurrentStabilityDescription,
     formatRunsLabel as formatSharedRunsLabel,
     formatTemplate as formatSharedTemplate,
-    getAttachmentReference as getSharedAttachmentReference,
     getRunWord as getSharedRunWord,
     getUnstableEventLabel as getSharedUnstableEventLabel,
     getUnstableHistoryItems as getSharedUnstableHistoryItems,
-    isImageAttachment as isSharedImageAttachment,
-    isMarkdownAttachment as isSharedMarkdownAttachment,
     isStableHistoryItem as isSharedStableHistoryItem,
     isUnstableHistoryItem as isSharedUnstableHistoryItem,
     normalizeAnchorLookupValue as normalizeSharedAnchorLookupValue,
@@ -452,35 +447,14 @@ export function renderAttemptDetail(
                     <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.startTime)}: ${escapeHtml(attempt.startTime ? formatDate(attempt.startTime) : '—')}</span>
                 </div>
                 ${attempt.errorMessage ? `<div class="attempt-error mono">${escapeHtml(attempt.errorMessage)}</div>` : ''}
-                ${hasSteps ? renderAttemptSteps(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
+                ${hasSteps ? renderLegacyAttemptSteps(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
                 ${hasAttachments ? `
                     <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
                     <div class="attachment-list">
-                        ${attempt.attachments.map((attachment) => renderAttachmentDetail(runId, attachment, artifactBasePath)).join('')}
+                        ${attempt.attachments.map((attachment) => renderLegacyAttachmentDetail(runId, attachment, artifactBasePath)).join('')}
                     </div>
                 ` : ''}
                 ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${escapeHtml(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}
-            </div>
-        </details>
-    `
-}
-
-export function renderAttemptSteps(
-    runId: string,
-    attemptNumber: number,
-    steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
-    isOpenByDefault: boolean,
-): string {
-    return `
-        <details class="attempt-step-group"${isOpenByDefault ? ' open' : ''}>
-            <summary class="attempt-step-summary">
-                <span class="attempt-section-title" style="margin: 0;">${escapeHtml(HISTORY_TEXT.diagnostics.stepsTitle)}</span>
-                <span class="meta-badge">${steps.length}</span>
-            </summary>
-            <div class="attempt-step-body">
-                <div class="step-list">
-                    ${steps.map((step, index) => renderStepDetail(runId, attemptNumber, index, step)).join('')}
-                </div>
             </div>
         </details>
     `
@@ -500,39 +474,6 @@ export function renderOverflowText(
     return `<span class="${escapeHtml(className)}" title="${escapeHtml(fullValue)}">${escapeHtml(displayValue)}</span>`
 }
 
-export function renderStepDetail(
-    runId: string,
-    attemptNumber: number,
-    stepIndex: number,
-    step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number],
-): string {
-    const statusBadge = step.status
-        ? `<span class="status-badge ${getStatusClass(step.status, false)}">${escapeHtml(formatStatusLabel(step.status, false))}</span>`
-        : ''
-    const failureBadge = step.isFailurePoint
-        ? `<span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.failedStepBadge)}</span>`
-        : ''
-    const stepAnchor = buildStepAnchor(runId, attemptNumber, stepIndex)
-
-    return `
-        <div id="${escapeHtml(stepAnchor)}" class="step-item${step.isFailurePoint ? ' step-item-failure' : ''}">
-            <div class="step-item-header">
-                <div class="step-title">${renderOverflowText(step.title, { className: 'step-title-text' })}</div>
-                <div class="attempt-meta">
-                    ${statusBadge}
-                    <span class="meta-badge">${escapeHtml(formatDuration(step.durationMs))}</span>
-                </div>
-            </div>
-            <div class="muted">${escapeHtml(step.category ?? HISTORY_TEXT.diagnostics.noCategory)}</div>
-            ${(failureBadge || step.errorMessage) ? `
-                <div class="step-meta-row">
-                    ${failureBadge}
-                </div>
-            ` : ''}
-            ${step.errorMessage ? `<div class="step-error mono">${escapeHtml(step.errorMessage)}</div>` : ''}
-        </div>
-    `
-}
 
 /**
  * Incident summary ссылается на шаг падения по title, поэтому поиск нормализует и payload, и шаги в рендере, чтобы anchor не ломался из-за регистра или пробелов.
@@ -548,93 +489,6 @@ export function normalizeAnchorLookupValue(value: string | null | undefined): st
     return normalizeSharedAnchorLookupValue(value)
 }
 
-export function buildStepAnchor(runId: string, attemptNumber: number, stepIndex: number): string {
-    return buildSharedStepAnchor(runId, attemptNumber, stepIndex)
-}
-
-export function renderAttachmentDetail(
-    runId: string,
-    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
-    artifactBasePath: string,
-): string {
-    const href = buildAttachmentHref(runId, attachment, artifactBasePath)
-    const location = attachment.url ?? attachment.path ?? HISTORY_TEXT.diagnostics.attachmentLocationMissing
-    const imagePreviewHtml = href && isImageAttachment(attachment)
-        ? `
-            <details class="attachment-preview">
-                <summary class="attachment-preview-summary">${escapeHtml(HISTORY_TEXT.diagnostics.inlineImagePreview)}</summary>
-                <div class="attachment-preview-body">
-                    <button
-                        type="button"
-                        class="attachment-image-trigger"
-                        data-image-lightbox-trigger
-                        data-image-lightbox-src="${escapeHtml(href)}"
-                        data-image-lightbox-title="${escapeHtml(attachment.name)}"
-                        aria-label="${escapeHtml(HISTORY_TEXT.diagnostics.expandImageHint)}"
-                    >
-                        <img class="attachment-image-preview" src="${escapeHtml(href)}" alt="${escapeHtml(attachment.name)}" loading="lazy">
-                    </button>
-                    <div class="attachment-image-hint">${escapeHtml(HISTORY_TEXT.diagnostics.expandImageHint)}</div>
-                </div>
-            </details>
-        `
-        : ''
-    const markdownPreviewHtml = href && isMarkdownAttachment(attachment) && canInlineMarkdownPreview(href)
-        ? `
-            <details class="attachment-preview" data-markdown-preview data-preview-href="${escapeHtml(href)}">
-                <summary class="attachment-preview-summary">${escapeHtml(HISTORY_TEXT.diagnostics.inlineMarkdownPreview)}</summary>
-                <div class="attachment-preview-body">
-                    <div class="attachment-preview-loading" data-markdown-loading>${escapeHtml(HISTORY_TEXT.diagnostics.loadingMarkdownPreview)}</div>
-                    <pre class="attachment-markdown-preview" data-markdown-content hidden></pre>
-                    <div class="attachment-preview-error" data-markdown-error hidden>${escapeHtml(HISTORY_TEXT.diagnostics.markdownPreviewUnavailable)}</div>
-                </div>
-            </details>
-        `
-        : ''
-
-    return `
-        <div class="attachment-item">
-            <div class="attachment-item-header">
-                <div class="attachment-title">${renderOverflowText(attachment.name, { className: 'attachment-title-text' })}</div>
-                ${attachment.contentType ? `<span class="meta-badge">${escapeHtml(attachment.contentType)}</span>` : ''}
-            </div>
-            <div class="mono">${renderOverflowText(location, { className: 'attachment-location-text mono' })}</div>
-            ${href ? `<div class="attachment-actions"><a class="attachment-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
-            ${imagePreviewHtml}
-            ${markdownPreviewHtml}
-        </div>
-    `
-}
-
-export function buildAttachmentHref(
-    runId: string,
-    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
-    artifactBasePath: string,
-): string | null {
-    return buildSharedAttachmentHref(runId, attachment, artifactBasePath)
-}
-
-export function isImageAttachment(
-    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
-): boolean {
-    return isSharedImageAttachment(attachment)
-}
-
-export function isMarkdownAttachment(
-    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
-): boolean {
-    return isSharedMarkdownAttachment(attachment)
-}
-
-export function canInlineMarkdownPreview(href: string): boolean {
-    return canInlineSharedMarkdownPreview(href)
-}
-
-export function getAttachmentReference(
-    attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
-): string {
-    return getSharedAttachmentReference(attachment)
-}
 
 export function findLatestStableRecovery(history: TestHistoryResponse['history']): {
     recovery: TestHistoryResponse['history'][number]

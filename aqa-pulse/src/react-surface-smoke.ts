@@ -131,7 +131,7 @@ async function main(): Promise<void> {
             },
         ),
         '/',
-    ), ['React UI', summary.sourceFile, 'metric-info-button-react'])
+    ), ['TestOps', summary.sourceFile, 'metric-info-button-react'])
 
     renderMarkup('dashboard transition tab', renderWithRouter(
         React.createElement(
@@ -500,7 +500,7 @@ async function verifyStaticDashboardNavigation(
             await flushMicrotasks()
         })
 
-        assert(container.textContent?.includes('React UI'), `Static dashboard should render overview page. Actual DOM: ${container.innerHTML}`)
+        assert(container.textContent?.includes('TestOps'), `Static dashboard should render overview page. Actual DOM: ${container.innerHTML}`)
 
         const tabButtons = [...container.querySelectorAll('.segmented-tabs button')]
         assert(tabButtons.length > 1, 'Static dashboard smoke expects segmented tabs to be rendered.')
@@ -542,7 +542,7 @@ async function verifyStaticDashboardNavigation(
         assert(backLinkHref.includes('/'), 'Back link should target dashboard route.')
 
     await navigateHash(dom.window, backLinkHref)
-        await waitForCondition(() => container.textContent?.includes('React UI') === true, () => container.innerHTML)
+        await waitForCondition(() => container.textContent?.includes('TestOps') === true, () => container.innerHTML)
         assert(dom.window.location.hash.startsWith('#/?'), 'Back link should navigate to dashboard hash route.')
         if (branch) {
             assert(dom.window.location.hash.includes(`branch=${encodeURIComponent(branch)}`), 'Back link should preserve branch filter.')

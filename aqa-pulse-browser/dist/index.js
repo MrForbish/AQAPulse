@@ -1,0 +1,12 @@
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+exports.parseFrontendBootstrap = exports.createEmptyFrontendBootstrap = exports.ru = exports.formatPercent = exports.formatDuration = exports.formatDate = void 0;
+var formatting_1 = require('./shared/formatting');
+Object.defineProperty(exports, 'formatDate', { enumerable: true, get: function () { return formatting_1.formatDate; } });
+Object.defineProperty(exports, 'formatDuration', { enumerable: true, get: function () { return formatting_1.formatDuration; } });
+Object.defineProperty(exports, 'formatPercent', { enumerable: true, get: function () { return formatting_1.formatPercent; } });
+var ru_1 = require('./shared/i18n/ru');
+Object.defineProperty(exports, 'ru', { enumerable: true, get: function () { return ru_1.ru; } });
+var frontend_bootstrap_1 = require('./frontend-bootstrap');
+Object.defineProperty(exports, 'createEmptyFrontendBootstrap', { enumerable: true, get: function () { return frontend_bootstrap_1.createEmptyFrontendBootstrap; } });
+Object.defineProperty(exports, 'parseFrontendBootstrap', { enumerable: true, get: function () { return frontend_bootstrap_1.parseFrontendBootstrap; } });

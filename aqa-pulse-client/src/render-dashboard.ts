@@ -1,5 +1,5 @@
 ﻿/**
- * Назначение: legacy string-based dashboard renderer. Новые UI-фичи сюда больше не переносятся; файл удерживается только как compatibility implementation за пределами React runtime.
+ * Назначение: deprecated string-based dashboard renderer. Новые UI-фичи сюда больше не переносятся; файл удерживается только как compatibility implementation за пределами React runtime.
  */
 import type {
     DashboardDurationBreakdownItem,
@@ -10,7 +10,7 @@ import type {
     DashboardSummary,
 } from './dashboard-utils'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
-import { renderLegacyPlaceholderPanel } from './render-dashboard-legacy-only'
+import { renderCompatibilityPlaceholderPanel } from './render-dashboard-compatibility-only'
 import { DASHBOARD_METRIC_DESCRIPTIONS as METRIC_DESCRIPTIONS } from './shared/dashboard-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import { ru } from './shared/i18n/ru'
@@ -1754,7 +1754,7 @@ export function renderDashboardHtml(
         </section>
 
         <section class="tab-panel" data-tab-panel="code-quality">
-            ${renderLegacyPlaceholderPanel(DASHBOARD_TEXT.metrics.codeQuality, METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
+            ${renderCompatibilityPlaceholderPanel(DASHBOARD_TEXT.metrics.codeQuality, METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
         </section>
 
         <section class="tab-panel" data-tab-panel="business">
@@ -1957,11 +1957,11 @@ export function renderDashboardHtml(
         </section>
 
         <section class="tab-panel" data-tab-panel="team">
-            ${renderLegacyPlaceholderPanel(DASHBOARD_TEXT.metrics.team, METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
+            ${renderCompatibilityPlaceholderPanel(DASHBOARD_TEXT.metrics.team, METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
         </section>
 
         <section class="tab-panel" data-tab-panel="ai">
-            ${renderLegacyPlaceholderPanel(DASHBOARD_TEXT.metrics.ai, METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
+            ${renderCompatibilityPlaceholderPanel(DASHBOARD_TEXT.metrics.ai, METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
         </section>
     </div>
 

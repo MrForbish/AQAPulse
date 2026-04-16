@@ -42,7 +42,7 @@ exports.formatRunsLabel = formatRunsLabel;
 exports.getRunWord = getRunWord;
 exports.formatTemplate = formatTemplate;
 const render_metric_info_1 = require("./render-metric-info");
-const render_test_history_legacy_only_1 = require("./render-test-history-legacy-only");
+const render_test_history_compatibility_only_1 = require("./render-test-history-compatibility-only");
 const formatting_1 = require("./shared/formatting");
 const navigation_1 = require("./shared/navigation");
 const test_history_helpers_1 = require("./shared/test-history-helpers");
@@ -408,11 +408,11 @@ function renderAttemptDetail(runId, attempt, isOpenByDefault, artifactBasePath) 
                     <span class="meta-badge">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.diagnostics.startTime)}: ${(0, text_utils_1.escapeHtml)(attempt.startTime ? (0, formatting_1.formatDate)(attempt.startTime) : '—')}</span>
                 </div>
                 ${attempt.errorMessage ? `<div class="attempt-error mono">${(0, text_utils_1.escapeHtml)(attempt.errorMessage)}</div>` : ''}
-                ${hasSteps ? (0, render_test_history_legacy_only_1.renderLegacyAttemptSteps)(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
+                ${hasSteps ? (0, render_test_history_compatibility_only_1.renderCompatibilityAttemptSteps)(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
                 ${hasAttachments ? `
                     <div class="attempt-section-title">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
                     <div class="attachment-list">
-                        ${attempt.attachments.map((attachment) => (0, render_test_history_legacy_only_1.renderLegacyAttachmentDetail)(runId, attachment, artifactBasePath)).join('')}
+                        ${attempt.attachments.map((attachment) => (0, render_test_history_compatibility_only_1.renderCompatibilityAttachmentDetail)(runId, attachment, artifactBasePath)).join('')}
                     </div>
                 ` : ''}
                 ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}

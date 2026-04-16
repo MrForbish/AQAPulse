@@ -65,7 +65,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         requireWorkspaceAuth: true,
         dataRoot: options.configOverrides?.dataRoot ?? path.join(tempRoot, 'data'),
         distPath,
-        archiveRootPath: options.configOverrides?.archiveRootPath ?? options.configOverrides?.legacyArchiveRootPath ?? path.join(tempRoot, 'history'),
+        archiveRootPath: options.configOverrides?.archiveRootPath ?? path.join(tempRoot, 'history'),
         ...options.configOverrides,
     })
     const fixturePath = path.resolve(__dirname, '../../fixtures/sample-llm-report.json')

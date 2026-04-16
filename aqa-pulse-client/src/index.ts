@@ -4,34 +4,34 @@ import { renderTestHistoryHtml as renderTestHistoryHtmlImpl } from './render-tes
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import { ru } from './shared/i18n/ru'
 
-let didWarnAboutLegacyPackage = false
+let didWarnAboutDeprecatedPackage = false
 
-function warnLegacyPackage(apiName: string): void {
-    if (didWarnAboutLegacyPackage) {
+function warnDeprecatedPackage(apiName: string): void {
+    if (didWarnAboutDeprecatedPackage) {
         return
     }
 
-    didWarnAboutLegacyPackage = true
-    console.warn(`[AQA Pulse] aqa-pulse-client is a legacy compatibility package. ${apiName} uses the old HTML renderer flow; new UI work ships through the React runtime in aqa-pulse-server.`)
+    didWarnAboutDeprecatedPackage = true
+    console.warn(`[AQA Pulse] aqa-pulse-client is a deprecated compatibility package scheduled for removal. ${apiName} still uses the old HTML renderer flow; migrate to aqa-pulse-server or the React/static runtime before this package is retired.`)
 }
 
 export function renderDashboardHtml(...args: Parameters<typeof renderDashboardHtmlImpl>): ReturnType<typeof renderDashboardHtmlImpl> {
-    warnLegacyPackage('renderDashboardHtml')
+    warnDeprecatedPackage('renderDashboardHtml')
     return renderDashboardHtmlImpl(...args)
 }
 
 export function renderTestHistoryHtml(...args: Parameters<typeof renderTestHistoryHtmlImpl>): ReturnType<typeof renderTestHistoryHtmlImpl> {
-    warnLegacyPackage('renderTestHistoryHtml')
+    warnDeprecatedPackage('renderTestHistoryHtml')
     return renderTestHistoryHtmlImpl(...args)
 }
 
 export function renderMetricHeading(...args: Parameters<typeof renderMetricHeadingImpl>): ReturnType<typeof renderMetricHeadingImpl> {
-    warnLegacyPackage('renderMetricHeading')
+    warnDeprecatedPackage('renderMetricHeading')
     return renderMetricHeadingImpl(...args)
 }
 
 export const METRIC_INFO_STYLES = (() => {
-    warnLegacyPackage('METRIC_INFO_STYLES')
+    warnDeprecatedPackage('METRIC_INFO_STYLES')
     return metricInfoStylesImpl
 })()
 

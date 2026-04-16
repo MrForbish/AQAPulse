@@ -45,7 +45,7 @@
   ],
   "scripts": {
     "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist')) fs.rmSync('dist',{recursive:true,force:true});\"",
-    "build": "npm --prefix ../aqa-pulse run compile && npm --prefix ../aqa-pulse-client run build && node ./scripts/build-package.js",
+    "build": "npm --prefix ../aqa-pulse run compile && node ./scripts/build-package.js",
     "docker:up": "npm run build && docker compose up --build",
     "docker:down": "docker compose down",
     "docker:restart": "docker compose restart aqa-pulse-server",

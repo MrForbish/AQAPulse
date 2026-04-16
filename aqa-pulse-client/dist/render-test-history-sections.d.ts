@@ -1,5 +1,5 @@
 /**
- * Назначение: общие HTML-секции legacy test-history renderer, кроме compatibility-only attachment/lightbox и nested-step helpers.
+ * Назначение: общие HTML-секции deprecated test-history renderer, кроме compatibility-only attachment/lightbox и nested-step helpers.
  */
 import type { TestHistoryResponse } from './api-store';
 /**

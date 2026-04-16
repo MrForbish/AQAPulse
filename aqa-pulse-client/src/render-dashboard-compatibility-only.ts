@@ -1,9 +1,9 @@
 /**
- * Назначение: legacy-only HTML helpers для compatibility dashboard sections, которые уже не являются источником UI-логики для React runtime.
+ * Назначение: compatibility-only HTML helpers для deprecated dashboard sections, которые уже не являются источником UI-логики для React runtime.
  */
 import { escapeHtml } from './shared/text-utils'
 
-export function renderLegacyPlaceholderPanel(title: string, description: string, metrics: readonly string[]): string {
+export function renderCompatibilityPlaceholderPanel(title: string, description: string, metrics: readonly string[]): string {
     return `
         <div class="placeholder-card">
             <div class="placeholder-title">${escapeHtml(title)}</div>

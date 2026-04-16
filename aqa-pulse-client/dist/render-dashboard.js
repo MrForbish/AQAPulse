@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderDashboardHtml = renderDashboardHtml;
 const render_metric_info_1 = require("./render-metric-info");
-const render_dashboard_legacy_only_1 = require("./render-dashboard-legacy-only");
+const render_dashboard_compatibility_only_1 = require("./render-dashboard-compatibility-only");
 const dashboard_metric_info_1 = require("./shared/dashboard-metric-info");
 const formatting_1 = require("./shared/formatting");
 const ru_1 = require("./shared/i18n/ru");
@@ -1659,7 +1659,7 @@ function renderDashboardHtml(summary, options = {}) {
         </section>
 
         <section class="tab-panel" data-tab-panel="code-quality">
-            ${(0, render_dashboard_legacy_only_1.renderLegacyPlaceholderPanel)(DASHBOARD_TEXT.metrics.codeQuality, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
+            ${(0, render_dashboard_compatibility_only_1.renderCompatibilityPlaceholderPanel)(DASHBOARD_TEXT.metrics.codeQuality, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.codeQuality, DASHBOARD_TEXT.placeholderMetrics.codeQuality)}
         </section>
 
         <section class="tab-panel" data-tab-panel="business">
@@ -1862,11 +1862,11 @@ function renderDashboardHtml(summary, options = {}) {
         </section>
 
         <section class="tab-panel" data-tab-panel="team">
-            ${(0, render_dashboard_legacy_only_1.renderLegacyPlaceholderPanel)(DASHBOARD_TEXT.metrics.team, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
+            ${(0, render_dashboard_compatibility_only_1.renderCompatibilityPlaceholderPanel)(DASHBOARD_TEXT.metrics.team, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.teamMetrics, DASHBOARD_TEXT.placeholderMetrics.team)}
         </section>
 
         <section class="tab-panel" data-tab-panel="ai">
-            ${(0, render_dashboard_legacy_only_1.renderLegacyPlaceholderPanel)(DASHBOARD_TEXT.metrics.ai, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
+            ${(0, render_dashboard_compatibility_only_1.renderCompatibilityPlaceholderPanel)(DASHBOARD_TEXT.metrics.ai, dashboard_metric_info_1.DASHBOARD_METRIC_DESCRIPTIONS.aiMetrics, DASHBOARD_TEXT.placeholderMetrics.ai)}
         </section>
     </div>
 

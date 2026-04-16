@@ -2,7 +2,7 @@
   "name": "aqa-pulse-client",
   "version": "0.1.0",
   "private": false,
-  "description": "Legacy compatibility package for AQA Pulse HTML renderers; new UI work ships via the React runtime",
+  "description": "Deprecated compatibility package for AQA Pulse HTML renderers; migrate to aqa-pulse-server or the React/static runtime before removal",
   "license": "UNLICENSED",
   "keywords": [
     "playwright",

@@ -1,5 +1,5 @@
 /**
- * Назначение: нормализует runtime-конфигурацию self-hosted/backend слоя и сохраняет backward compatibility для старых env/override имён.
+ * Назначение: нормализует runtime-конфигурацию self-hosted/backend слоя вокруг актуального archiveRootPath contract.
  */
 import * as path from 'node:path'
 import { normalizeOptionalText } from '../shared/text-utils'
@@ -15,10 +15,6 @@ export interface SaasAppConfig {
     requestBodyLimit: string
     distPath: string
     archiveRootPath: string
-    /**
-     * @deprecated Используй archiveRootPath. Alias сохранён для обратной совместимости внешних override/test setup.
-     */
-    legacyArchiveRootPath?: string
     allowDevBootstrap: boolean
     adminToken: string | null
     requireWorkspaceAuth: boolean
@@ -32,7 +28,7 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
     const configuredPort = normalizePort(overrides.port ?? process.env.PORT)
     const configuredAdminToken = normalizeOptionalText(overrides.adminToken ?? process.env.AQA_PULSE_ADMIN_TOKEN)
     const configuredDistPath = normalizeOptionalText(overrides.distPath ?? process.env.AQA_PULSE_DIST_PATH)
-    const configuredArchiveRootPath = normalizeOptionalText(overrides.archiveRootPath ?? overrides.legacyArchiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH)
+    const configuredArchiveRootPath = normalizeOptionalText(overrides.archiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH)
     const configuredSqlitePath = normalizeOptionalText(overrides.sqlitePath ?? process.env.AQA_PULSE_SQLITE_PATH)
     const configuredPostgresConnectionString = normalizeOptionalText(overrides.postgresConnectionString ?? process.env.AQA_PULSE_POSTGRES_URL)
     const configuredRequestBodyLimit = normalizeOptionalText(overrides.requestBodyLimit ?? process.env.AQA_PULSE_REQUEST_BODY_LIMIT)
@@ -51,7 +47,6 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
         requestBodyLimit: configuredRequestBodyLimit ?? '50mb',
         distPath: configuredDistPath ? path.resolve(configuredDistPath) : path.resolve(process.cwd(), './dist'),
         archiveRootPath,
-        legacyArchiveRootPath: archiveRootPath,
         allowDevBootstrap: normalizeBoolean(overrides.allowDevBootstrap ?? process.env.AQA_PULSE_ENABLE_DEV_BOOTSTRAP, true),
         adminToken: configuredAdminToken,
         requireWorkspaceAuth: normalizeBoolean(overrides.requireWorkspaceAuth ?? process.env.AQA_PULSE_REQUIRE_WORKSPACE_AUTH, false),

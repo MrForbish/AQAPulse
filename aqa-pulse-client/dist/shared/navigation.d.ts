@@ -1,5 +1,5 @@
 /**
- * Назначение: единая сборка href и query/filter routing для legacy renderers, React runtime и static mode.
+ * Назначение: единая сборка href и query/filter routing для compatibility HTML renderers, React runtime и static mode.
  */
 export interface QueryFilters {
     branch?: string | null;

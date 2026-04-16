@@ -208,7 +208,7 @@ https://your-domain.example.com/ui-assets/
 
 Это относится и к admin/auth экранам: `/admin`, `/admin/login`, `/w/<slug>/login`, `/auth/workspaces/<slug>/api-keys/login` теперь тоже используют тот же frontend bundle.
 
-Legacy HTML renderer packages вроде `aqa-pulse-client` больше не являются основным deployment path для этих экранов. Для migration path см. `./MIGRATION.md`.
+Compatibility HTML renderer packages вроде `aqa-pulse-client` больше не являются основным deployment path для этих экранов. Browser-safe shared helpers/types для новых integrations вынесены в `aqa-pulse-browser`, а migration path по renderer API см. в `./MIGRATION.md`.
 
 Если read-routes закрыты:
 

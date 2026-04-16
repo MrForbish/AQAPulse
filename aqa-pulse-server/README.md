@@ -16,7 +16,7 @@ Self-hosted server package для AQA Pulse.
 - [`SELF-HOSTED-DEPLOYMENT.md`](./SELF-HOSTED-DEPLOYMENT.md) — основной и единственный полный guide по self-hosted развёртке.
 - [`SELF-HOSTED-QUICKSTART.md`](./SELF-HOSTED-QUICKSTART.md) — короткий checklist для первого запуска.
 - [`SELF-HOSTED-INSTALL.md`](./SELF-HOSTED-INSTALL.md) — reference по вариантам установки.
-- [`MIGRATION.md`](./MIGRATION.md) — как переходить с legacy HTML renderer flow на текущий React runtime.
+- [`MIGRATION.md`](./MIGRATION.md) — как переходить с compatibility HTML renderer flow на текущий React runtime.
 - [`GITLAB-CI-INTEGRATION.md`](./GITLAB-CI-INTEGRATION.md) — только про upload из GitLab CI.
 
 ## Рекомендуемый старт

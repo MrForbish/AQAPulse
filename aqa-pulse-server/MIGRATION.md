@@ -1,14 +1,15 @@
 # React Migration Guide
 
-Этот документ нужен командам, которые раньше ориентировались на `aqa-pulse-client` и legacy HTML renderer flow.
+Этот документ нужен командам, которые раньше ориентировались на `aqa-pulse-client` и compatibility HTML renderer flow.
 
 ## Что изменилось
 
 - Основной пользовательский интерфейс AQA Pulse теперь развивается через React runtime.
 - Self-hosted сценарий идет через `aqa-pulse-server`.
 - `aqa-pulse-client` остается только как compatibility layer для существующих интеграций со string-based HTML renderer API.
+- browser-safe formatting/bootstrap/types для новых интеграций теперь публикуются через `aqa-pulse-browser`.
 - Исходники deprecated compatibility renderer теперь живут в самом `aqa-pulse-client`; пакет `aqa-pulse` больше не держит этот renderer как часть собственного source/build surface.
-- Legacy renderer API уже помечен как deprecated и будет постепенно выводиться из активного продукта.
+- Compatibility renderer API уже помечен как deprecated и будет постепенно выводиться из активного продукта.
 - Backend/domain/infra модули вроде `contracts.ts`, `jwt.ts`, `sqlite-migrate.ts` не мигрируют в React: они остаются серверным и операционным слоем, который новый UI использует через API, bootstrap и shared contracts.
 
 ## Какой путь выбрать теперь
@@ -50,6 +51,8 @@
 - `renderTestHistoryHtml(...)`
 - `renderMetricHeading(...)`
 
+Но если твоя интеграция использует только formatting helpers, locale, bootstrap parsing или Dashboard/TestHistory types, переходи сразу на `aqa-pulse-browser` и не держись за deprecated renderer package.
+
 Но нужно учитывать ограничения:
 
 - пакет больше не является основным продуктовым surface;
@@ -78,7 +81,8 @@
 
 - `aqa-pulse-server` для full product/self-hosted;
 - `aqa-pulse` для build-time utilities и static build workflow;
-- `aqa-pulse-client` только как временный compatibility package.
+- `aqa-pulse-browser` для publishable browser-safe formatting/bootstrap/types;
+- `aqa-pulse-client` только как compatibility package для deprecated HTML renderer API.
 
 ## Embedded React path
 
@@ -97,11 +101,20 @@
 1. Перестать строить новые интеграции на `aqa-pulse-client`.
 2. Для новых внедрений использовать `aqa-pulse-server`.
 3. Для офлайн-отчётов перейти с HTML renderer API на static export workflow.
-4. Для существующих renderer-based интеграций запланировать постепенную замену до полного removal legacy API.
+4. Для существующих renderer-based интеграций запланировать постепенную замену до полного removal deprecated compatibility API.
+
+## Retirement plan для `aqa-pulse-client`
+
+1. Пакет остаётся только для поддержки существующих renderer consumers.
+2. Main monorepo больше не строит и не пакует compatibility renderer path; negative checks следят, чтобы dependency на него не вернулась в `aqa-pulse` и `aqa-pulse-server`.
+3. Новые UI-фичи, auth-потоки и self-hosted сценарии продолжают развиваться только в React runtime.
+4. Browser-safe utilities/types уже вынесены в `aqa-pulse-browser`, поэтому после завершения миграции существующих renderer integrations пакет и deprecated HTML API планируются к удалению.
+
+Точный текущий public API inventory и removal gates зафиксированы в `../aqa-pulse-client/REMOVAL-CHECKLIST.md`.
 
 ## Коротко
 
-- `aqa-pulse-client` = legacy compatibility only.
+- `aqa-pulse-client` = deprecated compatibility package only.
 - `aqa-pulse-server` = основной self-hosted продукт.
 - `aqa-pulse` static build = supported путь для офлайн React dashboard.
-- legacy renderer исходники не развиваются как альтернативный UI-путь: новые пользовательские сценарии и новые метрики добавляются только в React runtime.
+- compatibility renderer исходники не развиваются как альтернативный UI-путь: новые пользовательские сценарии и новые метрики добавляются только в React runtime.

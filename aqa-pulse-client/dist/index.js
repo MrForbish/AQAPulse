@@ -13,27 +13,27 @@ Object.defineProperty(exports, "formatDuration", { enumerable: true, get: functi
 Object.defineProperty(exports, "formatPercent", { enumerable: true, get: function () { return formatting_1.formatPercent; } });
 const ru_1 = require("./shared/i18n/ru");
 Object.defineProperty(exports, "ru", { enumerable: true, get: function () { return ru_1.ru; } });
-let didWarnAboutLegacyPackage = false;
-function warnLegacyPackage(apiName) {
-    if (didWarnAboutLegacyPackage) {
+let didWarnAboutDeprecatedPackage = false;
+function warnDeprecatedPackage(apiName) {
+    if (didWarnAboutDeprecatedPackage) {
         return;
     }
-    didWarnAboutLegacyPackage = true;
-    console.warn(`[AQA Pulse] aqa-pulse-client is a legacy compatibility package. ${apiName} uses the old HTML renderer flow; new UI work ships through the React runtime in aqa-pulse-server.`);
+    didWarnAboutDeprecatedPackage = true;
+    console.warn(`[AQA Pulse] aqa-pulse-client is a deprecated compatibility package scheduled for removal. ${apiName} still uses the old HTML renderer flow; migrate to aqa-pulse-server or the React/static runtime before this package is retired.`);
 }
 function renderDashboardHtml(...args) {
-    warnLegacyPackage('renderDashboardHtml');
+    warnDeprecatedPackage('renderDashboardHtml');
     return (0, render_dashboard_1.renderDashboardHtml)(...args);
 }
 function renderTestHistoryHtml(...args) {
-    warnLegacyPackage('renderTestHistoryHtml');
+    warnDeprecatedPackage('renderTestHistoryHtml');
     return (0, render_test_history_1.renderTestHistoryHtml)(...args);
 }
 function renderMetricHeading(...args) {
-    warnLegacyPackage('renderMetricHeading');
+    warnDeprecatedPackage('renderMetricHeading');
     return (0, render_metric_info_1.renderMetricHeading)(...args);
 }
 exports.METRIC_INFO_STYLES = (() => {
-    warnLegacyPackage('METRIC_INFO_STYLES');
+    warnDeprecatedPackage('METRIC_INFO_STYLES');
     return render_metric_info_1.METRIC_INFO_STYLES;
 })();

@@ -7,7 +7,6 @@ const path = require('node:path')
 const packageRoot = path.resolve(__dirname, '..')
 const aqaPulseRoot = path.resolve(packageRoot, '..', 'aqa-pulse')
 const runtimeSourceRoot = path.resolve(packageRoot, '..', 'aqa-pulse', 'dist-ts')
-const legacySourceRoot = path.resolve(packageRoot, '..', 'aqa-pulse-client', 'dist')
 const webSourceRoot = path.resolve(aqaPulseRoot, 'dist', 'web')
 const distRoot = path.resolve(packageRoot, 'dist')
 const webTargetRoot = path.resolve(distRoot, 'web')
@@ -30,26 +29,6 @@ const declarationFiles = [
     'server.d.ts',
 ]
 
-const legacyRuntimeFiles = [
-    'render-dashboard.js',
-    'render-dashboard-legacy-only.js',
-    'render-dashboard-sections.js',
-    'render-metric-info.js',
-    'render-test-history.js',
-    'render-test-history-legacy-only.js',
-    'render-test-history-sections.js',
-]
-
-const legacyDeclarationFiles = [
-    'render-dashboard.d.ts',
-    'render-dashboard-legacy-only.d.ts',
-    'render-dashboard-sections.d.ts',
-    'render-metric-info.d.ts',
-    'render-test-history.d.ts',
-    'render-test-history-legacy-only.d.ts',
-    'render-test-history-sections.d.ts',
-]
-
 cleanDir(distRoot)
 
 for (const filePath of runtimeFiles) {
@@ -70,19 +49,6 @@ copyDirectory(
     path.resolve(distRoot, 'shared'),
 )
 
-for (const filePath of legacyRuntimeFiles) {
-    copyFileFromSource(legacySourceRoot, filePath)
-}
-
-for (const filePath of legacyDeclarationFiles) {
-    copyFileFromSource(legacySourceRoot, filePath)
-}
-
-copyDirectory(
-    path.resolve(legacySourceRoot, 'shared'),
-    path.resolve(distRoot, 'shared'),
-)
-
 copyFile(
     path.resolve(aqaPulseRoot, 'fixtures', 'sample-llm-report.json'),
     path.resolve(distRoot, 'fixtures', 'sample-llm-report.json'),
@@ -96,7 +62,6 @@ verifyWorkspaceHistoryRoutingArtifacts()
 
 console.log('Внутренний пакет aqa-pulse-server собран.')
 console.log(`Источник runtime/server-файлов: ${runtimeSourceRoot}`)
-console.log(`Источник legacy renderer-файлов: ${legacySourceRoot}`)
 console.log(`Папка пакета: ${distRoot}`)
 console.log(`Chart.js asset: ${chartAssetTargetPath}`)
 
@@ -138,9 +103,7 @@ function cleanDir(dirPath) {
  */
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(distRoot, 'backend', 'app.js')
-    const compiledHistoryRendererPath = path.resolve(distRoot, 'render-test-history.js')
     const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
-    const compiledHistoryRenderer = fs.readFileSync(compiledHistoryRendererPath, 'utf8')
 
     assertIncludes(
         compiledApp,
@@ -166,22 +129,6 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
         compiledApp,
         ".send((0, frontend_bootstrap_1.injectFrontendBootstrap)(htmlTemplate, bootstrap));",
         compiledAppPath,
-    )
-
-    assertIncludes(
-        compiledHistoryRenderer,
-        'const normalizedBasePath = (0, render_test_history_sections_1.normalizeBasePath)(options.basePath);',
-        compiledHistoryRendererPath,
-    )
-    assertIncludes(
-        compiledHistoryRenderer,
-        'const normalizedApiBasePath = (0, render_test_history_sections_1.normalizeBasePath)(options.apiBasePath);',
-        compiledHistoryRendererPath,
-    )
-    assertIncludes(
-        compiledHistoryRenderer,
-        'const dashboardHref = (0, render_test_history_sections_1.buildDashboardHref)(normalizedFilters, normalizedBasePath);',
-        compiledHistoryRendererPath,
     )
 }
 

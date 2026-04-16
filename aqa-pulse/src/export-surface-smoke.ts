@@ -1,3 +1,6 @@
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+
 async function main(): Promise<void> {
     const rootModule = await import('aqa-pulse')
     const coreModule = await import('aqa-pulse/core')
@@ -29,6 +32,7 @@ async function main(): Promise<void> {
     assertExport(frontendBootstrapModule, 'parseFrontendBootstrap', 'aqa-pulse/frontend-bootstrap')
 
     assert(typesModule && typeof typesModule === 'object', 'aqa-pulse/types should resolve to a module object')
+    assertNoCompatibilityBuildDependency()
 
     console.log('Export surface smoke passed.')
 }
@@ -40,6 +44,32 @@ function assertMissingLegacyRenderers(moduleValue: Record<string, unknown>, modu
 
 function assertExport(moduleValue: Record<string, unknown>, exportName: string, moduleName: string): void {
     assert(exportName in moduleValue, `${moduleName} must export ${exportName}`)
+}
+
+function assertNoCompatibilityBuildDependency(): void {
+    const packageRoot = path.resolve(__dirname, '..')
+    const repoRoot = path.resolve(packageRoot, '..')
+    const aqaPulsePackageJson = readJsonFile(path.resolve(packageRoot, 'package.json'))
+    const serverPackageJson = readJsonFile(path.resolve(repoRoot, 'aqa-pulse-server', 'package.json'))
+    const serverBuildPackagePath = path.resolve(repoRoot, 'aqa-pulse-server', 'scripts', 'build-package.js')
+    const serverBuildPackage = fs.readFileSync(serverBuildPackagePath, 'utf8')
+    const aqaPulseScripts = readScripts(aqaPulsePackageJson)
+    const serverScripts = readScripts(serverPackageJson)
+
+    assert(!('smoke:compatibility-html' in aqaPulseScripts), 'aqa-pulse must not keep smoke:compatibility-html in package scripts')
+    assert(!String(serverScripts.build ?? '').includes('aqa-pulse-client'), 'aqa-pulse-server build must not depend on aqa-pulse-client')
+    assert(!serverBuildPackage.includes('aqa-pulse-client'), 'aqa-pulse-server/scripts/build-package.js must not copy files from aqa-pulse-client')
+    assert(!serverBuildPackage.includes('render-dashboard.js'), 'aqa-pulse-server/scripts/build-package.js must not package deprecated renderer files')
+    assert(!serverBuildPackage.includes('render-test-history.js'), 'aqa-pulse-server/scripts/build-package.js must not package deprecated test-history renderer files')
+}
+
+function readJsonFile(filePath: string): Record<string, unknown> {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8')) as Record<string, unknown>
+}
+
+function readScripts(packageJson: Record<string, unknown>): Record<string, unknown> {
+    const scripts = packageJson.scripts
+    return scripts && typeof scripts === 'object' ? scripts as Record<string, unknown> : {}
 }
 
 function assert(condition: unknown, message: string): asserts condition {

@@ -25,17 +25,19 @@
 - использует общий helper `src/render-metric-info.ts` для tooltip'ов и заголовков метрик в dashboard и на drill-down странице теста;
 - поддерживает каскадные фильтры `branch -> project -> file` в UI и query params.
 
-## Legacy compatibility
+## Compatibility Boundary
 
 `aqa-pulse` больше не экспортирует string-based HTML renderers.
 
-`renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как compatibility layer.
+`renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как deprecated compatibility layer.
 
-Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит legacy HTML renderer в стандартный build output.
+Browser-safe shared utilities, bootstrap helpers, locale и публичные Dashboard/TestHistory types для новых интеграций теперь публикуются через `aqa-pulse-browser`, а не через deprecated renderer package.
 
-Legacy smoke теперь тоже проверяет уже собранный `aqa-pulse-client`, так что исходники string-based renderer больше не принадлежат пакету `aqa-pulse`.
+Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит compatibility HTML renderer в стандартный build output.
 
 Исходники deprecated string-based renderer больше не живут в `aqa-pulse`: теперь они принадлежат `aqa-pulse-client` и не участвуют в основном React/runtime build этого пакета.
+
+`npm run smoke:full` теперь тоже не зависит от сборки `aqa-pulse-client`: negative checks в export-surface smoke следят, чтобы main package и self-hosted packaging не тянули compatibility renderer обратно.
 
 Файлы уровня `src/backend/contracts.ts`, `src/backend/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
 
@@ -44,8 +46,9 @@ Legacy smoke теперь тоже проверяет уже собранный 
 Текущая публичная структура entry points у `aqa-pulse`:
 
 - корневой пакет: utilities + history/api types + frontend bootstrap helpers;
-- `aqa-pulse/core`: core utilities без legacy HTML renderer surface;
+- `aqa-pulse/core`: core utilities без compatibility HTML renderer surface;
 - `aqa-pulse/client`: browser-safe formatting/bootstrap/types без HTML renderer surface;
+- `aqa-pulse-browser`: публичный browser-safe package с formatting/bootstrap/types для внешних интеграций без deprecated renderer API;
 - `aqa-pulse/react`: React pages, runtime provider, admin auth building blocks, shared UI components и admin hooks/API helpers для embedded usage;
 - `aqa-pulse/hooks`: React hooks для dashboard/test-history data flows;
 - `aqa-pulse/types`: type-only re-exports для интеграций.
@@ -359,7 +362,7 @@ npm run server:pack:check
 - [`../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md`](../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md) — короткая версия: как быстро поставить на свой сервер
 - [`../aqa-pulse-server/SELF-HOSTED-INSTALL.md`](../aqa-pulse-server/SELF-HOSTED-INSTALL.md) — как поставить на свой сервер
 - [`../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md`](../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md) — полный self-hosted deployment guide
-- [`../aqa-pulse-server/MIGRATION.md`](../aqa-pulse-server/MIGRATION.md) — как переходить с legacy HTML renderer flow на React runtime
+- [`../aqa-pulse-server/MIGRATION.md`](../aqa-pulse-server/MIGRATION.md) — как переходить с compatibility HTML renderer flow на React runtime
 
 Он нужен для self-hosted / on-prem сценария и содержит:
 

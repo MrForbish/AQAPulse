@@ -1,5 +1,5 @@
 /**
- * Назначение: legacy-only HTML helpers для compatibility test-history attachments, lightbox preview и nested diagnostics steps.
+ * Назначение: compatibility-only HTML helpers для deprecated test-history attachments, lightbox preview и nested diagnostics steps.
  */
 import type { TestHistoryResponse } from './api-store'
 import { formatStatusLabel } from './shared/dashboard-helpers'
@@ -17,7 +17,7 @@ import { escapeHtml } from './shared/text-utils'
 
 const HISTORY_TEXT = ru.testHistory
 
-export function renderLegacyAttemptSteps(
+export function renderCompatibilityAttemptSteps(
     runId: string,
     attemptNumber: number,
     steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
@@ -33,14 +33,14 @@ export function renderLegacyAttemptSteps(
             </summary>
             <div class="attempt-step-body">
                 <div class="step-tree">
-                    ${tree.map((node) => renderLegacyStepNode(runId, attemptNumber, node)).join('')}
+                    ${tree.map((node) => renderCompatibilityStepNode(runId, attemptNumber, node)).join('')}
                 </div>
             </div>
         </details>
     `
 }
 
-export function renderLegacyAttachmentDetail(
+export function renderCompatibilityAttachmentDetail(
     runId: string,
     attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
     artifactBasePath: string,
@@ -83,10 +83,10 @@ export function renderLegacyAttachmentDetail(
     return `
         <div class="attachment-item">
             <div class="attachment-item-header">
-                <div class="attachment-title">${renderLegacyOverflowText(attachment.name, { className: 'attachment-title-text' })}</div>
+                <div class="attachment-title">${renderCompatibilityOverflowText(attachment.name, { className: 'attachment-title-text' })}</div>
                 ${attachment.contentType ? `<span class="meta-badge">${escapeHtml(attachment.contentType)}</span>` : ''}
             </div>
-            <div class="mono">${renderLegacyOverflowText(location, { className: 'attachment-location-text mono' })}</div>
+            <div class="mono">${renderCompatibilityOverflowText(location, { className: 'attachment-location-text mono' })}</div>
             ${href ? `<div class="attachment-actions"><a class="attachment-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
             ${imagePreviewHtml}
             ${markdownPreviewHtml}
@@ -94,13 +94,13 @@ export function renderLegacyAttachmentDetail(
     `
 }
 
-function renderLegacyStepNode(
+function renderCompatibilityStepNode(
     runId: string,
     attemptNumber: number,
     node: ReturnType<typeof buildDiagnosticStepTree>[number],
 ): string {
     const statusBadge = node.step.status
-        ? `<span class="status-badge ${getLegacyStatusClass(node.step.status, false)}">${escapeHtml(formatStatusLabel(node.step.status, false))}</span>`
+        ? `<span class="status-badge ${getCompatibilityStatusClass(node.step.status, false)}">${escapeHtml(formatStatusLabel(node.step.status, false))}</span>`
         : ''
     const failureBadge = node.step.isFailurePoint
         ? `<span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.failedStepBadge)}</span>`
@@ -112,7 +112,7 @@ function renderLegacyStepNode(
         <div class="step-tree-node">
             <div id="${escapeHtml(stepAnchor)}" class="step-item${node.step.isFailurePoint ? ' step-item-failure' : ''}${node.step.depth === 2 ? ' step-item-nested' : ''}">
                 <div class="step-item-header">
-                    <div class="step-title">${renderLegacyOverflowText(node.step.title, { className: 'step-title-text' })}</div>
+                    <div class="step-title">${renderCompatibilityOverflowText(node.step.title, { className: 'step-title-text' })}</div>
                     <div class="attempt-meta">
                         ${statusBadge}
                         <span class="meta-badge">${escapeHtml(formatDuration(node.step.durationMs))}</span>
@@ -126,12 +126,12 @@ function renderLegacyStepNode(
                 ` : ''}
                 ${node.step.errorMessage ? `<div class="step-error mono">${escapeHtml(node.step.errorMessage)}</div>` : ''}
             </div>
-            ${node.children.length > 0 ? `<div class="step-tree-children">${node.children.map((childNode) => renderLegacyStepNode(runId, attemptNumber, childNode)).join('')}</div>` : ''}
+            ${node.children.length > 0 ? `<div class="step-tree-children">${node.children.map((childNode) => renderCompatibilityStepNode(runId, attemptNumber, childNode)).join('')}</div>` : ''}
         </div>
     `
 }
 
-function renderLegacyOverflowText(
+function renderCompatibilityOverflowText(
     value: string | null | undefined,
     options: {
         className?: string
@@ -145,7 +145,7 @@ function renderLegacyOverflowText(
     return `<span class="${escapeHtml(className)}" title="${escapeHtml(fullValue)}">${escapeHtml(displayValue)}</span>`
 }
 
-function getLegacyStatusClass(status: string, flaky: boolean): string {
+function getCompatibilityStatusClass(status: string, flaky: boolean): string {
     if (flaky) {
         return 'status-flaky'
     }

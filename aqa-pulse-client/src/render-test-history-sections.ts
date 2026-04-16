@@ -1,9 +1,9 @@
 /**
- * Назначение: общие HTML-секции legacy test-history renderer, кроме compatibility-only attachment/lightbox и nested-step helpers.
+ * Назначение: общие HTML-секции deprecated test-history renderer, кроме compatibility-only attachment/lightbox и nested-step helpers.
  */
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
-import { renderLegacyAttachmentDetail, renderLegacyAttemptSteps } from './render-test-history-legacy-only'
+import { renderCompatibilityAttachmentDetail, renderCompatibilityAttemptSteps } from './render-test-history-compatibility-only'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import {
     buildApiTestHistoryHrefFromBasePath,
@@ -447,11 +447,11 @@ export function renderAttemptDetail(
                     <span class="meta-badge">${escapeHtml(HISTORY_TEXT.diagnostics.startTime)}: ${escapeHtml(attempt.startTime ? formatDate(attempt.startTime) : '—')}</span>
                 </div>
                 ${attempt.errorMessage ? `<div class="attempt-error mono">${escapeHtml(attempt.errorMessage)}</div>` : ''}
-                ${hasSteps ? renderLegacyAttemptSteps(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
+                ${hasSteps ? renderCompatibilityAttemptSteps(runId, attempt.attempt, attempt.steps, Boolean(attempt.errorMessage)) : ''}
                 ${hasAttachments ? `
                     <div class="attempt-section-title">${escapeHtml(HISTORY_TEXT.diagnostics.attachmentsTitle)}</div>
                     <div class="attachment-list">
-                        ${attempt.attachments.map((attachment) => renderLegacyAttachmentDetail(runId, attachment, artifactBasePath)).join('')}
+                        ${attempt.attachments.map((attachment) => renderCompatibilityAttachmentDetail(runId, attachment, artifactBasePath)).join('')}
                     </div>
                 ` : ''}
                 ${!attempt.errorMessage && !hasSteps && !hasAttachments ? `<div class="muted">${escapeHtml(HISTORY_TEXT.diagnostics.emptyAttempt)}</div>` : ''}

@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.renderLegacyAttemptSteps = renderLegacyAttemptSteps;
-exports.renderLegacyAttachmentDetail = renderLegacyAttachmentDetail;
+exports.renderCompatibilityAttemptSteps = renderCompatibilityAttemptSteps;
+exports.renderCompatibilityAttachmentDetail = renderCompatibilityAttachmentDetail;
 const dashboard_helpers_1 = require("./shared/dashboard-helpers");
 const formatting_1 = require("./shared/formatting");
 const ru_1 = require("./shared/i18n/ru");
 const test_history_helpers_1 = require("./shared/test-history-helpers");
 const text_utils_1 = require("./shared/text-utils");
 const HISTORY_TEXT = ru_1.ru.testHistory;
-function renderLegacyAttemptSteps(runId, attemptNumber, steps, isOpenByDefault) {
+function renderCompatibilityAttemptSteps(runId, attemptNumber, steps, isOpenByDefault) {
     const tree = (0, test_history_helpers_1.buildDiagnosticStepTree)(steps);
     return `
         <details class="attempt-step-group"${isOpenByDefault ? ' open' : ''}>
@@ -18,13 +18,13 @@ function renderLegacyAttemptSteps(runId, attemptNumber, steps, isOpenByDefault) 
             </summary>
             <div class="attempt-step-body">
                 <div class="step-tree">
-                    ${tree.map((node) => renderLegacyStepNode(runId, attemptNumber, node)).join('')}
+                    ${tree.map((node) => renderCompatibilityStepNode(runId, attemptNumber, node)).join('')}
                 </div>
             </div>
         </details>
     `;
 }
-function renderLegacyAttachmentDetail(runId, attachment, artifactBasePath) {
+function renderCompatibilityAttachmentDetail(runId, attachment, artifactBasePath) {
     const href = (0, test_history_helpers_1.buildAttachmentHref)(runId, attachment, artifactBasePath);
     const location = attachment.url ?? attachment.path ?? HISTORY_TEXT.diagnostics.attachmentLocationMissing;
     const imagePreviewHtml = href && (0, test_history_helpers_1.isImageAttachment)(attachment)
@@ -62,19 +62,19 @@ function renderLegacyAttachmentDetail(runId, attachment, artifactBasePath) {
     return `
         <div class="attachment-item">
             <div class="attachment-item-header">
-                <div class="attachment-title">${renderLegacyOverflowText(attachment.name, { className: 'attachment-title-text' })}</div>
+                <div class="attachment-title">${renderCompatibilityOverflowText(attachment.name, { className: 'attachment-title-text' })}</div>
                 ${attachment.contentType ? `<span class="meta-badge">${(0, text_utils_1.escapeHtml)(attachment.contentType)}</span>` : ''}
             </div>
-            <div class="mono">${renderLegacyOverflowText(location, { className: 'attachment-location-text mono' })}</div>
+            <div class="mono">${renderCompatibilityOverflowText(location, { className: 'attachment-location-text mono' })}</div>
             ${href ? `<div class="attachment-actions"><a class="attachment-link" href="${(0, text_utils_1.escapeHtml)(href)}" target="_blank" rel="noreferrer">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.diagnostics.openAttachment)}</a></div>` : ''}
             ${imagePreviewHtml}
             ${markdownPreviewHtml}
         </div>
     `;
 }
-function renderLegacyStepNode(runId, attemptNumber, node) {
+function renderCompatibilityStepNode(runId, attemptNumber, node) {
     const statusBadge = node.step.status
-        ? `<span class="status-badge ${getLegacyStatusClass(node.step.status, false)}">${(0, text_utils_1.escapeHtml)((0, dashboard_helpers_1.formatStatusLabel)(node.step.status, false))}</span>`
+        ? `<span class="status-badge ${getCompatibilityStatusClass(node.step.status, false)}">${(0, text_utils_1.escapeHtml)((0, dashboard_helpers_1.formatStatusLabel)(node.step.status, false))}</span>`
         : '';
     const failureBadge = node.step.isFailurePoint
         ? `<span class="meta-badge">${(0, text_utils_1.escapeHtml)(HISTORY_TEXT.diagnostics.failedStepBadge)}</span>`
@@ -85,7 +85,7 @@ function renderLegacyStepNode(runId, attemptNumber, node) {
         <div class="step-tree-node">
             <div id="${(0, text_utils_1.escapeHtml)(stepAnchor)}" class="step-item${node.step.isFailurePoint ? ' step-item-failure' : ''}${node.step.depth === 2 ? ' step-item-nested' : ''}">
                 <div class="step-item-header">
-                    <div class="step-title">${renderLegacyOverflowText(node.step.title, { className: 'step-title-text' })}</div>
+                    <div class="step-title">${renderCompatibilityOverflowText(node.step.title, { className: 'step-title-text' })}</div>
                     <div class="attempt-meta">
                         ${statusBadge}
                         <span class="meta-badge">${(0, text_utils_1.escapeHtml)((0, formatting_1.formatDuration)(node.step.durationMs))}</span>
@@ -99,17 +99,17 @@ function renderLegacyStepNode(runId, attemptNumber, node) {
                 ` : ''}
                 ${node.step.errorMessage ? `<div class="step-error mono">${(0, text_utils_1.escapeHtml)(node.step.errorMessage)}</div>` : ''}
             </div>
-            ${node.children.length > 0 ? `<div class="step-tree-children">${node.children.map((childNode) => renderLegacyStepNode(runId, attemptNumber, childNode)).join('')}</div>` : ''}
+            ${node.children.length > 0 ? `<div class="step-tree-children">${node.children.map((childNode) => renderCompatibilityStepNode(runId, attemptNumber, childNode)).join('')}</div>` : ''}
         </div>
     `;
 }
-function renderLegacyOverflowText(value, options = {}) {
+function renderCompatibilityOverflowText(value, options = {}) {
     const fullValue = typeof value === 'string' && value.length > 0 ? value : '—';
     const displayValue = options.displayValue ?? fullValue;
     const className = ['overflow-text', options.className].filter(Boolean).join(' ');
     return `<span class="${(0, text_utils_1.escapeHtml)(className)}" title="${(0, text_utils_1.escapeHtml)(fullValue)}">${(0, text_utils_1.escapeHtml)(displayValue)}</span>`;
 }
-function getLegacyStatusClass(status, flaky) {
+function getCompatibilityStatusClass(status, flaky) {
     if (flaky) {
         return 'status-flaky';
     }

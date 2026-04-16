@@ -1,3 +1,6 @@
+/**
+ * Назначение: backend-доменные контракты для workspace registry, provisioning, storage и ingestion. Это слой типов и протоколов сервера, а не React UI.
+ */
 import type { DashboardRunMetadata, ReporterRoot } from '../dashboard-utils'
 
 export interface WorkspaceRecord {

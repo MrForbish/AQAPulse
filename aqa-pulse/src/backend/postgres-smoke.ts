@@ -45,7 +45,7 @@ async function main(): Promise<void> {
                 postgresConnectionString: connectionString,
                 dataRoot: path.join(tempRoot, 'data'),
                 distPath: path.join(tempRoot, 'dist'),
-                legacyArchiveRootPath: path.join(tempRoot, 'history'),
+                archiveRootPath: path.join(tempRoot, 'history'),
             },
         })
 

@@ -29,6 +29,42 @@ const DASHBOARD_TABS = [
     { id: 'ai', label: DASHBOARD_TEXT.tabs.ai },
 ] as const
 
+const TRANSITION_TAB_CONTENT = {
+    codeQuality: {
+        title: 'Качество тестового кода',
+        description: 'Этот React-раздел уже отделён от legacy renderer и показывает опорные сигналы, на которые можно смотреть до появления полноценных code-quality метрик.',
+        availableSignalsTitle: 'Доступные сигналы уже сейчас',
+        availableSignals: [
+            'Проблемные тесты и failure rate уже помогают находить hotspots в тестовом коде.',
+            'Slowest tests и phase breakdown подсвечивают тесты с тяжёлой структурой или лишней orchestration-логикой.',
+            'Кластеры ошибок и flaky history дают ранний индикатор test smell и слабой изоляции сценариев.',
+        ],
+        nextDataTitle: 'Следующий слой данных',
+    },
+    team: {
+        title: 'Командные метрики',
+        description: 'Вкладка уже живёт в React shell и показывает operational baseline по текущему качеству поставки, пока ownership и межкомандные срезы ещё не заведены в ingestion contract.',
+        availableSignalsTitle: 'Что можно использовать уже сейчас',
+        availableSignals: [
+            'Developer friction показывает текущую цену нестабильности для команды.',
+            'Manager blockers и release confidence помогают быстро понять, где команде больно прямо сейчас.',
+            'История запусков и flaky backlog уже дают приоритеты для ближайшего quality work.',
+        ],
+        nextDataTitle: 'Что потребуется для полной командной аналитики',
+    },
+    ai: {
+        title: 'ИИ / ML слой',
+        description: 'Эта вкладка больше не пустой лист: React-страница уже показывает опорный контекст для будущих прогнозных сценариев, не смешивая это с legacy HTML flow.',
+        availableSignalsTitle: 'Базовые сигналы для будущих моделей',
+        availableSignals: [
+            'Flaky history уже даёт вход для прогноза риска следующего прогона.',
+            'Кластеры ошибок и problematic tests уже формируют основу для подсказок по root cause.',
+            'История прогонов и release confidence позволяют строить risk-ranking до внедрения ML-моделей.',
+        ],
+        nextDataTitle: 'Что ещё нужно для настоящих AI-метрик',
+    },
+} as const
+
 /**
  * Dashboard умеет переиспользовать bootstrap summary только когда URL и workspace совпадают с исходным shell, чтобы не показывать устаревшие данные после client-side navigation.
  */
@@ -398,16 +434,132 @@ export function DashboardPage(props: { workspaceSlug: string | null }): React.JS
                 </div>
             ) : null}
 
-            {activeTab === 'codeQuality' ? <PlaceholderPanel title={DASHBOARD_TEXT.tabs.codeQuality} items={DASHBOARD_TEXT.placeholderMetrics.codeQuality} /> : null}
-            {activeTab === 'team' ? <PlaceholderPanel title={DASHBOARD_TEXT.tabs.team} items={DASHBOARD_TEXT.placeholderMetrics.team} /> : null}
-            {activeTab === 'ai' ? <PlaceholderPanel title={DASHBOARD_TEXT.tabs.ai} items={DASHBOARD_TEXT.placeholderMetrics.ai} /> : null}
+            {activeTab === 'codeQuality' ? <TransitionPanel kind="codeQuality" summary={summary} /> : null}
+            {activeTab === 'team' ? <TransitionPanel kind="team" summary={summary} /> : null}
+            {activeTab === 'ai' ? <TransitionPanel kind="ai" summary={summary} /> : null}
         </PageFrame>
     )
 }
 
+/**
+ * Остальные вкладки больше не притворяются полноценными готовыми фичами, но и не являются пустыми заглушками: панель показывает уже доступные сигналы и честно фиксирует, каких данных не хватает до полного feature parity.
+ */
+function TransitionPanel(props: { kind: keyof typeof TRANSITION_TAB_CONTENT; summary: DashboardSummary }): React.JSX.Element {
+    const content = TRANSITION_TAB_CONTENT[props.kind]
+    const metrics = buildTransitionMetrics(props.kind, props.summary)
+    const roadmapItems = props.kind === 'codeQuality'
+        ? DASHBOARD_TEXT.placeholderMetrics.codeQuality
+        : props.kind === 'team'
+            ? DASHBOARD_TEXT.placeholderMetrics.team
+            : DASHBOARD_TEXT.placeholderMetrics.ai
+
+    return (
+        <div className="page-grid">
+            {metrics.map((metric) => (
+                <MetricCard key={metric.label} label={metric.label} value={metric.value} tone={metric.tone} hint={metric.hint} />
+            ))}
+            <Panel title={content.title} description={content.description} className="span-2">
+                <div className="stack-list compact-top">
+                    <div className="stack-item">
+                        <div className="stack-item-header"><strong>{content.availableSignalsTitle}</strong></div>
+                        <div className="placeholder-list">
+                            {content.availableSignals.map((item) => <div key={item} className="placeholder-item">{item}</div>)}
+                        </div>
+                    </div>
+                    <div className="stack-item">
+                        <div className="stack-item-header"><strong>{content.nextDataTitle}</strong></div>
+                        <div className="placeholder-list">
+                            {roadmapItems.map((item) => <div key={item} className="placeholder-item">{item}</div>)}
+                        </div>
+                    </div>
+                </div>
+            </Panel>
+            <Panel title="Migration status" description="Вкладка уже живёт в React feature-модуле и дальше может развиваться независимо от legacy string renderer chain.">
+                <div className="placeholder-list">
+                    <div className="placeholder-item">Маршрутизация, query-state и shared UI уже работают через React runtime.</div>
+                    <div className="placeholder-item">Для полной метрики теперь не нужен перенос в React, нужен только новый ingestion/domain data contract.</div>
+                    <div className="placeholder-item">Это снижает риск: UI-слой уже мигрирован, осталась предметная модель и расчёты.</div>
+                </div>
+            </Panel>
+        </div>
+    )
+}
+
+function buildTransitionMetrics(
+    kind: keyof typeof TRANSITION_TAB_CONTENT,
+    summary: DashboardSummary,
+): Array<{ label: string; value: string; tone: 'default' | 'good' | 'warn' | 'danger'; hint?: string }> {
+    if (kind === 'codeQuality') {
+        return [
+            {
+                label: 'Проблемные тесты',
+                value: String(summary.topProblematicTests.length),
+                tone: summary.topProblematicTests.length > 0 ? 'warn' : 'good',
+                hint: 'Текущий backlog по failure hotspots',
+            },
+            {
+                label: DASHBOARD_TEXT.metrics.flakyScore,
+                value: summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(summary.flakyAnalytics.averageFlakyScore),
+                tone: summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getScoreTone(summary.flakyAnalytics.averageFlakyScore),
+                hint: 'Исторический сигнал о качестве сценариев',
+            },
+            {
+                label: DASHBOARD_TEXT.metrics.errorClusters,
+                value: String(summary.errorClusters.length),
+                tone: summary.errorClusters.length > 0 ? 'warn' : 'good',
+                hint: 'Повторяемость проблем в коде тестов',
+            },
+        ]
+    }
+
+    if (kind === 'team') {
+        return [
+            {
+                label: DASHBOARD_TEXT.metrics.developerFriction,
+                value: summary.businessMetrics.developerFriction.rerunProxyPerActiveDay.toFixed(2),
+                tone: summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good',
+                hint: 'Прокси-нагрузка на команду из-за flaky/retry',
+            },
+            {
+                label: 'Активные блокеры',
+                value: String(summary.managerSummary.blockers.length),
+                tone: summary.managerSummary.blockers.length > 0 ? 'danger' : 'good',
+                hint: 'Что мешает команде прямо сейчас',
+            },
+            {
+                label: DASHBOARD_TEXT.metrics.releaseConfidenceScore,
+                value: formatScore(summary.businessMetrics.releaseConfidenceScore),
+                tone: getScoreTone(summary.businessMetrics.releaseConfidenceScore),
+                hint: summary.managerSummary.releaseReadiness.level,
+            },
+        ]
+    }
+
+    return [
+        {
+            label: DASHBOARD_TEXT.metrics.topFlakyTests,
+            value: String(summary.flakyAnalytics.topFlakyTests.length),
+            tone: summary.flakyAnalytics.topFlakyTests.length > 0 ? 'warn' : 'default',
+            hint: 'Историческая база для прогнозных моделей',
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.errorClusters,
+            value: String(summary.errorClusters.length),
+            tone: summary.errorClusters.length > 0 ? 'warn' : 'good',
+            hint: 'База для root-cause ranking',
+        },
+        {
+            label: DASHBOARD_TEXT.metrics.recentRuns,
+            value: String(summary.history.recentRuns.length),
+            tone: summary.history.recentRuns.length > 0 ? 'good' : 'default',
+            hint: 'Исторические точки для аномалий и прогноза',
+        },
+    ]
+}
+
 function PlaceholderPanel(props: { title: string; items: readonly string[] }): React.JSX.Element {
     return (
-        <Panel title={props.title} description="Этот раздел уже живет в новой архитектуре как отдельный feature-слой и готов к дальнейшему наращиванию без раздувания dashboard entrypoint.">
+        <Panel title={props.title} description="Legacy placeholder panel retained only for compatibility with older markup references.">
             <div className="placeholder-list">
                 {props.items.map((item) => <div key={item} className="placeholder-item">{item}</div>)}
             </div>

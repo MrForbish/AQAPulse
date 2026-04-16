@@ -8,6 +8,7 @@
 - Self-hosted сценарий идет через `aqa-pulse-server`.
 - `aqa-pulse-client` остается только как compatibility layer для существующих интеграций со string-based HTML renderer API.
 - Legacy renderer API уже помечен как deprecated и будет постепенно выводиться из активного продукта.
+- Backend/domain/infra модули вроде `contracts.ts`, `jwt.ts`, `sqlite-migrate.ts` не мигрируют в React: они остаются серверным и операционным слоем, который новый UI использует через API, bootstrap и shared contracts.
 
 ## Какой путь выбрать теперь
 
@@ -101,3 +102,4 @@
 - `aqa-pulse-client` = legacy compatibility only.
 - `aqa-pulse-server` = основной self-hosted продукт.
 - `aqa-pulse` static build = supported путь для офлайн React dashboard.
+- legacy renderer исходники не развиваются как альтернативный UI-путь: новые пользовательские сценарии и новые метрики добавляются только в React runtime.

@@ -1,3 +1,6 @@
+/**
+ * Назначение: одноразовая миграция file-backed workspace data в SQLite storage без участия frontend/runtime слоя.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { resolveSaasAppConfig } from './config'

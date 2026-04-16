@@ -1,3 +1,6 @@
+/**
+ * Назначение: единая deprecated boundary для legacy HTML renderer API, чтобы compatibility surface был отделён от основного React runtime.
+ */
 import { renderDashboardHtml as renderDashboardHtmlImpl } from './render-dashboard'
 import { METRIC_INFO_STYLES as metricInfoStylesImpl, renderMetricHeading as renderMetricHeadingImpl } from './render-metric-info'
 import { renderTestHistoryHtml as renderTestHistoryHtmlImpl } from './render-test-history'

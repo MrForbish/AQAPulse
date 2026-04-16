@@ -1,3 +1,6 @@
+/**
+ * Назначение: нормализует runtime-конфигурацию self-hosted/backend слоя и сохраняет backward compatibility для старых env/override имён.
+ */
 import * as path from 'node:path'
 import { normalizeOptionalText } from '../shared/text-utils'
 import type { StorageDriver } from './contracts'
@@ -11,7 +14,11 @@ export interface SaasAppConfig {
     postgresConnectionString: string | null
     requestBodyLimit: string
     distPath: string
-    legacyArchiveRootPath: string
+    archiveRootPath: string
+    /**
+     * @deprecated Используй archiveRootPath. Alias сохранён для обратной совместимости внешних override/test setup.
+     */
+    legacyArchiveRootPath?: string
     allowDevBootstrap: boolean
     adminToken: string | null
     requireWorkspaceAuth: boolean
@@ -25,7 +32,7 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
     const configuredPort = normalizePort(overrides.port ?? process.env.PORT)
     const configuredAdminToken = normalizeOptionalText(overrides.adminToken ?? process.env.AQA_PULSE_ADMIN_TOKEN)
     const configuredDistPath = normalizeOptionalText(overrides.distPath ?? process.env.AQA_PULSE_DIST_PATH)
-    const configuredArchiveRootPath = normalizeOptionalText(overrides.legacyArchiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH)
+    const configuredArchiveRootPath = normalizeOptionalText(overrides.archiveRootPath ?? overrides.legacyArchiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH)
     const configuredSqlitePath = normalizeOptionalText(overrides.sqlitePath ?? process.env.AQA_PULSE_SQLITE_PATH)
     const configuredPostgresConnectionString = normalizeOptionalText(overrides.postgresConnectionString ?? process.env.AQA_PULSE_POSTGRES_URL)
     const configuredRequestBodyLimit = normalizeOptionalText(overrides.requestBodyLimit ?? process.env.AQA_PULSE_REQUEST_BODY_LIMIT)
@@ -33,6 +40,7 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
     const configuredAccessTokenTtlSeconds = normalizePositiveInteger(overrides.accessTokenTtlSeconds ?? process.env.AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS)
     const configuredAdminSessionCookieName = normalizeOptionalText(overrides.adminSessionCookieName ?? process.env.AQA_PULSE_ADMIN_SESSION_COOKIE_NAME)
     const configuredWorkspaceSessionCookiePrefix = normalizeOptionalText(overrides.workspaceSessionCookiePrefix ?? process.env.AQA_PULSE_WORKSPACE_SESSION_COOKIE_PREFIX)
+    const archiveRootPath = configuredArchiveRootPath ? path.resolve(configuredArchiveRootPath) : path.resolve(process.cwd(), './history')
 
     return {
         port: configuredPort ?? 3000,
@@ -42,7 +50,8 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
         postgresConnectionString: configuredPostgresConnectionString,
         requestBodyLimit: configuredRequestBodyLimit ?? '50mb',
         distPath: configuredDistPath ? path.resolve(configuredDistPath) : path.resolve(process.cwd(), './dist'),
-        legacyArchiveRootPath: configuredArchiveRootPath ? path.resolve(configuredArchiveRootPath) : path.resolve(process.cwd(), './history'),
+        archiveRootPath,
+        legacyArchiveRootPath: archiveRootPath,
         allowDevBootstrap: normalizeBoolean(overrides.allowDevBootstrap ?? process.env.AQA_PULSE_ENABLE_DEV_BOOTSTRAP, true),
         adminToken: configuredAdminToken,
         requireWorkspaceAuth: normalizeBoolean(overrides.requireWorkspaceAuth ?? process.env.AQA_PULSE_REQUIRE_WORKSPACE_AUTH, false),

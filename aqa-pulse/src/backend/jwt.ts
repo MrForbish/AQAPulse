@@ -1,3 +1,6 @@
+/**
+ * Назначение: минимальный JWT/cookie helper для admin и workspace auth flow в self-hosted backend.
+ */
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 export type AuthScope = 'admin' | 'workspace:read' | 'workspace:ingest'

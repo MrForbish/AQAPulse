@@ -130,6 +130,17 @@ async function main(): Promise<void> {
         '/',
     ), ['React UI', summary.sourceFile])
 
+    renderMarkup('dashboard transition tab', renderWithRouter(
+        React.createElement(
+            reactModule.RuntimeProvider,
+            {
+                bootstrap: createBootstrap({ route: { kind: 'dashboard', workspaceSlug: null }, initialRequestUrl: '/?tab=codeQuality', initialDashboardSummary: summary }),
+                children: React.createElement(reactModule.DashboardPage, { workspaceSlug: null }),
+            },
+        ),
+        '/?tab=codeQuality',
+    ), ['Доступные сигналы уже сейчас', 'Migration status'])
+
     renderMarkup('test history page', renderWithRouter(
         React.createElement(
             reactModule.RuntimeProvider,

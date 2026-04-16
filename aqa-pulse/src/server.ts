@@ -1,3 +1,6 @@
+/**
+ * Назначение: локальный entrypoint для запуска self-hosted HTTP runtime и печати основных UI/API endpoint-ов.
+ */
 import { createSaasApp } from './backend/app'
 import { resolveSaasAppConfig } from './backend/config'
 
@@ -13,7 +16,7 @@ app.listen(config.port, () => {
     console.log(`SQLite path: ${config.sqlitePath ?? 'not configured'}`)
     console.log(`Workspace data root: ${config.dataRoot}`)
     console.log(`UI dist path: ${config.distPath}`)
-    console.log(`Legacy archive path: ${config.legacyArchiveRootPath}`)
+    console.log(`Archive path: ${config.archiveRootPath}`)
     console.log(`Admin token: ${config.adminToken ? 'configured' : 'not configured (admin routes are open locally)'}`)
     console.log(`Dev bootstrap: ${config.allowDevBootstrap ? 'enabled' : 'disabled'}`)
     console.log(`Workspace auth: ${config.requireWorkspaceAuth ? 'required' : 'optional'}`)

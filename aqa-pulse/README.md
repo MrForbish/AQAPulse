@@ -31,6 +31,10 @@
 
 `renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как compatibility layer.
 
+Файлы вроде `src/render-dashboard.ts` и `src/render-test-history.ts` не являются кандидатами на «перенос в React»: React UI уже живёт отдельно, а эти модули удерживаются только как deprecated implementation detail для старых интеграций.
+
+Файлы уровня `src/backend/contracts.ts`, `src/backend/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
+
 Основной продуктовый UI развивается через React runtime и self-hosted/server flow.
 
 Текущая публичная структура entry points у `aqa-pulse`:
@@ -123,8 +127,8 @@
   - `Cost breakdown (proxy)`
   - `Config assumptions`
 - `Качество кода тестов`, `Командные метрики`, `AI / ML`
-  - пока показываются как честные placeholder-панели
-  - UI явно объясняет, каких данных пока не хватает для расчёта
+  - уже живут как отдельные React feature-вкладки с переходными operational signals
+  - UI явно показывает, какие сигналы уже доступны сейчас и каких данных пока не хватает для полной предметной метрики
 
 ## Структура
 

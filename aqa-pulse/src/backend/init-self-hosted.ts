@@ -1,3 +1,6 @@
+/**
+ * Назначение: инициализирует self-hosted storage layout и печатает операционные runtime-пути перед первым запуском сервера.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { resolveSaasAppConfig } from './config'
@@ -10,7 +13,7 @@ try {
     fs.mkdirSync(config.dataRoot, { recursive: true })
     fs.mkdirSync(path.join(config.dataRoot, 'workspaces'), { recursive: true })
     fs.mkdirSync(config.distPath, { recursive: true })
-    fs.mkdirSync(config.legacyArchiveRootPath, { recursive: true })
+    fs.mkdirSync(config.archiveRootPath, { recursive: true })
 
     if (config.sqlitePath) {
         fs.mkdirSync(path.dirname(config.sqlitePath), { recursive: true })
@@ -24,8 +27,8 @@ try {
     console.log(`Data root: ${config.dataRoot}`)
     console.log(`SQLite path: ${config.sqlitePath ?? 'not configured'}`)
     console.log(`Registry: ${backendStorage.registry.registryPath}`)
-    console.log(`Legacy dist path: ${config.distPath}`)
-    console.log(`Legacy archive path: ${config.legacyArchiveRootPath}`)
+    console.log(`UI dist path: ${config.distPath}`)
+    console.log(`Archive path: ${config.archiveRootPath}`)
     console.log(`Admin token: ${config.adminToken ? 'configured' : 'not configured'}`)
     console.log(`Dev bootstrap: ${config.allowDevBootstrap ? 'enabled' : 'disabled'}`)
     console.log(`Workspace auth: ${config.requireWorkspaceAuth ? 'required' : 'optional'}`)

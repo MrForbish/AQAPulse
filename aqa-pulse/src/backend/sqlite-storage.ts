@@ -1,17 +1,15 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { DatabaseSync as NodeSqliteDatabaseSync } from 'node:sqlite'
-import { normalizeDashboardSummary, readDashboardSummary, type DashboardSummary, type ReporterRoot } from '../dashboard-utils'
+import { normalizeDashboardSummary, type DashboardSummary, type ReporterRoot } from '../dashboard-utils'
 import {
     createEmptyHistory,
-    findArchivedRunDirectory as findArchivedRunDirectoryInFiles,
-    readArchivedRunRecord as readArchivedRunRecordFromFiles,
-    readDashboardHistory,
     type ArchivedRunMetadata,
     type ArchivedRunRecord,
     type DashboardHistory,
     type DashboardHistoryEntry,
 } from '../history-utils'
+import { FileBackedDashboardReadStorage, type FileBackedDashboardReadStoragePaths } from './file-backed-dashboard-read-storage'
 import type { WorkspacePaths, WorkspaceRegistrySnapshot } from './contracts'
 import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './storage'
 import { getWorkspacePathsFromDataRoot, resolveWorkspaceDataRoot } from './workspace-paths'
@@ -158,40 +156,12 @@ export class SqliteBackendStorage {
         this.registry = new SqliteWorkspaceRegistryStorage(sqlitePath)
     }
 
-    createDashboardReadStorage(paths: Partial<{ summaryPath: string; historyPath: string; archiveRootPath: string }> = {}): DashboardReadStorage {
-        return new LegacyFileDashboardReadStorage(paths)
+    createDashboardReadStorage(paths: Partial<FileBackedDashboardReadStoragePaths> = {}): DashboardReadStorage {
+        return new FileBackedDashboardReadStorage(paths)
     }
 
     getWorkspaceStorage(slug: string): SqliteWorkspaceRunStorage {
         return new SqliteWorkspaceRunStorage(this.sqlitePath, slug, this.dataRoot)
-    }
-}
-
-class LegacyFileDashboardReadStorage implements DashboardReadStorage {
-    private readonly summaryPath: string
-    private readonly historyPath: string
-    private readonly archiveRootPath: string
-
-    constructor(paths: Partial<{ summaryPath: string; historyPath: string; archiveRootPath: string }> = {}) {
-        this.summaryPath = path.resolve(process.cwd(), paths.summaryPath ?? process.env.AQA_PULSE_SUMMARY_PATH ?? './dist/dashboard-data.json')
-        this.historyPath = path.resolve(process.cwd(), paths.historyPath ?? process.env.AQA_PULSE_HISTORY_PATH ?? './dist/history.json')
-        this.archiveRootPath = path.resolve(process.cwd(), paths.archiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH ?? './history')
-    }
-
-    readSummary(): DashboardSummary {
-        return readDashboardSummary(this.summaryPath)
-    }
-
-    readHistory(): DashboardHistory {
-        return readDashboardHistory(this.historyPath)
-    }
-
-    findArchivedRunDirectory(entryId: string): string | null {
-        return findArchivedRunDirectoryInFiles(this.archiveRootPath, entryId)
-    }
-
-    readArchivedRunRecord(runDirectory: string): ArchivedRunRecord {
-        return readArchivedRunRecordFromFiles(this.archiveRootPath, runDirectory)
     }
 }
 

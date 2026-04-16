@@ -65,7 +65,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         requireWorkspaceAuth: true,
         dataRoot: options.configOverrides?.dataRoot ?? path.join(tempRoot, 'data'),
         distPath,
-        legacyArchiveRootPath: options.configOverrides?.legacyArchiveRootPath ?? path.join(tempRoot, 'history'),
+        archiveRootPath: options.configOverrides?.archiveRootPath ?? options.configOverrides?.legacyArchiveRootPath ?? path.join(tempRoot, 'history'),
         ...options.configOverrides,
     })
     const fixturePath = path.resolve(__dirname, '../../fixtures/sample-llm-report.json')
@@ -77,7 +77,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
     assert(fs.existsSync(path.resolve(config.distPath, 'web', 'index.html')), 'Для auth smoke нужен собранный frontend template в dist/web/index.html.')
 
     fs.mkdirSync(config.dataRoot, { recursive: true })
-    fs.mkdirSync(config.legacyArchiveRootPath, { recursive: true })
+    fs.mkdirSync(config.archiveRootPath, { recursive: true })
 
     const app = createSaasApp(config)
     const server = await listen(app)

@@ -41,7 +41,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         storage: backendStorage.createDashboardReadStorage({
             summaryPath: path.join(config.distPath, 'dashboard-data.json'),
             historyPath: path.join(config.distPath, 'history.json'),
-            archiveRootPath: config.legacyArchiveRootPath,
+            archiveRootPath: config.archiveRootPath,
         }),
     })
     const distPath = config.distPath
@@ -372,7 +372,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     })
 
     app.get('/api/artifacts/:runId', (request: Request, response: Response) => {
-        sendArtifactFile(response, path.join(config.legacyArchiveRootPath, '_artifacts'), getRouteParam(request, 'runId'), pickOptionalString(request.query.path) ?? undefined)
+        sendArtifactFile(response, path.join(config.archiveRootPath, '_artifacts'), getRouteParam(request, 'runId'), pickOptionalString(request.query.path) ?? undefined)
     })
 
     app.get('/test/:name', (request: Request, response: Response) => {

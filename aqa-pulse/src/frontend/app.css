@@ -64,6 +64,14 @@ input {
     padding: 28px 0 48px;
 }
 
+.app-shell-footer {
+    margin: 24px 0 18px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    letter-spacing: 0.04em;
+}
+
 .hero-block,
 .filters-block,
 .panel,
@@ -152,7 +160,18 @@ input {
     display: flex;
     justify-content: space-between;
     gap: 16px;
-    align-items: baseline;
+    align-items: flex-start;
+}
+
+.stack-item-header > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.stack-item-header > .status-badge,
+.stack-item-header > .module-pill,
+.stack-item-header > .meta-badge {
+    flex: 0 0 auto;
 }
 
 .hero-meta-card {
@@ -171,22 +190,56 @@ input {
     align-items: center;
     gap: 6px;
     flex-wrap: nowrap;
+    max-width: 100%;
 }
 
 .metric-icon-react {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 15px;
-    height: 15px;
+    width: 19px;
+    height: 19px;
     color: #7dd3fc;
     flex: 0 0 auto;
 }
 
 .metric-icon-react svg {
-    width: 15px;
-    height: 15px;
+    width: 19px;
+    height: 19px;
     display: block;
+}
+
+.metric-heading-label-react,
+.stack-item-title-react,
+.step-title-react,
+.cluster-message-react,
+.cluster-tests-react {
+    min-width: 0;
+}
+
+.overflow-text-react {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.overflow-text-react.is-2-line,
+.overflow-text-react.is-3-line {
+    display: -webkit-box;
+    white-space: normal;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+}
+
+.overflow-text-react.is-2-line {
+    -webkit-line-clamp: 2;
+}
+
+.overflow-text-react.is-3-line {
+    -webkit-line-clamp: 3;
 }
 
 .metric-info-react {
@@ -356,6 +409,7 @@ input {
 
 .metric-card {
     padding: 18px;
+    min-width: 0;
 }
 
 .metric-value {
@@ -363,6 +417,7 @@ input {
     font-family: 'Space Grotesk', sans-serif;
     font-size: clamp(24px, 2.6vw, 34px);
     letter-spacing: -0.04em;
+    overflow-wrap: anywhere;
 }
 
 .metric-card.is-good,
@@ -1013,6 +1068,28 @@ th {
     padding: 0 14px 14px;
 }
 
+.step-tree-react,
+.step-tree-children-react {
+    display: grid;
+    gap: 12px;
+}
+
+.step-tree-children-react {
+    margin-top: 12px;
+    padding-top: 12px;
+    padding-left: 16px;
+    border-left: 1px solid rgba(133, 157, 194, 0.16);
+}
+
+.step-tree-node-react.is-nested {
+    background: rgba(10, 21, 38, 0.8);
+}
+
+.step-tree-body-react {
+    display: grid;
+    gap: 8px;
+}
+
 .attachment-image-preview-react {
     width: 100%;
     max-height: min(320px, 42vh);
@@ -1122,6 +1199,21 @@ th {
     overflow: auto;
 }
 
+.image-lightbox-status-react,
+.image-lightbox-fallback-react {
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(133, 157, 194, 0.14);
+    background: rgba(3, 9, 18, 0.9);
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.image-lightbox-fallback-react {
+    display: grid;
+    gap: 10px;
+}
+
 .image-lightbox-image-react {
     width: 100%;
     max-height: calc(90vh - 120px);
@@ -1144,6 +1236,14 @@ th {
     font-size: 12px;
     color: #ffced1;
     word-break: break-word;
+}
+
+.cluster-message-react {
+    max-width: min(100%, 42ch);
+}
+
+.cluster-tests-react {
+    max-width: min(100%, 52ch);
 }
 
 .state-block,

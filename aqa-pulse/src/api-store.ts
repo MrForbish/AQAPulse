@@ -67,6 +67,7 @@ export interface TestHistoryAttachment {
 export interface TestHistoryStep {
     title: string
     category: string | null
+    depth: 1 | 2
     durationMs: number
     status: string | null
     errorMessage: string | null
@@ -804,6 +805,7 @@ function normalizeAttemptSteps(
             const errorMessage = typeof step.error?.message === 'string' && step.error.message.trim().length > 0
                 ? step.error.message.trim()
                 : null
+            const depth = step.depth === 2 ? 2 : 1
             const normalizedStatus = typeof step.status === 'string' && step.status.trim().length > 0
                 ? normalizeStatus(step.status)
                 : null
@@ -818,6 +820,7 @@ function normalizeAttemptSteps(
             return {
                 title,
                 category: typeof step.category === 'string' && step.category.trim().length > 0 ? step.category.trim() : null,
+                depth,
                 durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
                 status: normalizedStatus,
                 errorMessage,

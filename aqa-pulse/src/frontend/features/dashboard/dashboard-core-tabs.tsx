@@ -27,7 +27,7 @@ import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-
 import { ru } from '../../../shared/i18n/ru'
 import { buildTestHistoryHref } from '../../runtime'
 import { ChartCard, type FrontendChartData } from '../../shared/chart-card'
-import { EmptyState, MetricCard, NarrativeList, Panel, StatusBadge, SummaryStrip } from '../../shared/ui'
+import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge, SummaryStrip } from '../../shared/ui'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -187,9 +187,13 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                             <tbody>
                                 {props.summary.errorClusters.map((cluster) => (
                                     <tr key={cluster.message}>
-                                        <td className="mono-cell">{cluster.message}</td>
+                                        <td>
+                                            <OverflowText as="span" text={cluster.message} className="mono-cell cluster-message-react" lines={2} />
+                                        </td>
                                         <td>{cluster.count}</td>
-                                        <td>{cluster.tests.join(' • ')}</td>
+                                        <td>
+                                            <OverflowText as="span" text={cluster.tests.join(' • ')} className="cluster-tests-react" lines={2} />
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

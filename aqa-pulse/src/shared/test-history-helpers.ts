@@ -247,17 +247,18 @@ export function buildAttachmentHref(runId: string, attachment: TestHistoryAttach
         return null
     }
 
-    const normalizedRunId = runId
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') || 'run'
+    const normalizedRunId = normalizeArtifactRunDirectory(runId)
     const normalizedPath = attachment.path.replace(/\\/g, '/').replace(/^\/+/, '')
 
-    if (!normalizedPath.startsWith(`${normalizedRunId}/`)) {
+    if (normalizedPath.includes('..') || /^(?:[a-z][a-z0-9+.-]*:|[a-z]:\/)/i.test(normalizedPath)) {
         return null
     }
 
-    return `${artifactBasePath}/${encodeURIComponent(runId)}?path=${encodeURIComponent(normalizedPath)}`
+    const resolvedArtifactPath = normalizedPath.startsWith(`${normalizedRunId}/`)
+        ? normalizedPath
+        : `${normalizedRunId}/${normalizedPath}`
+
+    return `${artifactBasePath}/${encodeURIComponent(runId)}?path=${encodeURIComponent(resolvedArtifactPath)}`
 }
 
 export function isImageAttachment(attachment: TestHistoryAttachment): boolean {
@@ -281,5 +282,24 @@ export function isMarkdownAttachment(attachment: TestHistoryAttachment): boolean
 }
 
 export function canInlineMarkdownPreview(href: string): boolean {
-    return !/^[a-z][a-z0-9+.-]*:/i.test(href)
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+        return true
+    }
+
+    if (typeof window === 'undefined') {
+        return false
+    }
+
+    try {
+        return new URL(href, window.location.href).origin === window.location.origin
+    } catch {
+        return false
+    }
+}
+
+function normalizeArtifactRunDirectory(runId: string): string {
+    return runId
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'run'
 }

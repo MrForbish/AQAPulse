@@ -237,6 +237,7 @@ async function main(): Promise<void> {
     await verifyStaticHashDeepLinkRoute(reactModule)
     await verifyStaticDashboardNavigation(navigationSummary, navigationTestHistoryPayload)
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
+    await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
     await verifyErrorBoundaryRecovery(reactModule)
 
@@ -668,7 +669,7 @@ async function verifyTestHistoryAttachmentLightbox(
     requestedTitle: string,
     testHistoryPayload: TestHistoryResponse,
 ): Promise<void> {
-    const previewablePayload = injectImagePreviewUrlForSmoke(testHistoryPayload)
+    const previewablePayload = injectAttachmentPreviewUrlsForSmoke(testHistoryPayload)
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-lightbox' })
     const previousWindow = globalThis.window
     const previousDocument = globalThis.document
@@ -722,20 +723,23 @@ async function verifyTestHistoryAttachmentLightbox(
 
         await clickElement(imagePreviewTrigger, dom.window)
         await waitForCondition(() => {
-            const lightbox = container.querySelector('[data-image-lightbox]') as HTMLElement | null
+            const lightbox = dom.window.document.querySelector('[data-image-lightbox]') as HTMLElement | null
             return Boolean(lightbox && !lightbox.hidden)
-        }, () => container.innerHTML)
+        }, () => dom.window.document.body.innerHTML)
 
-        const lightboxTitle = container.querySelector('[data-image-lightbox-title]')
+        const lightboxTitle = dom.window.document.querySelector('[data-image-lightbox-title]')
         assert(lightboxTitle?.textContent && lightboxTitle.textContent.length > 0, 'Attachment lightbox smoke expects image title in dialog header.')
 
-        const lightboxClose = container.querySelector('.image-lightbox-close-react')
+        const lightboxImage = dom.window.document.querySelector('[data-image-lightbox-image]') as HTMLImageElement | null
+        assert(lightboxImage?.getAttribute('src') && lightboxImage.getAttribute('src')!.length > 0, 'Attachment lightbox smoke expects image src in dialog body.')
+
+        const lightboxClose = dom.window.document.querySelector('.image-lightbox-close-react')
         assert(lightboxClose, 'Attachment lightbox smoke expects close button.')
         await clickElement(lightboxClose, dom.window)
         await waitForCondition(() => {
-            const lightbox = container.querySelector('[data-image-lightbox]') as HTMLElement | null
+            const lightbox = dom.window.document.querySelector('[data-image-lightbox]') as HTMLElement | null
             return Boolean(lightbox && lightbox.hidden)
-        }, () => container.innerHTML)
+        }, () => dom.window.document.body.innerHTML)
     } finally {
         if (root) {
             await act(async () => {
@@ -755,8 +759,106 @@ async function verifyTestHistoryAttachmentLightbox(
     }
 }
 
-function injectImagePreviewUrlForSmoke(payload: TestHistoryResponse): TestHistoryResponse {
+async function verifyTestHistoryAttachmentMarkdownPreview(
+    reactModule: typeof import('aqa-pulse/react'),
+    requestedTitle: string,
+    testHistoryPayload: TestHistoryResponse,
+): Promise<void> {
+    const previewablePayload = injectAttachmentPreviewUrlsForSmoke(testHistoryPayload)
+    const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-markdown-preview' })
+    const previousWindow = globalThis.window
+    const previousDocument = globalThis.document
+    const previousNavigator = globalThis.navigator
+    const previousHTMLElement = globalThis.HTMLElement
+    const previousNode = globalThis.Node
+    const previousMutationObserver = globalThis.MutationObserver
+    const previousEvent = globalThis.Event
+    const previousMouseEvent = globalThis.MouseEvent
+    const previousFetch = globalThis.fetch
+
+    let root: Root | null = null
+
+    try {
+        setGlobalValue('window', dom.window)
+        setGlobalValue('document', dom.window.document)
+        setGlobalValue('navigator', dom.window.navigator)
+        setGlobalValue('HTMLElement', dom.window.HTMLElement)
+        setGlobalValue('Node', dom.window.Node)
+        setGlobalValue('MutationObserver', dom.window.MutationObserver)
+        setGlobalValue('Event', dom.window.Event)
+        setGlobalValue('MouseEvent', dom.window.MouseEvent)
+        setGlobalValue('fetch', (async (input: RequestInfo | URL): Promise<Response> => {
+            const requestUrl = String(input)
+
+            if (requestUrl.includes('error-context.md')) {
+                return new Response('# Error context\n\nTimeout at payment gateway.', {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'text/markdown; charset=utf-8',
+                    },
+                })
+            }
+
+            throw new Error(`Unexpected markdown preview request in react smoke: ${requestUrl}`)
+        }) as typeof fetch)
+
+        const container = dom.window.document.getElementById('root')
+        assert(container, 'Attachment markdown smoke needs root container.')
+
+        root = createRoot(container)
+
+        await act(async () => {
+            root!.render(
+                React.createElement(
+                    MemoryRouter,
+                    { initialEntries: [`/test/${encodeURIComponent(requestedTitle)}`] },
+                    React.createElement(
+                        reactModule.RuntimeProvider,
+                        {
+                            bootstrap: createBootstrap({
+                                route: { kind: 'test-history', workspaceSlug: null, testName: requestedTitle },
+                                initialRequestUrl: `/test/${encodeURIComponent(requestedTitle)}`,
+                                initialTestHistoryPayload: previewablePayload,
+                            }),
+                            children: React.createElement(reactModule.TestHistoryPage, { workspaceSlug: null, requestedTitle }),
+                        },
+                    ),
+                ),
+            )
+            await flushMicrotasks()
+        })
+
+        const markdownPreview = container.querySelector('[data-markdown-preview]') as HTMLDetailsElement | null
+        assert(markdownPreview, `Attachment markdown smoke expects markdown preview details. Actual DOM: ${container.innerHTML}`)
+
+        await openDetailsElement(markdownPreview, dom.window)
+        await waitForCondition(() => {
+            const markdownContent = container.querySelector('[data-markdown-content]')
+            return Boolean(markdownContent?.textContent?.includes('Timeout at payment gateway.'))
+        }, () => container.innerHTML)
+    } finally {
+        if (root) {
+            await act(async () => {
+                root!.unmount()
+            })
+        }
+
+        setGlobalValue('window', previousWindow)
+        setGlobalValue('document', previousDocument)
+        setGlobalValue('navigator', previousNavigator)
+        setGlobalValue('HTMLElement', previousHTMLElement)
+        setGlobalValue('Node', previousNode)
+        setGlobalValue('MutationObserver', previousMutationObserver)
+        setGlobalValue('Event', previousEvent)
+        setGlobalValue('MouseEvent', previousMouseEvent)
+        setGlobalValue('fetch', previousFetch)
+        dom.window.close()
+    }
+}
+
+function injectAttachmentPreviewUrlsForSmoke(payload: TestHistoryResponse): TestHistoryResponse {
     let hasInjectedPreviewUrl = false
+    let hasInjectedMarkdownPreview = false
 
     return {
         ...payload,
@@ -776,13 +878,29 @@ function injectImagePreviewUrlForSmoke(payload: TestHistoryResponse): TestHistor
             ...item,
             attemptDetails: item.attemptDetails.map((attempt) => ({
                 ...attempt,
-                attachments: attempt.attachments.map((attachment) => {
-                    if (!hasInjectedPreviewUrl && (attachment.contentType?.toLowerCase() ?? '') === 'image/png') {
-                        markInjected()
-                        return {
-                            ...attachment,
-                            url: 'https://example.test/payment-timeout.png',
+                attachments: [
+                    ...attempt.attachments.map((attachment) => {
+                        if (!hasInjectedPreviewUrl && (attachment.contentType?.toLowerCase() ?? '') === 'image/png') {
+                            markInjected()
+                            return {
+                                ...attachment,
+                                url: 'https://example.test/payment-timeout.png',
+                            }
                         }
+
+                        return attachment
+                    }),
+                    ...(!hasInjectedMarkdownPreview ? [
+                        {
+                            name: 'error-context.md',
+                            contentType: 'text/markdown',
+                            path: null,
+                            url: '/api/artifacts/smoke-run?path=smoke-run%2Ferror-context.md',
+                        },
+                    ] : []),
+                ].map((attachment, index) => {
+                    if (!hasInjectedMarkdownPreview && index === attempt.attachments.length) {
+                        hasInjectedMarkdownPreview = true
                     }
 
                     return attachment
@@ -803,6 +921,14 @@ function StaticDeepLinkRoute(props: { reactModule: typeof import('aqa-pulse/reac
 async function clickElement(element: Element, windowRef: Window & typeof globalThis): Promise<void> {
     await act(async () => {
         element.dispatchEvent(new windowRef.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }))
+        await flushMicrotasks()
+    })
+}
+
+async function openDetailsElement(element: HTMLDetailsElement, windowRef: Window & typeof globalThis): Promise<void> {
+    await act(async () => {
+        element.open = true
+        element.dispatchEvent(new windowRef.Event('toggle'))
         await flushMicrotasks()
     })
 }

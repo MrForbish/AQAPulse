@@ -9,7 +9,12 @@ export interface PageFrameProps {
 }
 
 export function PageFrame(props: PageFrameProps): React.JSX.Element {
-    return <div className="app-shell">{props.children}</div>
+    return (
+        <div className="app-shell">
+            {props.children}
+            <footer className="app-shell-footer">© AQA Pulse — developed by Maksim Pecherskiy</footer>
+        </div>
+    )
 }
 
 export interface PanelProps {
@@ -64,8 +69,8 @@ export function MetricCard(props: MetricCardProps): React.JSX.Element {
                     className="metric-label-heading-react"
                 />
             </div>
-            <div className="metric-value">{props.value}</div>
-            {props.hint ? <div className="metric-hint">{props.hint}</div> : null}
+            <div className="metric-value" title={props.value}>{props.value}</div>
+            {props.hint ? <div className="metric-hint" title={props.hint}>{props.hint}</div> : null}
         </article>
     )
 }
@@ -84,7 +89,7 @@ export function MetricHeading(props: MetricHeadingProps): React.JSX.Element {
     return (
         <span className={className}>
             {icon ? <span className="metric-icon-react" aria-hidden="true" dangerouslySetInnerHTML={{ __html: renderMetricIconSvg(icon) }} /> : null}
-            <span>{props.label}</span>
+            <OverflowText as="span" text={props.label} className="metric-heading-label-react" />
             {props.description ? (
                 <span className="metric-info-react">
                     <span className="metric-info-button-react" tabIndex={0} role="img" aria-label={`Описание метрики ${props.label}`}>i</span>
@@ -122,12 +127,30 @@ export function SummaryStrip(props: SummaryStripProps): React.JSX.Element {
         <div className={className}>
             {props.items.map((item) => (
                 <article key={`${item.label}-${item.value}`} className="summary-strip-item">
-                    <span>{item.label}</span>
-                    <strong className={item.muted ? 'summary-strip-text' : ''}>{item.value}</strong>
+                    <span title={item.label}>{item.label}</span>
+                    <strong className={item.muted ? 'summary-strip-text' : ''} title={item.value}>{item.value}</strong>
                 </article>
             ))}
         </div>
     )
+}
+
+export interface OverflowTextProps {
+    text: string
+    className?: string
+    as?: 'span' | 'strong' | 'div' | 'p'
+    lines?: 1 | 2 | 3
+}
+
+export function OverflowText(props: OverflowTextProps): React.JSX.Element {
+    const Tag = props.as ?? 'span'
+    const className = [
+        'overflow-text-react',
+        props.lines && props.lines > 1 ? `is-${props.lines}-line` : '',
+        props.className,
+    ].filter(Boolean).join(' ')
+
+    return React.createElement(Tag, { className, title: props.text }, props.text)
 }
 
 export interface NarrativeListItem {
@@ -163,7 +186,7 @@ export function NarrativeList(props: NarrativeListProps): React.JSX.Element {
             {props.items.map((item) => (
                 <article key={item.id} className="stack-item">
                     <div className="stack-item-header">
-                        <strong>{item.title}</strong>
+                        <OverflowText as="strong" text={item.title} className="stack-item-title-react" lines={2} />
                         {item.pillLabel
                             ? item.pillStyle === 'module-pill'
                                 ? <span className={`module-pill is-${item.pillTone ?? 'accent'}`}>{item.pillLabel}</span>
@@ -172,11 +195,11 @@ export function NarrativeList(props: NarrativeListProps): React.JSX.Element {
                     </div>
                     {item.value ? (
                         <div className="summary-line compact-top">
-                            <span>{item.value}</span>
+                            <OverflowText as="span" text={item.value} lines={2} />
                         </div>
                     ) : null}
-                    <p>{item.body}</p>
-                    {item.meta ? <div className="subtle-copy">{item.meta}</div> : null}
+                    <p title={item.body}>{item.body}</p>
+                    {item.meta ? <div className="subtle-copy" title={item.meta}>{item.meta}</div> : null}
                 </article>
             ))}
         </div>

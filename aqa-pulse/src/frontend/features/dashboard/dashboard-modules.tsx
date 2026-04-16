@@ -34,7 +34,7 @@ import {
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
 import { buildTestHistoryHref } from '../../runtime'
-import { EmptyState, MetricCard, NarrativeList, Panel, StatusBadge } from '../../shared/ui'
+import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge } from '../../shared/ui'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -438,7 +438,7 @@ function TestHistoryLink(props: { workspaceSlug: string | null; summary: Dashboa
             branch: props.summary.filters.branch,
             project: props.project,
             file: props.file,
-        })}>
+        })} title={props.title}>
             {props.title}
         </Link>
     )
@@ -448,10 +448,10 @@ function ClusterCard(props: { cluster: DashboardErrorCluster }): React.JSX.Eleme
     return (
         <article className="stack-item">
             <div className="stack-item-header">
-                <strong>{props.cluster.message}</strong>
+                <OverflowText as="strong" text={props.cluster.message} className="mono-cell cluster-message-react" lines={2} />
                 <StatusBadge label={`${props.cluster.count}`} tone="warn" />
             </div>
-            <div className="subtle-copy">{props.cluster.tests.slice(0, 4).join(' • ')}</div>
+            <OverflowText as="div" text={props.cluster.tests.slice(0, 4).join(' • ')} className="subtle-copy cluster-tests-react" lines={2} />
         </article>
     )
 }

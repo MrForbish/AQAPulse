@@ -737,24 +737,10 @@ async function verifyDashboardTraceDisclosure(summary: ReturnType<ApiStore['getS
         }
 
         const metricTrigger = container.querySelector('.metrics-grid [data-trace-disclosure-trigger]')
-        const clusterTraceSample = summary.errorClusters[0]?.sampleMessage ?? summary.errorClusters[0]?.message ?? null
-        assert(metricTrigger, `Trace disclosure smoke expects an expandable cluster trigger in dashboard metrics. Actual DOM: ${container.innerHTML}`)
-        assert(clusterTraceSample, 'Trace disclosure smoke expects at least one dashboard error cluster sample.')
-
-        await clickElement(metricTrigger, dom.window)
-        await waitForCondition(() => {
-            return Boolean(getVisibleDisclosureDialog())
-        }, () => dom.window.document.body.innerHTML)
-
-        const metricDialogContent = getVisibleDisclosureDialog()?.querySelector('[data-trace-disclosure-content]')
-        assert(metricDialogContent?.textContent?.includes(clusterTraceSample.split('\n')[0] ?? clusterTraceSample), 'Trace disclosure smoke expects the cluster sample inside the metric dialog.')
-
-        const metricCloseButton = getVisibleDisclosureDialog()?.querySelector('[data-trace-disclosure-close]')
-        assert(metricCloseButton, 'Trace disclosure smoke expects a close control for the metric dialog.')
-        await clickElement(metricCloseButton, dom.window)
-        await waitForCondition(() => {
-            return !getVisibleDisclosureDialog()
-        }, () => dom.window.document.body.innerHTML)
+        const clusterMessage = summary.errorClusters[0]?.message ?? null
+        assert(!metricTrigger, `Trace disclosure smoke expects no expandable cluster trigger in dashboard metrics. Actual DOM: ${container.innerHTML}`)
+        assert(clusterMessage, 'Trace disclosure smoke expects at least one dashboard error cluster message.')
+        assert(container.querySelector('.metrics-grid .cluster-message-react')?.textContent?.includes(clusterMessage.slice(0, 16)), 'Trace disclosure smoke expects the main cluster metric to keep the cluster message preview without a trace trigger.')
 
         const trigger = container.querySelector('tbody [data-trace-disclosure-trigger]')
         assert(trigger, `Trace disclosure smoke expects an expandable table error trigger. Actual DOM: ${container.innerHTML}`)

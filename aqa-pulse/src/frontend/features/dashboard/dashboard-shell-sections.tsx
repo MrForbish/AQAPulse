@@ -101,7 +101,7 @@ export function DashboardMetricsSection(props: {
                 labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters}
                 value={String(props.summary.kpis.errorClusterCount)}
                 tone={props.summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'}
-                hint={<DashboardClusterMetricHint cluster={props.summary.errorClusters[0]} emptyLabel={DASHBOARD_TEXT.states.notesEmpty} />}
+                hint={<DashboardClusterMetricHint cluster={props.summary.errorClusters[0]} emptyLabel={DASHBOARD_TEXT.states.notesEmpty} showTrace={false} />}
             />
             <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={props.summary.managerSummary.releaseReadiness.level} />
         </section>

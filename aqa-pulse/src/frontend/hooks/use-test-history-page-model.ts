@@ -1,12 +1,10 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTestHistoryData } from './use-test-history'
+import { readFiltersFromSearchParams, useRuntime } from '../runtime'
 import {
-    buildArtifactBaseUrl,
-    buildDashboardHref,
-    buildTestHistoryApiUrl,
-    readFiltersFromSearchParams,
-    useRuntime,
-} from '../runtime'
+    prepareTestHistoryDataRequest,
+    resolveTestHistoryRuntimeBootstrap,
+} from '../features/test-history/test-history-page-model-helpers'
 
 export function useTestHistoryPageModel(workspaceSlug: string | null, requestedTitle: string): {
     filters: ReturnType<typeof readFiltersFromSearchParams>
@@ -21,35 +19,31 @@ export function useTestHistoryPageModel(workspaceSlug: string | null, requestedT
     const runtime = useRuntime()
     const location = useLocation()
     const [searchParams] = useSearchParams()
-    const filters = readFiltersFromSearchParams(searchParams)
-    const isStaticMode = runtime.route.kind === 'static-dashboard'
     const currentRequestUrl = `${location.pathname}${location.search}`
-    const apiUrl = buildTestHistoryApiUrl(workspaceSlug, requestedTitle, filters)
-    const artifactBasePath = buildArtifactBaseUrl(workspaceSlug)
-    const dashboardHref = buildDashboardHref(workspaceSlug, filters)
-    const bootstrapMatches = runtime.route.kind === 'test-history'
-        && runtime.route.workspaceSlug === workspaceSlug
-        && runtime.route.testName === requestedTitle
-        && runtime.initialRequestUrl === currentRequestUrl
-    const initialPayload = bootstrapMatches ? runtime.initialTestHistoryPayload : null
-    const { payload, isLoading, errorMessage } = useTestHistoryData({
+    const requestPreparation = prepareTestHistoryDataRequest({
         workspaceSlug,
-        apiUrl,
-        currentRequestUrl,
-        initialPayload,
-        isStaticMode,
-        branch: filters.branch,
-        project: filters.project,
-        file: filters.file,
         requestedTitle,
+        searchParams,
+        currentRequestUrl,
+    })
+    const bootstrapState = resolveTestHistoryRuntimeBootstrap({
+        runtime,
+        workspaceSlug,
+        requestedTitle,
+        currentRequestUrl,
+    })
+    const { payload, isLoading, errorMessage } = useTestHistoryData({
+        ...requestPreparation.testHistoryDataRequest,
+        initialPayload: bootstrapState.initialPayload,
+        isStaticMode: bootstrapState.isStaticMode,
     })
 
     return {
-        filters,
-        isStaticMode,
-        apiUrl,
-        artifactBasePath,
-        dashboardHref,
+        filters: requestPreparation.filters,
+        isStaticMode: bootstrapState.isStaticMode,
+        apiUrl: requestPreparation.testHistoryDataRequest.apiUrl,
+        artifactBasePath: requestPreparation.artifactBasePath,
+        dashboardHref: requestPreparation.dashboardHref,
         payload,
         isLoading,
         errorMessage,

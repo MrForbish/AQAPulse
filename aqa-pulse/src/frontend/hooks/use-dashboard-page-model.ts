@@ -1,10 +1,13 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useDashboardSummaryData } from './use-dashboard-summary'
-import { buildSummaryApiUrl, readFiltersFromSearchParams, useRuntime } from '../runtime'
-import { readDashboardSelectedFilters, resolveDashboardActiveTab } from '../features/dashboard/dashboard-query-state'
+import { readFiltersFromSearchParams, useRuntime } from '../runtime'
+import {
+    prepareDashboardSummaryRequest,
+    resolveDashboardRuntimeBootstrap,
+} from '../features/dashboard/dashboard-page-model-helpers'
 
 export function useDashboardPageModel(workspaceSlug: string | null): {
-    activeTab: ReturnType<typeof resolveDashboardActiveTab>
+    activeTab: ReturnType<typeof prepareDashboardSummaryRequest>['activeTab']
     filters: ReturnType<typeof readFiltersFromSearchParams>
     isStaticMode: boolean
     selectedBranch: string
@@ -18,32 +21,30 @@ export function useDashboardPageModel(workspaceSlug: string | null): {
     const runtime = useRuntime()
     const location = useLocation()
     const [searchParams, setSearchParams] = useSearchParams()
-    const activeTab = resolveDashboardActiveTab(searchParams)
     const currentRequestUrl = `${location.pathname}${location.search}`
-    const filters = readFiltersFromSearchParams(searchParams)
-    const apiUrl = buildSummaryApiUrl(workspaceSlug, filters)
-    const isStaticMode = runtime.route.kind === 'static-dashboard'
-    const bootstrapMatches = runtime.route.kind === 'static-dashboard'
-        || (runtime.route.kind === 'dashboard'
-            && runtime.route.workspaceSlug === workspaceSlug
-            && runtime.initialRequestUrl === currentRequestUrl)
-    const initialSummary = bootstrapMatches ? runtime.initialDashboardSummary : null
-    const { selectedBranch, selectedProject, selectedFile } = readDashboardSelectedFilters(searchParams)
-    const { summary, isLoading, errorMessage } = useDashboardSummaryData({
+    const requestPreparation = prepareDashboardSummaryRequest({
         workspaceSlug,
-        apiUrl,
+        searchParams,
         currentRequestUrl,
-        initialSummary,
-        isStaticMode,
+    })
+    const bootstrapState = resolveDashboardRuntimeBootstrap({
+        runtime,
+        workspaceSlug,
+        currentRequestUrl,
+    })
+    const { summary, isLoading, errorMessage } = useDashboardSummaryData({
+        ...requestPreparation.summaryDataRequest,
+        initialSummary: bootstrapState.initialSummary,
+        isStaticMode: bootstrapState.isStaticMode,
     })
 
     return {
-        activeTab,
-        filters,
-        isStaticMode,
-        selectedBranch,
-        selectedProject,
-        selectedFile,
+        activeTab: requestPreparation.activeTab,
+        filters: requestPreparation.filters,
+        isStaticMode: bootstrapState.isStaticMode,
+        selectedBranch: requestPreparation.selectedBranch,
+        selectedProject: requestPreparation.selectedProject,
+        selectedFile: requestPreparation.selectedFile,
         setSearchParams,
         summary,
         isLoading,

@@ -19,9 +19,14 @@ function buildClusterTracePreviewText(cluster: DashboardErrorCluster): string {
 export function DashboardClusterMetricHint(props: {
     cluster: DashboardErrorCluster | null | undefined
     emptyLabel: string
+    showTrace?: boolean
 }): React.JSX.Element {
     if (!props.cluster) {
         return <span>{props.emptyLabel}</span>
+    }
+
+    if (props.showTrace === false) {
+        return <OverflowText as="span" text={props.cluster.message} className="cluster-message-react" lines={2} />
     }
 
     return (

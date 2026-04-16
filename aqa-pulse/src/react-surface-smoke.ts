@@ -101,6 +101,8 @@ async function main(): Promise<void> {
         title: '__react-static-navigation__',
         project: 'static-nav-project',
         file: 'tests/static/navigation.spec.ts',
+        errorMessage: 'Error: synthetic navigation failure\n    at staticNavStep (tests/static/navigation.spec.ts:10:5)\n    at dashboardSmoke (tests/static/navigation.spec.ts:14:3)',
+        errorDetails: 'Error: synthetic navigation failure\n    at staticNavStep (tests/static/navigation.spec.ts:10:5)\n    at dashboardSmoke (tests/static/navigation.spec.ts:14:3)',
     }
     const navigationSummary = {
         ...summary,
@@ -236,6 +238,7 @@ async function main(): Promise<void> {
 
     await verifyStaticHashDeepLinkRoute(reactModule)
     await verifyStaticDashboardNavigation(navigationSummary, navigationTestHistoryPayload)
+    await verifyDashboardTraceDisclosure(navigationSummary)
     await verifyTestHistoryNestedDiagnosticsStructure(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
@@ -661,6 +664,99 @@ async function verifyWorkspaceLoginBootstrapRedirect(workspaceSlug: string): Pro
         setGlobalValue('MutationObserver', previousMutationObserver)
         setGlobalValue('Event', previousEvent)
         setGlobalValue('MouseEvent', previousMouseEvent)
+        dom.window.close()
+    }
+}
+
+async function verifyDashboardTraceDisclosure(summary: ReturnType<ApiStore['getSummary']>): Promise<void> {
+    const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
+        url: 'http://localhost/trace-disclosure',
+    })
+    const previousWindow = globalThis.window
+    const previousDocument = globalThis.document
+    const previousNavigator = globalThis.navigator
+    const previousHTMLElement = globalThis.HTMLElement
+    const previousNode = globalThis.Node
+    const previousMutationObserver = globalThis.MutationObserver
+    const previousEvent = globalThis.Event
+    const previousMouseEvent = globalThis.MouseEvent
+    const previousLocation = globalThis.location
+
+    let root: Root | null = null
+
+    try {
+        setGlobalValue('window', dom.window)
+        setGlobalValue('document', dom.window.document)
+        setGlobalValue('navigator', dom.window.navigator)
+        setGlobalValue('HTMLElement', dom.window.HTMLElement)
+        setGlobalValue('Node', dom.window.Node)
+        setGlobalValue('MutationObserver', dom.window.MutationObserver)
+        setGlobalValue('Event', dom.window.Event)
+        setGlobalValue('MouseEvent', dom.window.MouseEvent)
+        setGlobalValue('location', dom.window.location)
+
+        const container = dom.window.document.getElementById('root')
+        assert(container, 'Trace disclosure smoke needs root container.')
+
+        root = createRoot(container)
+
+        await act(async () => {
+            root!.render(
+                React.createElement(
+                    FrontendRuntimeProvider,
+                    {
+                        bootstrap: createBootstrap({
+                            route: { kind: 'dashboard', workspaceSlug: null },
+                            initialRequestUrl: '/',
+                            initialDashboardSummary: summary,
+                        }),
+                        children: React.createElement(
+                            MemoryRouter,
+                            { initialEntries: ['/'] },
+                            React.createElement(FrontendDashboardPage, { workspaceSlug: null }),
+                        ),
+                    },
+                ),
+            )
+            await flushMicrotasks()
+        })
+
+        const trigger = container.querySelector('[data-trace-disclosure-trigger]')
+        assert(trigger, `Trace disclosure smoke expects an expandable error trigger. Actual DOM: ${container.innerHTML}`)
+
+        await clickElement(trigger, dom.window)
+        await waitForCondition(() => {
+            const dialog = dom.window.document.querySelector('[data-trace-disclosure-dialog]') as HTMLElement | null
+            return Boolean(dialog && !dialog.hidden)
+        }, () => dom.window.document.body.innerHTML)
+
+        const dialogContent = dom.window.document.querySelector('[data-trace-disclosure-content]')
+        assert(dialogContent?.textContent?.includes('synthetic navigation failure'), 'Trace disclosure smoke expects the full error content inside the dialog.')
+        assert(dialogContent?.textContent?.includes('dashboardSmoke'), 'Trace disclosure smoke expects stack-like lines inside the dialog.')
+
+        const closeButton = dom.window.document.querySelector('[data-trace-disclosure-close]')
+        assert(closeButton, 'Trace disclosure smoke expects a close control.')
+        await clickElement(closeButton, dom.window)
+        await waitForCondition(() => {
+            const dialog = dom.window.document.querySelector('[data-trace-disclosure-dialog]') as HTMLElement | null
+            return Boolean(dialog && dialog.hidden)
+        }, () => dom.window.document.body.innerHTML)
+    } finally {
+        if (root) {
+            await act(async () => {
+                root!.unmount()
+            })
+        }
+
+        setGlobalValue('window', previousWindow)
+        setGlobalValue('document', previousDocument)
+        setGlobalValue('navigator', previousNavigator)
+        setGlobalValue('HTMLElement', previousHTMLElement)
+        setGlobalValue('Node', previousNode)
+        setGlobalValue('MutationObserver', previousMutationObserver)
+        setGlobalValue('Event', previousEvent)
+        setGlobalValue('MouseEvent', previousMouseEvent)
+        setGlobalValue('location', previousLocation)
         dom.window.close()
     }
 }

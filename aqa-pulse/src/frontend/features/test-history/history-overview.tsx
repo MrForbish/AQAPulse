@@ -6,7 +6,7 @@ import { ru } from '../../../shared/i18n/ru'
 import { TEST_HISTORY_METRIC_DESCRIPTIONS } from '../../../shared/test-history-metric-info'
 import { formatCommit, formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
 import { buildHistoryRowAnchor, findIncidentStepAnchor } from '../../../shared/test-history-helpers'
-import { MetricCard, Panel, StatusBadge } from '../../shared/ui'
+import { MetricCard, Panel, StatusBadge, TraceDisclosure } from '../../shared/ui'
 
 const HISTORY_TEXT = ru.testHistory
 const DASHBOARD_TEXT = ru.dashboard
@@ -156,7 +156,7 @@ export function HistoryTimelinePanel(props: { history: TestHistoryResponse['hist
                                 <td>{formatDuration(item.durationMs)}</td>
                                 <td>{item.retries}</td>
                                 <td>{item.attempts}</td>
-                                <td className="mono-cell">{item.errorMessage ?? '—'}</td>
+                                <td><TraceDisclosure text={item.errorMessage} /></td>
                             </tr>
                         ))}
                     </tbody>

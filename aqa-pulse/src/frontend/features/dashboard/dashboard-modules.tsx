@@ -2,7 +2,6 @@
  * Назначение: полноценные React-модули dashboard для business/code quality/team/ai. Здесь собирается feature-level UI поверх уже рассчитанных summary-метрик без возврата к legacy string renderer.
  */
 import React from 'react'
-import { Link } from 'react-router-dom'
 import type { DashboardErrorCluster, DashboardSummary } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import {
@@ -33,8 +32,12 @@ import {
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
-import { buildTestHistoryHref } from '../../runtime'
 import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge } from '../../shared/ui'
+import {
+    DashboardProblematicTestRow,
+    DashboardSlowTestRow,
+    DashboardTestHistoryLink,
+} from './dashboard-test-table-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -201,17 +204,7 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
                                 </tr>
                             </thead>
                             <tbody>
-                                {summary.topProblematicTests.map((test) => (
-                                    <tr key={`${test.project}-${test.file}-${test.title}`}>
-                                        <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
-                                        <td>{test.file}</td>
-                                        <td><StatusBadge label={formatStatusLabel(test.status, test.flaky)} tone={getStatusTone(test.status, test.flaky)} /></td>
-                                        <td>{test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
-                                        <td>{formatPercent(test.failureRate)} ({test.attempts})</td>
-                                        <td>{formatDuration(test.durationMs)}</td>
-                                        <td className="mono-cell">{test.errorMessage}</td>
-                                    </tr>
-                                ))}
+                                {summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
                             </tbody>
                         </table>
                     </div>
@@ -266,16 +259,7 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
                             </tr>
                         </thead>
                         <tbody>
-                            {summary.performance.slowestTests.map((test) => (
-                                <tr key={`${test.project}-${test.file}-${test.title}`}>
-                                    <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
-                                    <td>{test.file}</td>
-                                    <td><StatusBadge label={formatStatusLabel(test.status, test.flaky)} tone={getStatusTone(test.status, test.flaky)} /></td>
-                                    <td>{test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
-                                    <td>{formatDuration(test.durationMs)}</td>
-                                    <td className="mono-cell">{test.errorMessage ?? '—'}</td>
-                                </tr>
-                            ))}
+                            {summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
                         </tbody>
                     </table>
                 </div>
@@ -397,7 +381,7 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
                             <tbody>
                                 {summary.flakyAnalytics.topFlakyTests.map((test) => (
                                     <tr key={`${test.project}-${test.file}-${test.title}`}>
-                                        <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
+                                        <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={summary} title={test.title} project={test.project} file={test.file} /></td>
                                         <td>{test.file}</td>
                                         <td>{formatScore(test.flakyScore)}</td>
                                         <td>{formatPercent(test.failRate)}</td>
@@ -429,18 +413,6 @@ export function AiModule(props: { summary: DashboardSummary; workspaceSlug: stri
                 </div>
             </Panel>
         </div>
-    )
-}
-
-function TestHistoryLink(props: { workspaceSlug: string | null; summary: DashboardSummary; title: string; project: string; file: string }): React.JSX.Element {
-    return (
-        <Link className="entity-link" to={buildTestHistoryHref(props.workspaceSlug, props.title, {
-            branch: props.summary.filters.branch,
-            project: props.project,
-            file: props.file,
-        })} title={props.title}>
-            {props.title}
-        </Link>
     )
 }
 

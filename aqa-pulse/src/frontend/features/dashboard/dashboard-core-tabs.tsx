@@ -1,10 +1,7 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
 import type {
-    DashboardCurrentRunTest,
     DashboardDurationBreakdownItem,
     DashboardFlakyTestMetric,
-    DashboardProblematicTest,
     DashboardSummary,
 } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
@@ -25,9 +22,15 @@ import {
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
-import { buildTestHistoryHref } from '../../runtime'
 import { ChartCard, type FrontendChartData } from '../../shared/chart-card'
 import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge, SummaryStrip } from '../../shared/ui'
+import {
+    DashboardCurrentRunTestRow,
+    DashboardErrorClusterRow,
+    DashboardProblematicTestRow,
+    DashboardSlowTestRow,
+    DashboardTestHistoryLink,
+} from './dashboard-test-table-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -84,16 +87,7 @@ export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug
                                 </tr>
                             </thead>
                             <tbody>
-                                {props.summary.performance.slowestTests.map((test) => (
-                                    <tr key={`${test.project}-${test.file}-${test.title}`}>
-                                        <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={test.title} project={test.project} file={test.file} /></td>
-                                        <td>{test.file}</td>
-                                        <td><StatusBadge label={formatStatusLabel(test.status, test.flaky)} tone={getStatusTone(test.status, test.flaky)} /></td>
-                                        <td>{test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
-                                        <td>{formatDuration(test.durationMs)}</td>
-                                        <td className="mono-cell">{test.errorMessage ?? '—'}</td>
-                                    </tr>
-                                ))}
+                                {props.summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
                             </tbody>
                         </table>
                     </div>
@@ -134,7 +128,7 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                                 </tr>
                             </thead>
                             <tbody>
-                                {props.summary.topProblematicTests.map((test) => <ProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} />)}
+                                {props.summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
                             </tbody>
                         </table>
                     </div>
@@ -185,17 +179,7 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                                 </tr>
                             </thead>
                             <tbody>
-                                {props.summary.errorClusters.map((cluster) => (
-                                    <tr key={cluster.message}>
-                                        <td>
-                                            <OverflowText as="span" text={cluster.message} className="mono-cell cluster-message-react" lines={2} />
-                                        </td>
-                                        <td>{cluster.count}</td>
-                                        <td>
-                                            <OverflowText as="span" text={cluster.tests.join(' • ')} className="cluster-tests-react" lines={2} />
-                                        </td>
-                                    </tr>
-                                ))}
+                                {props.summary.errorClusters.map((cluster) => <DashboardErrorClusterRow key={cluster.message} cluster={cluster} />)}
                             </tbody>
                         </table>
                     </div>
@@ -281,7 +265,7 @@ function CurrentRunTestsBrowser(props: { summary: DashboardSummary; workspaceSlu
                         </tr>
                     </thead>
                     <tbody>
-                        {activeGroup.tests.length > 0 ? activeGroup.tests.map((test) => <CurrentRunTestRow key={`${activeGroup.id}-${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} />) : (
+                        {activeGroup.tests.length > 0 ? activeGroup.tests.map((test) => <DashboardCurrentRunTestRow key={`${activeGroup.id}-${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />) : (
                             <tr>
                                 <td colSpan={7}>{DASHBOARD_TEXT.testsBrowser.empty}</td>
                             </tr>
@@ -378,38 +362,10 @@ function BreakdownTable(props: { labelColumn: string; items: DashboardDurationBr
     )
 }
 
-function CurrentRunTestRow(props: { test: DashboardCurrentRunTest; summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
-    return (
-        <tr>
-            <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
-            <td>{props.test.file}</td>
-            <td>{props.test.project}</td>
-            <td><StatusBadge label={formatStatusLabel(props.test.status, props.test.flaky)} tone={getStatusTone(props.test.status, props.test.flaky)} /></td>
-            <td>{props.test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
-            <td>{formatDuration(props.test.durationMs)}</td>
-            <td className="mono-cell">{props.test.errorMessage ?? '—'}</td>
-        </tr>
-    )
-}
-
-function ProblematicTestRow(props: { test: DashboardProblematicTest; summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
-    return (
-        <tr>
-            <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
-            <td>{props.test.file}</td>
-            <td><StatusBadge label={formatStatusLabel(props.test.status, props.test.flaky)} tone={getStatusTone(props.test.status, props.test.flaky)} /></td>
-            <td>{props.test.flaky ? DASHBOARD_TEXT.states.yes : DASHBOARD_TEXT.states.no}</td>
-            <td>{formatPercent(props.test.failureRate)} ({props.test.attempts})</td>
-            <td>{formatDuration(props.test.durationMs)}</td>
-            <td className="mono-cell">{props.test.errorMessage}</td>
-        </tr>
-    )
-}
-
 function FlakyTestRow(props: { test: DashboardFlakyTestMetric; summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
     return (
         <tr>
-            <td><TestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
+            <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
             <td>{props.test.file}</td>
             <td>{formatScore(props.test.flakyScore)}</td>
             <td>{formatPercent(props.test.failRate)}</td>
@@ -417,18 +373,6 @@ function FlakyTestRow(props: { test: DashboardFlakyTestMetric; summary: Dashboar
             <td>{props.test.unstableRuns} / {props.test.totalRuns}</td>
             <td><StatusBadge label={formatStatusLabel(props.test.latestStatus, false)} tone={getStatusTone(props.test.latestStatus, false)} /></td>
         </tr>
-    )
-}
-
-function TestHistoryLink(props: { workspaceSlug: string | null; summary: DashboardSummary; title: string; project: string; file: string }): React.JSX.Element {
-    return (
-        <Link className="entity-link" to={buildTestHistoryHref(props.workspaceSlug, props.title, {
-            branch: props.summary.filters.branch,
-            project: props.project,
-            file: props.file,
-        })}>
-            {props.title}
-        </Link>
     )
 }
 

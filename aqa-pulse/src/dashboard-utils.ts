@@ -144,6 +144,7 @@ export interface DashboardCurrentRunTest {
     flaky: boolean
     durationMs: number
     errorMessage: string | null
+    errorDetails?: string | null
 }
 
 export interface DashboardCurrentRunTests {
@@ -167,10 +168,12 @@ export interface DashboardProblematicTest {
     attempts: number
     failureRate: number
     errorMessage: string
+    errorDetails?: string | null
 }
 
 export interface DashboardErrorCluster {
     message: string
+    sampleMessage?: string
     count: number
     tests: string[]
 }
@@ -183,6 +186,7 @@ export interface DashboardSlowTest {
     flaky: boolean
     durationMs: number
     errorMessage: string | null
+    errorDetails?: string | null
 }
 
 export interface DashboardFlakyTestMetric {
@@ -819,6 +823,7 @@ function collectTopProblematicTests(tests: ReporterTest[]): DashboardProblematic
             const failedAttempts = attempts.filter((attempt) => getAttemptStatus(attempt.status) === 'failed').length
             const attemptsCount = attempts.length > 0 ? attempts.length : safeNumber(test.retries) + 1
             const failureRate = attemptsCount === 0 ? 0 : (failedAttempts / attemptsCount) * 100
+            const errorDetails = extractErrorMessage(test)
 
             return {
                 title: test.title ?? 'Тест без названия',
@@ -830,7 +835,8 @@ function collectTopProblematicTests(tests: ReporterTest[]): DashboardProblematic
                 retries: safeNumber(test.retries),
                 attempts: attemptsCount,
                 failureRate,
-                errorMessage: normalizeErrorMessage(extractErrorMessage(test) ?? '—'),
+                errorMessage: normalizeErrorMessage(errorDetails ?? '—'),
+                errorDetails,
                 severity: getSeverityScore(test, failureRate),
             }
         })
@@ -841,7 +847,7 @@ function collectTopProblematicTests(tests: ReporterTest[]): DashboardProblematic
 }
 
 function collectErrorClusters(tests: ReporterTest[]): DashboardErrorCluster[] {
-    const clusters = new Map<string, { count: number; tests: Set<string> }>()
+    const clusters = new Map<string, { count: number; tests: Set<string>; sampleMessage: string }>()
 
     for (const test of tests) {
         const errorMessage = extractErrorMessage(test)
@@ -862,12 +868,14 @@ function collectErrorClusters(tests: ReporterTest[]): DashboardErrorCluster[] {
         clusters.set(normalizedMessage, {
             count: 1,
             tests: new Set([test.title ?? 'Тест без названия']),
+            sampleMessage: errorMessage,
         })
     }
 
     return [...clusters.entries()]
         .map(([message, cluster]) => ({
             message,
+            sampleMessage: cluster.sampleMessage,
             count: cluster.count,
             tests: [...cluster.tests].slice(0, 3),
         }))
@@ -1024,15 +1032,20 @@ function buildPerformanceMetrics(
         slowestTests: [...tests]
             .sort((left, right) => safeNumber(right.durationMs) - safeNumber(left.durationMs))
             .slice(0, 10)
-            .map((test) => ({
-                title: test.title ?? 'Тест без названия',
-                file: test.location?.file ?? 'неизвестно',
-                project: test.project ?? 'неизвестно',
-                status: getFinalStatus(test),
-                flaky: Boolean(test.flaky),
-                durationMs: safeNumber(test.durationMs),
-                errorMessage: extractErrorMessage(test),
-            })),
+            .map((test) => {
+                const errorDetails = extractErrorMessage(test)
+
+                return {
+                    title: test.title ?? 'Тест без названия',
+                    file: test.location?.file ?? 'неизвестно',
+                    project: test.project ?? 'неизвестно',
+                    status: getFinalStatus(test),
+                    flaky: Boolean(test.flaky),
+                    durationMs: safeNumber(test.durationMs),
+                    errorMessage: errorDetails ? normalizeErrorMessage(errorDetails) : null,
+                    errorDetails,
+                }
+            }),
         phaseBreakdown: buildPhaseBreakdown(tests, totalDurationMs),
         suiteDuration: buildSuiteDuration(tests, totalDurationMs),
         durationPerBrowser: buildDurationPerBrowser(tests, totalDurationMs),
@@ -1591,15 +1604,20 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
 
 export function collectCurrentRunTests(tests: ReporterTest[]): DashboardCurrentRunTests {
     const normalizedTests = tests
-        .map((test) => ({
-            title: test.title ?? 'Тест без названия',
-            file: test.location?.file ?? 'неизвестно',
-            project: test.project ?? 'неизвестно',
-            status: getFinalStatus(test),
-            flaky: Boolean(test.flaky),
-            durationMs: safeNumber(test.durationMs),
-            errorMessage: extractErrorMessage(test),
-        }))
+        .map((test) => {
+            const errorDetails = extractErrorMessage(test)
+
+            return {
+                title: test.title ?? 'Тест без названия',
+                file: test.location?.file ?? 'неизвестно',
+                project: test.project ?? 'неизвестно',
+                status: getFinalStatus(test),
+                flaky: Boolean(test.flaky),
+                durationMs: safeNumber(test.durationMs),
+                errorMessage: errorDetails ? normalizeErrorMessage(errorDetails) : null,
+                errorDetails,
+            }
+        })
         .sort((left, right) => left.title.localeCompare(right.title, 'ru'))
 
     return {

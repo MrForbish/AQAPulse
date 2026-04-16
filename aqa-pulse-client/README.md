@@ -4,7 +4,7 @@
 
 Он остаётся для существующих сценариев, где нужен string-based HTML renderer, но новый UI и дальнейшее развитие продукта идут через React runtime в `aqa-pulse-server`.
 
-Если нужны только browser-safe formatting helpers, locale, bootstrap parsing или Dashboard/TestHistory types, используй `aqa-pulse-browser`, а не этот пакет.
+Если нужны только browser-safe formatting helpers, metric heading helpers, locale, bootstrap parsing или Dashboard/TestHistory types, используй `aqa-pulse-browser`, а не этот пакет.
 
 Retirement roadmap:
 
@@ -30,7 +30,7 @@ Retirement roadmap:
 - `ru`
 - type exports: `DashboardAdvancedMetrics`, `DashboardAvailableFilters`, `DashboardFilters`, `DashboardKpis`, `DashboardRunMetadata`, `DashboardSummary`, `TestHistoryConflict`, `TestHistoryResponse`
 
-Новый код не должен брать browser-safe utilities/types отсюда: для этого есть `aqa-pulse-browser`.
+Новый код не должен брать browser-safe utilities, metric heading helpers или types отсюда: для этого есть `aqa-pulse-browser`.
 
 Пакет содержит только клиентский runtime-код и публичные декларации типов.
 Backend-логика, CLI, API-сервер и файловая обработка в пакет не публикуются.

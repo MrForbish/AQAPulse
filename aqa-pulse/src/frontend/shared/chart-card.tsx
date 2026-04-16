@@ -27,6 +27,9 @@ export interface ChartCardProps {
     titleMetricKey?: string
     type: FrontendChartType
     data: FrontendChartData
+    showLegend?: boolean
+    aside?: React.ReactNode
+    className?: string
 }
 
 interface ChartInstance {
@@ -42,6 +45,7 @@ type ChartConstructor = new (
             maintainAspectRatio: boolean
             plugins: {
                 legend: {
+                    display: boolean
                     labels: {
                         color: string
                     }
@@ -98,6 +102,7 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
+                            display: props.showLegend ?? true,
                             labels: {
                                 color: '#d7deeb',
                             },
@@ -123,12 +128,15 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
             isDisposed = true
             chart?.destroy()
         }
-    }, [props.data, props.type])
+    }, [props.data, props.showLegend, props.type])
 
     return (
-        <Panel title={props.title} description={props.description} titleTooltip={props.titleTooltip} titleMetricKey={props.titleMetricKey} className="chart-panel">
-            <div className="chart-frame">
-                <canvas ref={canvasRef} />
+        <Panel title={props.title} description={props.description} titleTooltip={props.titleTooltip} titleMetricKey={props.titleMetricKey} className={['chart-panel', props.className].filter(Boolean).join(' ')}>
+            <div className={['chart-layout', props.aside ? 'has-aside' : ''].filter(Boolean).join(' ')}>
+                <div className="chart-frame">
+                    <canvas ref={canvasRef} />
+                </div>
+                {props.aside ? <div className="chart-aside">{props.aside}</div> : null}
             </div>
         </Panel>
     )

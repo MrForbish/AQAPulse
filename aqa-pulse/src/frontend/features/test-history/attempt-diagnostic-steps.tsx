@@ -44,7 +44,7 @@ function DiagnosticStepCard(props: {
     const meta = `${node.step.category ?? HISTORY_TEXT.diagnostics.noCategory} • depth ${node.step.depth} • ${formatDuration(node.step.durationMs)}`
 
     return (
-        <div className={`step-card step-tree-node-react${node.step.isFailurePoint ? ' is-failure' : ''}${node.step.depth === 2 ? ' is-nested' : ''}`}>
+        <div className={`step-card step-tree-node-react${node.step.isFailurePoint ? ' is-failure' : ''}${node.step.depth === 2 ? ' is-nested' : ''}`} data-step-depth={node.step.depth}>
             <div id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className="step-tree-body-react">
                 <div className="stack-item-header">
                     <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />

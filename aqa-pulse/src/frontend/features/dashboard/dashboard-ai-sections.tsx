@@ -23,7 +23,7 @@ export function DashboardAiOverviewMetrics(props: { summary: DashboardSummary })
                 labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList}
                 value={String(summary.errorClusters.length)}
                 tone={summary.errorClusters.length > 0 ? 'warn' : 'good'}
-                hint={<DashboardClusterMetricHint cluster={summary.errorClusters[0]} emptyLabel="Root-cause clusters unavailable" />}
+                hint={<DashboardClusterMetricHint cluster={summary.errorClusters[0]} emptyLabel="Root-cause clusters unavailable" showTrace={false} />}
             />
             <MetricCard label="Signal coverage" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.signalCoverage} value={`${signalCoverage}%`} tone={signalCoverage >= 75 ? 'good' : signalCoverage >= 45 ? 'warn' : 'danger'} hint="Готовность данных для heuristics/ML" />
             <MetricCard label="First flake to fix" labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={summary.flakyAnalytics.firstFlakeToFix ? `${summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} hint="Исторический feedback loop" />

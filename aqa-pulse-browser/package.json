@@ -2,7 +2,7 @@
   "name": "aqa-pulse-browser",
   "version": "0.1.0",
   "private": false,
-  "description": "Public browser-safe utilities, bootstrap helpers, locale, and types for AQA Pulse integrations",
+  "description": "Public browser-safe utilities, metric heading helpers, bootstrap helpers, locale, and types for AQA Pulse integrations",
   "license": "UNLICENSED",
   "keywords": [
     "playwright",

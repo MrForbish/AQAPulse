@@ -82,6 +82,7 @@ export function DashboardCurrentRunTestsBrowserSection(props: { summary: Dashboa
                 ))}
             </div>
             <DashboardTable
+                className="current-run-tests-table-wrap"
                 headers={[
                     DASHBOARD_TEXT.tables.test,
                     DASHBOARD_TEXT.tables.file,

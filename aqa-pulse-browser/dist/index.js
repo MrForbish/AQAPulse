@@ -1,10 +1,13 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.parseFrontendBootstrap = exports.createEmptyFrontendBootstrap = exports.ru = exports.formatPercent = exports.formatDuration = exports.formatDate = void 0;
+exports.parseFrontendBootstrap = exports.createEmptyFrontendBootstrap = exports.ru = exports.METRIC_INFO_STYLES = exports.renderMetricHeading = exports.formatPercent = exports.formatDuration = exports.formatDate = void 0;
 var formatting_1 = require('./shared/formatting');
 Object.defineProperty(exports, 'formatDate', { enumerable: true, get: function () { return formatting_1.formatDate; } });
 Object.defineProperty(exports, 'formatDuration', { enumerable: true, get: function () { return formatting_1.formatDuration; } });
 Object.defineProperty(exports, 'formatPercent', { enumerable: true, get: function () { return formatting_1.formatPercent; } });
+var render_metric_info_1 = require('./render-metric-info');
+Object.defineProperty(exports, 'renderMetricHeading', { enumerable: true, get: function () { return render_metric_info_1.renderMetricHeading; } });
+Object.defineProperty(exports, 'METRIC_INFO_STYLES', { enumerable: true, get: function () { return render_metric_info_1.METRIC_INFO_STYLES; } });
 var ru_1 = require('./shared/i18n/ru');
 Object.defineProperty(exports, 'ru', { enumerable: true, get: function () { return ru_1.ru; } });
 var frontend_bootstrap_1 = require('./frontend-bootstrap');

@@ -31,7 +31,7 @@
 
 `renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как deprecated compatibility layer.
 
-Browser-safe shared utilities, bootstrap helpers, locale и публичные Dashboard/TestHistory types для новых интеграций теперь публикуются через `aqa-pulse-browser`, а не через deprecated renderer package.
+Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale и публичные Dashboard/TestHistory types для новых интеграций теперь публикуются через `aqa-pulse-browser`, а не через deprecated renderer package.
 
 Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит compatibility HTML renderer в стандартный build output.
 
@@ -48,7 +48,7 @@ Browser-safe shared utilities, bootstrap helpers, locale и публичные D
 - корневой пакет: utilities + history/api types + frontend bootstrap helpers;
 - `aqa-pulse/core`: core utilities без compatibility HTML renderer surface;
 - `aqa-pulse/client`: browser-safe formatting/bootstrap/types без HTML renderer surface;
-- `aqa-pulse-browser`: публичный browser-safe package с formatting/bootstrap/types для внешних интеграций без deprecated renderer API;
+- `aqa-pulse-browser`: публичный browser-safe package с formatting, metric-heading helpers, bootstrap/types для внешних интеграций без deprecated renderer API;
 - `aqa-pulse/react`: React pages, runtime provider, admin auth building blocks, shared UI components и admin hooks/API helpers для embedded usage;
 - `aqa-pulse/hooks`: React hooks для dashboard/test-history data flows;
 - `aqa-pulse/types`: type-only re-exports для интеграций.

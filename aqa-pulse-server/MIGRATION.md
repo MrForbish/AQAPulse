@@ -7,7 +7,7 @@
 - Основной пользовательский интерфейс AQA Pulse теперь развивается через React runtime.
 - Self-hosted сценарий идет через `aqa-pulse-server`.
 - `aqa-pulse-client` остается только как compatibility layer для существующих интеграций со string-based HTML renderer API.
-- browser-safe formatting/bootstrap/types для новых интеграций теперь публикуются через `aqa-pulse-browser`.
+- browser-safe formatting/bootstrap/types и metric heading helpers для новых интеграций теперь публикуются через `aqa-pulse-browser`.
 - Исходники deprecated compatibility renderer теперь живут в самом `aqa-pulse-client`; пакет `aqa-pulse` больше не держит этот renderer как часть собственного source/build surface.
 - Compatibility renderer API уже помечен как deprecated и будет постепенно выводиться из активного продукта.
 - Backend/domain/infra модули вроде `contracts.ts`, `jwt.ts`, `sqlite-migrate.ts` не мигрируют в React: они остаются серверным и операционным слоем, который новый UI использует через API, bootstrap и shared contracts.
@@ -51,7 +51,7 @@
 - `renderTestHistoryHtml(...)`
 - `renderMetricHeading(...)`
 
-Но если твоя интеграция использует только formatting helpers, locale, bootstrap parsing или Dashboard/TestHistory types, переходи сразу на `aqa-pulse-browser` и не держись за deprecated renderer package.
+Но если твоя интеграция использует только formatting helpers, metric heading helpers, locale, bootstrap parsing или Dashboard/TestHistory types, переходи сразу на `aqa-pulse-browser` и не держись за deprecated renderer package.
 
 Но нужно учитывать ограничения:
 
@@ -81,7 +81,7 @@
 
 - `aqa-pulse-server` для full product/self-hosted;
 - `aqa-pulse` для build-time utilities и static build workflow;
-- `aqa-pulse-browser` для publishable browser-safe formatting/bootstrap/types;
+- `aqa-pulse-browser` для publishable browser-safe formatting/bootstrap/types и metric heading helpers;
 - `aqa-pulse-client` только как compatibility package для deprecated HTML renderer API.
 
 ## Embedded React path

@@ -31,7 +31,7 @@ Type exports, которые сейчас тоже являются публич
 ## Replacement status
 
 - `renderDashboardHtml` и `renderTestHistoryHtml`: replacement path уже определён через `aqa-pulse-server` или React/static runtime из `aqa-pulse`.
-- `renderMetricHeading` и `METRIC_INFO_STYLES`: replacement есть только внутри React/runtime codebase; стабильного published replacement API пока нет.
+- `renderMetricHeading` и `METRIC_INFO_STYLES`: published replacement теперь есть в `aqa-pulse-browser`.
 - `formatDate`, `formatDuration`, `formatPercent`, `ru`: published replacement теперь есть в `aqa-pulse-browser`.
 - `Dashboard*` и `TestHistory*` types: published replacement теперь есть в `aqa-pulse-browser`.
 
@@ -45,7 +45,7 @@ Type exports, которые сейчас тоже являются публич
 
 1. Подтвердить, что ни один внешний consumer больше не использует root exports пакета.
 2. Перевести всех non-renderer consumers на `aqa-pulse-browser`.
-3. Найти published replacement или окончательное удаление для `renderMetricHeading` и `METRIC_INFO_STYLES`, если они всё ещё используются вне deprecated renderer path.
+3. Подтвердить, что `renderMetricHeading` и `METRIC_INFO_STYLES` больше не нужны как reason to keep `aqa-pulse-client` for non-renderer integrations.
 4. Перевести docs и quickstarts на финальную картину без compatibility package.
 5. Удалить package metadata/build scripts и сам source tree `aqa-pulse-client` после зелёной compile/smoke в оставшемся monorepo.
 

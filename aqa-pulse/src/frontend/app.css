@@ -660,9 +660,54 @@ input {
     min-height: 360px;
 }
 
+.chart-layout {
+    display: grid;
+    gap: 18px;
+    align-items: center;
+}
+
+.chart-layout.has-aside {
+    grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.95fr);
+}
+
 .chart-frame {
     position: relative;
     min-height: 280px;
+}
+
+.chart-aside,
+.status-distribution-metrics {
+    display: grid;
+    gap: 10px;
+}
+
+.status-distribution-metric {
+    display: grid;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(133, 157, 194, 0.14);
+    background: rgba(7, 15, 27, 0.72);
+}
+
+.status-distribution-metric-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.status-distribution-metric-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+}
+
+.status-distribution-metric-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
 }
 
 .status-strip {
@@ -748,6 +793,19 @@ input {
 
 .table-wrap {
     overflow: auto;
+}
+
+.current-run-tests-table-wrap {
+    max-height: min(360px, 52vh);
+    scrollbar-gutter: stable;
+}
+
+.current-run-tests-table-wrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: rgba(12, 21, 37, 0.96);
+    backdrop-filter: blur(10px);
 }
 
 .compact-top {
@@ -1027,12 +1085,19 @@ th {
     overflow: hidden;
 }
 
+.attempt-list-scroll-react {
+    max-height: min(540px, 60vh);
+    overflow: auto;
+    padding-right: 6px;
+    scrollbar-gutter: stable;
+}
+
 .attempt-card summary {
     display: flex;
     justify-content: space-between;
     align-items: start;
     gap: 16px;
-    padding: 18px;
+    padding: 16px;
     cursor: pointer;
     list-style: none;
 }
@@ -1043,8 +1108,8 @@ th {
 
 .attempt-card-body {
     display: grid;
-    gap: 14px;
-    padding: 0 18px 18px;
+    gap: 12px;
+    padding: 0 16px 16px;
 }
 
 .attempt-section-title-react {
@@ -1108,6 +1173,14 @@ th {
 
 .step-tree-node-react.is-nested {
     background: rgba(10, 21, 38, 0.8);
+}
+
+.step-tree-node-react[data-step-depth='1'] {
+    border-color: rgba(14, 165, 233, 0.16);
+}
+
+.step-tree-node-react[data-step-depth='2'] {
+    border-color: rgba(133, 157, 194, 0.1);
 }
 
 .step-tree-body-react {
@@ -1555,6 +1628,7 @@ th {
     .status-strip,
     .status-switcher,
     .summary-strip,
+    .chart-layout.has-aside,
     .filters-grid,
     .signal-grid,
     .incident-grid-react {
@@ -1572,6 +1646,7 @@ th {
     .status-strip,
     .status-switcher,
     .summary-strip,
+    .chart-layout.has-aside,
     .filters-grid,
     .signal-grid,
     .incident-grid-react {
@@ -1588,6 +1663,11 @@ th {
     .stacked-bar-copy {
         flex-direction: column;
         align-items: start;
+    }
+
+    .current-run-tests-table-wrap,
+    .attempt-list-scroll-react {
+        max-height: none;
     }
 
     .trace-disclosure-dialog-react {

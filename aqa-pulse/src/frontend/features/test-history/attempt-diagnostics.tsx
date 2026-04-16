@@ -20,7 +20,7 @@ export function AttemptDiagnostics(props: {
     }
 
     return (
-        <div className="attempt-list-react">
+        <div className="attempt-list-react attempt-list-scroll-react">
             <div className="inline-note is-info">{HISTORY_TEXT.diagnostics.retriesHint}</div>
             {props.attempts.map((attempt) => (
                 <details key={attempt.attempt} className="attempt-card" open={attempt.attempt === props.attempts[0]?.attempt}>

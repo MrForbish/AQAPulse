@@ -216,7 +216,7 @@ export function buildDiagnosticStepTree(
     steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
 ): DiagnosticStepTreeNode[] {
     const roots: DiagnosticStepTreeNode[] = []
-    let currentDepthOneTestStep: DiagnosticStepTreeNode | null = null
+    const nodesByDepth: Array<DiagnosticStepTreeNode | null> = [null, null, null]
 
     steps.forEach((step, stepIndex) => {
         const node: DiagnosticStepTreeNode = {
@@ -224,14 +224,19 @@ export function buildDiagnosticStepTree(
             stepIndex,
             children: [],
         }
+        const parentNode = step.depth > 1 ? nodesByDepth[step.depth - 1] : null
 
-        if (step.depth === 2 && currentDepthOneTestStep) {
-            currentDepthOneTestStep.children.push(node)
-            return
+        if (parentNode) {
+            parentNode.children.push(node)
+        } else {
+            roots.push(node)
         }
 
-        roots.push(node)
-        currentDepthOneTestStep = step.category === 'test.step' && step.depth === 1 ? node : null
+        nodesByDepth[step.depth] = node
+
+        for (let depth = step.depth + 1; depth < nodesByDepth.length; depth += 1) {
+            nodesByDepth[depth] = null
+        }
     })
 
     return roots

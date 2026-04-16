@@ -6,6 +6,7 @@ import { type FrontendChartData } from '../../shared/chart-card'
 import { DashboardEmptyTableRow, DashboardTable } from './dashboard-test-table-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
+export const DASHBOARD_STATUS_CHART_COLORS = ['#0f766e', '#ea580c', '#ca8a04', '#1d4ed8', '#64748b', '#b91c1c']
 
 export function DashboardBreakdownTable(props: { labelColumn: string; items: DashboardDurationBreakdownItem[]; emptyMessage: string }): React.JSX.Element {
     return (
@@ -58,7 +59,7 @@ export function buildDashboardDoughnutChart(labels: string[], values: number[]):
         datasets: [
             {
                 data: values,
-                backgroundColor: ['#0f766e', '#ea580c', '#ca8a04', '#1d4ed8', '#64748b', '#b91c1c'],
+                backgroundColor: DASHBOARD_STATUS_CHART_COLORS,
                 borderWidth: 0,
             },
         ],

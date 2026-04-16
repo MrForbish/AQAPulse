@@ -8,8 +8,12 @@ import { formatDate, formatDuration, formatPercent } from '../../../shared/forma
 import { ru } from '../../../shared/i18n/ru'
 import { formatCommit, formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
 import {
+    buildAttachmentHref,
     buildHistoryRowAnchor,
+    buildStepAnchor,
+    canInlineMarkdownPreview,
     findCurrentStabilityStreak,
+    findIncidentStepAnchor,
     findLatestStableRecovery,
     findUnstableStreakBeforeRecovery,
     formatCurrentStabilityDescription,
@@ -17,6 +21,8 @@ import {
     formatTemplate,
     getUnstableEventLabel,
     getUnstableHistoryItems,
+    isImageAttachment,
+    isMarkdownAttachment,
 } from '../../../shared/test-history-helpers'
 import { useTestHistoryData } from '../../hooks/use-test-history'
 import {
@@ -121,6 +127,7 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
     const unstableStreakBeforeRecovery = findUnstableStreakBeforeRecovery(payload.history)
     const incidentLead = payload.incidentSummary ? extractIncidentLead(payload.incidentSummary.summary) : null
     const incidentPrimarySignal = payload.incidentSummary?.failureStepErrorMessage ?? payload.incidentSummary?.latestErrorMessage ?? null
+    const failureStepAnchor = payload.incidentSummary ? findIncidentStepAnchor(payload.history, payload.incidentSummary.failureStepTitle) : null
 
     return (
         <PageFrame>
@@ -180,6 +187,11 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                         <div className="detail-card-react">
                             <span className="metric-label">{HISTORY_TEXT.incident.failureStepLabel}</span>
                             <strong>{payload.incidentSummary.failureStepTitle ?? payload.incidentSummary.failureStepCategory ?? HISTORY_TEXT.incident.notCaptured}</strong>
+                            {failureStepAnchor ? (
+                                <div className="anchor-link-row compact-top">
+                                    <a className="ghost-link" href={`#${failureStepAnchor}`}>{HISTORY_TEXT.incident.jumpToFailureStep}</a>
+                                </div>
+                            ) : null}
                         </div>
                         <div className="detail-card-react">
                             <span className="metric-label">{HISTORY_TEXT.incident.primarySignalLabel}</span>
@@ -434,10 +446,8 @@ function AttemptDiagnostics(props: {
     }
 
     return (
-/**
- * Static mode не умеет безопасно отдавать архивные артефакты, поэтому attachment href строится только для server/runtime сценария или когда attachment уже содержит внешний URL.
- */
         <div className="attempt-list-react">
+            <div className="inline-note is-info">{HISTORY_TEXT.diagnostics.retriesHint}</div>
             {props.attempts.map((attempt) => (
                 <details key={attempt.attempt} className="attempt-card" open={attempt.attempt === props.attempts[0]?.attempt}>
                     <summary>
@@ -448,28 +458,50 @@ function AttemptDiagnostics(props: {
                         <StatusBadge label={formatStatusLabel(attempt.status, false)} tone={getStatusTone(attempt.status, false)} />
                     </summary>
                     <div className="attempt-card-body">
+                        <div className="meta-badge-row">
+                            <span className="meta-badge">{HISTORY_TEXT.diagnostics.startTime}: {formatOptionalDate(attempt.startTime)}</span>
+                            <span className="meta-badge">{HISTORY_TEXT.diagnostics.steps}: {attempt.steps.length}</span>
+                            <span className="meta-badge">{HISTORY_TEXT.diagnostics.attachments}: {attempt.attachments.length}</span>
+                        </div>
                         {attempt.errorMessage ? <div className="mono-cell">{attempt.errorMessage}</div> : null}
                         {attempt.steps.length > 0 ? (
-                            <div className="step-list-react">
-                                {attempt.steps.map((step, index) => (
-                                    <div key={`${attempt.attempt}-${index}-${step.title}`} className={`step-card${step.isFailurePoint ? ' is-failure' : ''}`}>
-                                        <div className="stack-item-header">
-                                            <strong>{step.title}</strong>
-                                            {step.status ? <StatusBadge label={formatStatusLabel(step.status, false)} tone={getStatusTone(step.status, false)} /> : null}
-                                        </div>
-                                        <div className="subtle-copy">{step.category ?? HISTORY_TEXT.diagnostics.noCategory} • {formatDuration(step.durationMs)}</div>
-                                        {step.errorMessage ? <div className="mono-cell compact-top">{step.errorMessage}</div> : null}
+                            <details className="attempt-step-group-react" open={Boolean(attempt.errorMessage)}>
+                                <summary className="attachment-preview-summary-react">
+                                    <span className="attempt-section-title-react">{HISTORY_TEXT.diagnostics.stepsTitle}</span>
+                                    <span className="meta-badge">{attempt.steps.length}</span>
+                                </summary>
+                                <div className="attachment-preview-body-react">
+                                    <div className="step-list-react">
+                                        {attempt.steps.map((step, index) => (
+                                            <div id={buildStepAnchor(props.runId, attempt.attempt, index)} key={`${attempt.attempt}-${index}-${step.title}`} className={`step-card${step.isFailurePoint ? ' is-failure' : ''}`}>
+                                                <div className="stack-item-header">
+                                                    <strong>{step.title}</strong>
+                                                    {step.status ? <StatusBadge label={formatStatusLabel(step.status, false)} tone={getStatusTone(step.status, false)} /> : null}
+                                                </div>
+                                                <div className="subtle-copy">{step.category ?? HISTORY_TEXT.diagnostics.noCategory} • {formatDuration(step.durationMs)}</div>
+                                                {step.isFailurePoint ? (
+                                                    <div className="step-meta-row-react compact-top">
+                                                        <span className="meta-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
+                                                    </div>
+                                                ) : null}
+                                                {step.errorMessage ? <div className="mono-cell compact-top">{step.errorMessage}</div> : null}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            </details>
                         ) : null}
                         {attempt.attachments.length > 0 ? (
-                            <div className="attachment-grid-react">
-                                {attempt.attachments.map((attachment) => (
-                                    <AttachmentCard key={`${attachment.name}-${attachment.path ?? attachment.url ?? 'inline'}`} runId={props.runId} attachment={attachment} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} />
-                                ))}
-                            </div>
+                            <>
+                                <div className="attempt-section-title-react">{HISTORY_TEXT.diagnostics.attachmentsTitle}</div>
+                                <div className="attachment-grid-react">
+                                    {attempt.attachments.map((attachment) => (
+                                        <AttachmentCard key={`${attachment.name}-${attachment.path ?? attachment.url ?? 'inline'}`} runId={props.runId} attachment={attachment} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} />
+                                    ))}
+                                </div>
+                            </>
                         ) : null}
+                        {!attempt.errorMessage && attempt.steps.length === 0 && attempt.attachments.length === 0 ? <div className="subtle-copy">{HISTORY_TEXT.diagnostics.emptyAttempt}</div> : null}
                     </div>
                 </details>
             ))}
@@ -478,16 +510,75 @@ function AttemptDiagnostics(props: {
 }
 
 function AttachmentCard(props: { runId: string; attachment: TestHistoryAttachment; artifactBasePath: string; isStaticMode: boolean }): React.JSX.Element {
-    const href = buildAttachmentHref(props.runId, props.attachment, props.artifactBasePath, props.isStaticMode)
-    const isImage = isImageAttachment(props.attachment)
+    const href = resolveAttachmentHref(props.runId, props.attachment, props.artifactBasePath, props.isStaticMode)
+    const imagePreviewAvailable = Boolean(href && isImageAttachment(props.attachment))
+    const markdownPreviewAvailable = Boolean(href && isMarkdownAttachment(props.attachment) && canInlineMarkdownPreview(href))
+    const imagePreviewHref = imagePreviewAvailable ? href : null
+    const [isMarkdownOpen, setIsMarkdownOpen] = React.useState(false)
+    const [markdownState, setMarkdownState] = React.useState<{ status: 'idle' | 'loading' | 'success' | 'error'; content: string }>({ status: 'idle', content: '' })
+
+    React.useEffect(() => {
+        if (!isMarkdownOpen || !markdownPreviewAvailable || !href || markdownState.status !== 'idle') {
+            return
+        }
+
+        let isDisposed = false
+        setMarkdownState({ status: 'loading', content: '' })
+
+        fetch(href)
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Markdown preview request failed with ${response.status}`)
+                }
+
+                return response.text()
+            })
+            .then((content) => {
+                if (!isDisposed) {
+                    setMarkdownState({ status: 'success', content })
+                }
+            })
+            .catch(() => {
+                if (!isDisposed) {
+                    setMarkdownState({ status: 'error', content: '' })
+                }
+            })
+
+        return () => {
+            isDisposed = true
+        }
+    }, [href, isMarkdownOpen, markdownPreviewAvailable, markdownState.status])
 
     return (
         <article className="attachment-card-react">
-            <strong>{props.attachment.name}</strong>
+            <div className="stack-item-header">
+                <strong>{props.attachment.name}</strong>
+                {props.attachment.contentType ? <span className="meta-badge">{props.attachment.contentType}</span> : null}
+            </div>
             <div className="subtle-copy">{props.attachment.contentType ?? 'unknown'}</div>
-            {href && isImage ? <a href={href} target="_blank" rel="noreferrer"><img className="attachment-thumb" src={href} alt={props.attachment.name} loading="lazy" /></a> : null}
-            <div className="mono-cell compact-top">{props.attachment.path ?? props.attachment.url ?? '—'}</div>
+            <div className="mono-cell compact-top">{props.attachment.path ?? props.attachment.url ?? HISTORY_TEXT.diagnostics.attachmentLocationMissing}</div>
             {href ? <a className="ghost-link compact-top" href={href} target="_blank" rel="noreferrer">{HISTORY_TEXT.diagnostics.openAttachment}</a> : null}
+            {imagePreviewHref ? (
+                <details className="attachment-preview-react compact-top">
+                    <summary className="attachment-preview-summary-react">{HISTORY_TEXT.diagnostics.inlineImagePreview}</summary>
+                    <div className="attachment-preview-body-react">
+                        <a href={imagePreviewHref} target="_blank" rel="noreferrer">
+                            <img className="attachment-image-preview-react" src={imagePreviewHref} alt={props.attachment.name} loading="lazy" />
+                        </a>
+                        <div className="attachment-image-hint-react">{HISTORY_TEXT.diagnostics.expandImageHint}</div>
+                    </div>
+                </details>
+            ) : null}
+            {markdownPreviewAvailable ? (
+                <details className="attachment-preview-react compact-top" onToggle={(event) => setIsMarkdownOpen((event.currentTarget as HTMLDetailsElement).open)}>
+                    <summary className="attachment-preview-summary-react">{HISTORY_TEXT.diagnostics.inlineMarkdownPreview}</summary>
+                    <div className="attachment-preview-body-react">
+                        {markdownState.status === 'loading' ? <div className="attachment-preview-loading-react">{HISTORY_TEXT.diagnostics.loadingMarkdownPreview}</div> : null}
+                        {markdownState.status === 'error' ? <div className="attachment-preview-error-react">{HISTORY_TEXT.diagnostics.markdownPreviewUnavailable}</div> : null}
+                        {markdownState.status === 'success' ? <pre className="attachment-markdown-preview-react">{markdownState.content}</pre> : null}
+                    </div>
+                </details>
+            ) : null}
         </article>
     )
 }
@@ -515,7 +606,7 @@ function buildCandidateHref(
     return `${pathname}?${searchParams.toString()}`
 }
 
-function buildAttachmentHref(runId: string, attachment: TestHistoryAttachment, artifactBasePath: string, isStaticMode: boolean): string | null {
+function resolveAttachmentHref(runId: string, attachment: TestHistoryAttachment, artifactBasePath: string, isStaticMode: boolean): string | null {
     if (attachment.url) {
         return attachment.url
     }
@@ -524,28 +615,7 @@ function buildAttachmentHref(runId: string, attachment: TestHistoryAttachment, a
         return null
     }
 
-    if (!attachment.path) {
-        return null
-    }
-
-    const normalizedRunId = runId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'run'
-    const normalizedPath = attachment.path.replace(/\\/g, '/').replace(/^\/+/, '')
-
-    if (!normalizedPath.startsWith(`${normalizedRunId}/`)) {
-        return null
-    }
-
-    return `${artifactBasePath}/${encodeURIComponent(runId)}?path=${encodeURIComponent(normalizedPath)}`
-}
-
-function isImageAttachment(attachment: TestHistoryAttachment): boolean {
-    const contentType = attachment.contentType?.toLowerCase() ?? ''
-
-    if (contentType.startsWith('image/')) {
-        return true
-    }
-
-    return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(attachment.path ?? attachment.url ?? attachment.name)
+    return buildAttachmentHref(runId, attachment, artifactBasePath)
 }
 
 function formatOptionalDate(value: string | null): string {

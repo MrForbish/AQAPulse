@@ -12,18 +12,26 @@ import {
     normalizeOptionalFilter as normalizeSharedOptionalFilter,
 } from './shared/navigation'
 import {
+    buildAttachmentHref as buildSharedAttachmentHref,
     buildHistoryRowAnchor as buildSharedHistoryRowAnchor,
+    buildStepAnchor as buildSharedStepAnchor,
+    canInlineMarkdownPreview as canInlineSharedMarkdownPreview,
     findCurrentStabilityStreak as findSharedCurrentStabilityStreak,
+    findIncidentStepAnchor as findSharedIncidentStepAnchor,
     findLatestStableRecovery as findSharedLatestStableRecovery,
     findUnstableStreakBeforeRecovery as findSharedUnstableStreakBeforeRecovery,
     formatCurrentStabilityDescription as formatSharedCurrentStabilityDescription,
     formatRunsLabel as formatSharedRunsLabel,
     formatTemplate as formatSharedTemplate,
+    getAttachmentReference as getSharedAttachmentReference,
     getRunWord as getSharedRunWord,
     getUnstableEventLabel as getSharedUnstableEventLabel,
     getUnstableHistoryItems as getSharedUnstableHistoryItems,
+    isImageAttachment as isSharedImageAttachment,
+    isMarkdownAttachment as isSharedMarkdownAttachment,
     isStableHistoryItem as isSharedStableHistoryItem,
     isUnstableHistoryItem as isSharedUnstableHistoryItem,
+    normalizeAnchorLookupValue as normalizeSharedAnchorLookupValue,
 } from './shared/test-history-helpers'
 import { ru } from './shared/i18n/ru'
 import { escapeHtml } from './shared/text-utils'
@@ -550,43 +558,15 @@ export function findIncidentStepAnchor(
     history: TestHistoryResponse['history'],
     failureStepTitle: string | null,
 ): string | null {
-    const normalizedTarget = normalizeAnchorLookupValue(failureStepTitle)
-
-    if (!normalizedTarget) {
-        return null
-    }
-
-    const latestRun = history[0]
-    const latestUnstable = getUnstableHistoryItems(history)[0]
-    const candidates = [latestRun, latestUnstable].filter((item, index, collection): item is NonNullable<typeof item> => Boolean(item) && collection.findIndex((candidate) => candidate?.runId === item?.runId) === index)
-
-    for (const item of candidates) {
-        for (const attempt of item.attemptDetails) {
-            for (const [stepIndex, step] of attempt.steps.entries()) {
-                const normalizedStepTitle = normalizeAnchorLookupValue(step.title)
-
-                if (normalizedStepTitle === normalizedTarget) {
-                    return buildStepAnchor(item.runId, attempt.attempt, stepIndex)
-                }
-            }
-        }
-    }
-
-    return null
+    return findSharedIncidentStepAnchor(history, failureStepTitle)
 }
 
 export function normalizeAnchorLookupValue(value: string | null | undefined): string | null {
-    if (typeof value !== 'string') {
-        return null
-    }
-
-    const normalized = value.trim().replace(/\s+/g, ' ').toLowerCase()
-    return normalized.length > 0 ? normalized : null
+    return normalizeSharedAnchorLookupValue(value)
 }
 
 export function buildStepAnchor(runId: string, attemptNumber: number, stepIndex: number): string {
-    const runSlug = runId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'run'
-    return `step-${runSlug}-a${attemptNumber}-s${stepIndex + 1}`
+    return buildSharedStepAnchor(runId, attemptNumber, stepIndex)
 }
 
 export function renderAttachmentDetail(
@@ -648,57 +628,29 @@ export function buildAttachmentHref(
     attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
     artifactBasePath: string,
 ): string | null {
-    if (attachment.url) {
-        return attachment.url
-    }
-
-    if (!artifactBasePath || !attachment.path) {
-        return null
-    }
-
-    const normalizedRunId = runId
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') || 'run'
-    const normalizedPath = attachment.path.replace(/\\/g, '/').replace(/^\/+/, '')
-
-    if (!normalizedPath.startsWith(`${normalizedRunId}/`)) {
-        return null
-    }
-
-    return `${artifactBasePath}/${encodeURIComponent(runId)}?path=${encodeURIComponent(normalizedPath)}`
+    return buildSharedAttachmentHref(runId, attachment, artifactBasePath)
 }
 
 export function isImageAttachment(
     attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
 ): boolean {
-    const contentType = attachment.contentType?.toLowerCase() ?? ''
-    if (contentType.startsWith('image/')) {
-        return true
-    }
-
-    return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(getAttachmentReference(attachment))
+    return isSharedImageAttachment(attachment)
 }
 
 export function isMarkdownAttachment(
     attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
 ): boolean {
-    const contentType = attachment.contentType?.toLowerCase() ?? ''
-    if (contentType.includes('markdown')) {
-        return true
-    }
-
-    return /\.(md|markdown|mdx)$/i.test(getAttachmentReference(attachment))
+    return isSharedMarkdownAttachment(attachment)
 }
 
 export function canInlineMarkdownPreview(href: string): boolean {
-    return !/^[a-z][a-z0-9+.-]*:/i.test(href)
+    return canInlineSharedMarkdownPreview(href)
 }
 
 export function getAttachmentReference(
     attachment: TestHistoryResponse['history'][number]['attemptDetails'][number]['attachments'][number],
 ): string {
-    return attachment.path ?? attachment.url ?? attachment.name
+    return getSharedAttachmentReference(attachment)
 }
 
 export function findLatestStableRecovery(history: TestHistoryResponse['history']): {

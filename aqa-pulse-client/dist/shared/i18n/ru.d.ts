@@ -1,6 +1,6 @@
 export declare const ru: {
     readonly dashboard: {
-        readonly title: "AQA Pulse — observability Playwright";
+        readonly title: "AQA Pulse — Unified Quality Assurance Platform";
         readonly badge: "Observability Playwright";
         readonly sourceHint: "Источник:";
         readonly generatedAt: "Отчёт построен";

@@ -3,6 +3,8 @@ import { formatStatusLabel } from './dashboard-helpers'
 import { ru } from './i18n/ru'
 
 const HISTORY_TEXT = ru.testHistory
+type TestHistoryItem = TestHistoryResponse['history'][number]
+type TestHistoryAttachment = TestHistoryItem['attemptDetails'][number]['attachments'][number]
 
 export function buildHistoryRowAnchor(runId: string): string {
     const normalizedId = runId
@@ -187,4 +189,97 @@ export function formatCurrentStabilityDescription(streak: ReturnType<typeof find
         count: String(streak.count),
         event: getUnstableEventLabel(streak.previousUnstable),
     })
+}
+
+export function normalizeAnchorLookupValue(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') {
+        return null
+    }
+
+    const normalized = value.trim().replace(/\s+/g, ' ').toLowerCase()
+    return normalized.length > 0 ? normalized : null
+}
+
+export function buildStepAnchor(runId: string, attemptNumber: number, stepIndex: number): string {
+    const runSlug = runId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'run'
+    return `step-${runSlug}-a${attemptNumber}-s${stepIndex + 1}`
+}
+
+export function findIncidentStepAnchor(
+    history: TestHistoryResponse['history'],
+    failureStepTitle: string | null,
+): string | null {
+    const normalizedTarget = normalizeAnchorLookupValue(failureStepTitle)
+
+    if (!normalizedTarget) {
+        return null
+    }
+
+    const latestRun = history[0]
+    const latestUnstable = getUnstableHistoryItems(history)[0]
+    const candidates = [latestRun, latestUnstable].filter(
+        (item, index, collection): item is NonNullable<typeof item> => Boolean(item) && collection.findIndex((candidate) => candidate?.runId === item?.runId) === index,
+    )
+
+    for (const item of candidates) {
+        for (const attempt of item.attemptDetails) {
+            for (const [stepIndex, step] of attempt.steps.entries()) {
+                if (normalizeAnchorLookupValue(step.title) === normalizedTarget) {
+                    return buildStepAnchor(item.runId, attempt.attempt, stepIndex)
+                }
+            }
+        }
+    }
+
+    return null
+}
+
+export function getAttachmentReference(attachment: TestHistoryAttachment): string {
+    return attachment.path ?? attachment.url ?? attachment.name
+}
+
+export function buildAttachmentHref(runId: string, attachment: TestHistoryAttachment, artifactBasePath: string): string | null {
+    if (attachment.url) {
+        return attachment.url
+    }
+
+    if (!artifactBasePath || !attachment.path) {
+        return null
+    }
+
+    const normalizedRunId = runId
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'run'
+    const normalizedPath = attachment.path.replace(/\\/g, '/').replace(/^\/+/, '')
+
+    if (!normalizedPath.startsWith(`${normalizedRunId}/`)) {
+        return null
+    }
+
+    return `${artifactBasePath}/${encodeURIComponent(runId)}?path=${encodeURIComponent(normalizedPath)}`
+}
+
+export function isImageAttachment(attachment: TestHistoryAttachment): boolean {
+    const contentType = attachment.contentType?.toLowerCase() ?? ''
+
+    if (contentType.startsWith('image/')) {
+        return true
+    }
+
+    return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(getAttachmentReference(attachment))
+}
+
+export function isMarkdownAttachment(attachment: TestHistoryAttachment): boolean {
+    const contentType = attachment.contentType?.toLowerCase() ?? ''
+
+    if (contentType.includes('markdown')) {
+        return true
+    }
+
+    return /\.(md|markdown|mdx)$/i.test(getAttachmentReference(attachment))
+}
+
+export function canInlineMarkdownPreview(href: string): boolean {
+    return !/^[a-z][a-z0-9+.-]*:/i.test(href)
 }

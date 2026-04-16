@@ -76,7 +76,7 @@ async function main(): Promise<void> {
         })
         const metricHeadingHtml = legacyRuntime.renderMetricHeading('Smoke heading', 'Smoke tooltip')
 
-        assertIncludes(dashboardHtml, 'AQA Pulse — observability Playwright', 'Legacy dashboard HTML title must be rendered.')
+        assertIncludes(dashboardHtml, 'AQA Pulse — Unified Quality Assurance Platform', 'Legacy dashboard HTML title must be rendered.')
         assertIncludes(dashboardHtml, 'Ключевые сигналы', 'Legacy dashboard HTML should still include manager overview section.')
         assertIncludes(historyHtml, 'История прогонов теста', 'Legacy test history HTML should include the timeline section.')
         assertIncludes(historyHtml, 'Диагностика последнего запуска', 'Legacy test history HTML should include diagnostics section.')

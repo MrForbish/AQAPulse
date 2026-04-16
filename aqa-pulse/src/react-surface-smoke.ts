@@ -154,7 +154,7 @@ async function main(): Promise<void> {
             },
         ),
         `/test/${encodeURIComponent(firstTestTitle)}`,
-    ), ['Test History', 'MTBF'])
+    ), ['Test History', 'MTBF', 'Диагностика последнего запуска'])
 
     renderMarkup('admin dashboard page', renderWithRouter(
         React.createElement(

@@ -1,6 +1,6 @@
 export const ru = {
     dashboard: {
-        title: 'AQA Pulse — observability Playwright',
+        title: 'AQA Pulse — Unified Quality Assurance Platform',
         badge: 'Observability Playwright',
         sourceHint: 'Источник:',
         generatedAt: 'Отчёт построен',

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ru = void 0;
 exports.ru = {
     dashboard: {
-        title: 'AQA Pulse — observability Playwright',
+        title: 'AQA Pulse — Unified Quality Assurance Platform',
         badge: 'Observability Playwright',
         sourceHint: 'Источник:',
         generatedAt: 'Отчёт построен',

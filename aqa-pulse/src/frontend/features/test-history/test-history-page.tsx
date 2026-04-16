@@ -6,6 +6,18 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { TestHistoryAttachment, TestHistoryConflict, TestHistoryResponse } from '../../../api-store'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import { ru } from '../../../shared/i18n/ru'
+import { formatCommit, formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
+import {
+    buildHistoryRowAnchor,
+    findCurrentStabilityStreak,
+    findLatestStableRecovery,
+    findUnstableStreakBeforeRecovery,
+    formatCurrentStabilityDescription,
+    formatRunsLabel,
+    formatTemplate,
+    getUnstableEventLabel,
+    getUnstableHistoryItems,
+} from '../../../shared/test-history-helpers'
 import { useTestHistoryData } from '../../hooks/use-test-history'
 import {
     buildArtifactBaseUrl,
@@ -101,7 +113,14 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
 
     const dashboardHref = buildDashboardHref(props.workspaceSlug, filters)
     const latestRun = payload.latestRun
-    const latestUnstableRun = payload.history.find((item) => item.errorMessage || item.flaky || item.status === 'failed' || item.status === 'timedout' || item.status === 'interrupted') ?? null
+    const unstableRuns = getUnstableHistoryItems(payload.history)
+    const latestUnstableRun = unstableRuns[0] ?? null
+    const previousUnstableRuns = unstableRuns.slice(1, 4)
+    const latestRecovery = findLatestStableRecovery(payload.history)
+    const currentStabilityStreak = findCurrentStabilityStreak(payload.history)
+    const unstableStreakBeforeRecovery = findUnstableStreakBeforeRecovery(payload.history)
+    const incidentLead = payload.incidentSummary ? extractIncidentLead(payload.incidentSummary.summary) : null
+    const incidentPrimarySignal = payload.incidentSummary?.failureStepErrorMessage ?? payload.incidentSummary?.latestErrorMessage ?? null
 
     return (
         <PageFrame>
@@ -134,13 +153,50 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                 <MetricCard label="MTBF" value={payload.summary.mtbfDays === null ? '—' : `${payload.summary.mtbfDays.toFixed(2)} дн`} hint={HISTORY_TEXT.subtitles.mtbf} />
             </section>
 
+            {payload.missingRuns.length > 0 ? (
+                <div className="inline-note is-warning">
+                    <strong>{HISTORY_TEXT.metrics.archiveGaps}</strong>
+                    <div className="mono-cell compact-top">{payload.missingRuns.join(', ')}</div>
+                </div>
+            ) : null}
+
             {payload.incidentSummary ? (
-                <Panel title={HISTORY_TEXT.incident.title} description={payload.incidentSummary.summary} className="incident-panel">
+                <Panel
+                    title={HISTORY_TEXT.incident.title}
+                    description={HISTORY_TEXT.incident.severityDescription[payload.incidentSummary.severity]}
+                    className={`incident-panel is-${payload.incidentSummary.severity}`}
+                >
+                    <div className="module-pills compact-top">
+                        <span className={`module-pill is-${getIncidentSeverityTone(payload.incidentSummary.severity)}`}>
+                            {HISTORY_TEXT.incident.severity[payload.incidentSummary.severity]}
+                        </span>
+                    </div>
+                    {incidentLead ? <div className="incident-summary-lead-react compact-top">{incidentLead}</div> : null}
+                    <div className="signal-grid compact-top">
+                        <div className="detail-card-react">
+                            <span className="metric-label">{HISTORY_TEXT.incident.categoryLabel}</span>
+                            <strong>{HISTORY_TEXT.incident.category[payload.incidentSummary.category]}</strong>
+                        </div>
+                        <div className="detail-card-react">
+                            <span className="metric-label">{HISTORY_TEXT.incident.failureStepLabel}</span>
+                            <strong>{payload.incidentSummary.failureStepTitle ?? payload.incidentSummary.failureStepCategory ?? HISTORY_TEXT.incident.notCaptured}</strong>
+                        </div>
+                        <div className="detail-card-react">
+                            <span className="metric-label">{HISTORY_TEXT.incident.primarySignalLabel}</span>
+                            <strong className="mono-cell">{incidentPrimarySignal ?? HISTORY_TEXT.incident.notCaptured}</strong>
+                        </div>
+                    </div>
                     <div className="incident-grid-react">
                         <MetricCard label={HISTORY_TEXT.incident.categoryLabel} value={HISTORY_TEXT.incident.category[payload.incidentSummary.category]} tone="warn" />
                         <MetricCard label={HISTORY_TEXT.incident.confidenceLabel} value={HISTORY_TEXT.incident.confidence[payload.incidentSummary.confidence]} />
                         <MetricCard label={HISTORY_TEXT.incident.unstableRunsLabel} value={String(payload.incidentSummary.unstableRuns)} tone="danger" />
                         <MetricCard label={HISTORY_TEXT.incident.matchingRunsLabel} value={String(payload.incidentSummary.matchingRuns)} />
+                    </div>
+                    <div className="meta-badge-row compact-top">
+                        <span className="meta-badge">{HISTORY_TEXT.incident.firstSeenLabel}: {formatOptionalDate(payload.incidentSummary.firstSeenAt)}</span>
+                        <span className="meta-badge">{HISTORY_TEXT.incident.latestSeenLabel}: {formatOptionalDate(payload.incidentSummary.latestSeenAt)}</span>
+                        <span className="meta-badge">{HISTORY_TEXT.incident.recoveryLabel}: {formatOptionalDate(payload.incidentSummary.latestRecoveryAt)}</span>
+                        <span className="meta-badge">{HISTORY_TEXT.incident.attemptsLabel}: {payload.incidentSummary.affectedAttempts}</span>
                     </div>
                     {payload.incidentSummary.evidence.length > 0 ? (
                         <div className="evidence-list">
@@ -161,6 +217,30 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                 <Panel title={HISTORY_TEXT.metrics.latestStatus}>
                     {latestRun ? <EventSnapshot run={latestRun} /> : <EmptyState title="Данных нет" message="Последний запуск пока не найден." />}
                 </Panel>
+                <Panel title={HISTORY_TEXT.metrics.previousUnstableEvents}>
+                    {previousUnstableRuns.length > 0 ? (
+                        <PreviousUnstableEventsList runs={previousUnstableRuns} />
+                    ) : (
+                        <EmptyState title="Предыдущих инцидентов нет" message="Кроме самого свежего нестабильного события дополнительных эпизодов пока не видно." />
+                    )}
+                </Panel>
+                <Panel title={HISTORY_TEXT.metrics.latestStableRecovery}>
+                    {latestRecovery ? (
+                        <RecoverySnapshot recovery={latestRecovery.recovery} previousUnstable={latestRecovery.previousUnstable} />
+                    ) : (
+                        <EmptyState title="Восстановление не найдено" message="После нестабильной серии пока нет чистого стабильного прогона." />
+                    )}
+                </Panel>
+                <Panel title={HISTORY_TEXT.metrics.currentStabilityStreak}>
+                    <StabilityStreakSnapshot history={payload.history} streak={currentStabilityStreak} />
+                </Panel>
+                <Panel title={HISTORY_TEXT.metrics.unstableStreakBeforeRecovery}>
+                    {unstableStreakBeforeRecovery ? (
+                        <UnstableStreakSnapshot streak={unstableStreakBeforeRecovery} />
+                    ) : (
+                        <EmptyState title="Серия перед восстановлением не найдена" message="Либо восстановление ещё не наступило, либо перед ним не было сплошной нестабильной серии." />
+                    )}
+                </Panel>
                 <Panel title={HISTORY_TEXT.metrics.timeline} className="span-2">
                     <div className="table-wrap">
                         <table>
@@ -169,6 +249,7 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                                     <th>{DASHBOARD_TEXT.tables.time}</th>
                                     <th>{DASHBOARD_TEXT.tables.branch}</th>
                                     <th>{DASHBOARD_TEXT.tables.commit}</th>
+                                    <th>{HISTORY_TEXT.tables.author}</th>
                                     <th>{DASHBOARD_TEXT.tables.status}</th>
                                     <th>{DASHBOARD_TEXT.tables.duration}</th>
                                     <th>{HISTORY_TEXT.meta.retries}</th>
@@ -178,10 +259,11 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                             </thead>
                             <tbody>
                                 {payload.history.map((item) => (
-                                    <tr key={item.runId}>
+                                    <tr key={item.runId} id={buildHistoryRowAnchor(item.runId)}>
                                         <td>{formatDate(item.reportTimestamp ?? item.generatedAt)}</td>
                                         <td>{item.branch ?? '—'}</td>
                                         <td>{formatCommit(item.commit)}</td>
+                                        <td>{item.author ?? '—'}</td>
                                         <td><StatusBadge label={formatStatusLabel(item.status, item.flaky)} tone={getStatusTone(item.status, item.flaky)} /></td>
                                         <td>{formatDuration(item.durationMs)}</td>
                                         <td>{item.retries}</td>
@@ -198,6 +280,11 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                         <AttemptDiagnostics runId={latestRun.runId} attempts={latestRun.attemptDetails} artifactBasePath={artifactBasePath} isStaticMode={isStaticMode} />
                     </Panel>
                 ) : null}
+                {latestUnstableRun && (!latestRun || latestUnstableRun.runId !== latestRun.runId) ? (
+                    <Panel title={HISTORY_TEXT.diagnostics.latestUnstableTitle} description={HISTORY_TEXT.diagnostics.latestUnstableDescription} className="span-2">
+                        <AttemptDiagnostics runId={latestUnstableRun.runId} attempts={latestUnstableRun.attemptDetails} artifactBasePath={artifactBasePath} isStaticMode={isStaticMode} />
+                    </Panel>
+                ) : null}
             </div>
         </PageFrame>
     )
@@ -206,13 +293,128 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
 function EventSnapshot(props: { run: TestHistoryResponse['history'][number] }): React.JSX.Element {
     return (
         <div className="stack-list">
-            <div className="stack-item">
+            <div className={`stack-item event-panel-card ${getEventToneClass(props.run)}`}>
                 <div className="stack-item-header">
                     <strong>{formatDate(props.run.reportTimestamp ?? props.run.generatedAt)}</strong>
                     <StatusBadge label={formatStatusLabel(props.run.status, props.run.flaky)} tone={getStatusTone(props.run.status, props.run.flaky)} />
                 </div>
-                <div className="subtle-copy">{props.run.branch ?? '—'} • {formatCommit(props.run.commit)} • {formatDuration(props.run.durationMs)}</div>
-                <div className="mono-cell compact-top">{props.run.errorMessage ?? 'Ошибок не зафиксировано.'}</div>
+                <div className="subtle-copy">{props.run.branch ?? '—'} • {formatCommit(props.run.commit)} • {formatDuration(props.run.durationMs)} • {props.run.author ?? '—'}</div>
+                <div className={props.run.errorMessage ? 'mono-cell compact-top' : 'event-description compact-top'}>
+                    {props.run.errorMessage ?? (props.run.flaky ? HISTORY_TEXT.texts.latestFlakyDescription : 'Ошибок не зафиксировано.')}
+                </div>
+                <div className="anchor-link-row compact-top">
+                    <a className="ghost-link" href={`#${buildHistoryRowAnchor(props.run.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function PreviousUnstableEventsList(props: { runs: TestHistoryResponse['history'] }): React.JSX.Element {
+    return (
+        <div className="stack-list">
+            {props.runs.map((run) => (
+                <div key={run.runId} className={`stack-item event-panel-card ${getEventToneClass(run)}`}>
+                    <div className="stack-item-header">
+                        <strong>{formatDate(run.reportTimestamp ?? run.generatedAt)}</strong>
+                        <StatusBadge label={getUnstableEventLabel(run)} tone={getStatusTone(run.status, run.flaky)} />
+                    </div>
+                    <div className="subtle-copy">{run.branch ?? '—'} • {formatCommit(run.commit)} • {formatDuration(run.durationMs)}</div>
+                    <div className={run.errorMessage ? 'mono-cell compact-top' : 'event-description compact-top'}>
+                        {run.errorMessage ?? (run.flaky ? HISTORY_TEXT.texts.retryFlakyDescription : formatTemplate(HISTORY_TEXT.texts.statusPrefix, { status: formatStatusLabel(run.status, false) }))}
+                    </div>
+                    <div className="anchor-link-row compact-top">
+                        <a className="ghost-link" href={`#${buildHistoryRowAnchor(run.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
+}
+
+function RecoverySnapshot(props: {
+    recovery: TestHistoryResponse['history'][number]
+    previousUnstable: TestHistoryResponse['history'][number]
+}): React.JSX.Element {
+    const sourceLabel = props.previousUnstable.errorMessage
+        ? HISTORY_TEXT.texts.recoveryFromError
+        : (props.previousUnstable.flaky
+            ? HISTORY_TEXT.texts.recoveryFromFlaky
+            : formatTemplate(HISTORY_TEXT.texts.statusPrefix, { status: formatStatusLabel(props.previousUnstable.status, false) }))
+
+    return (
+        <div className="stack-list">
+            <div className="stack-item event-panel-card is-good">
+                <div className="stack-item-header">
+                    <strong>{formatDate(props.recovery.reportTimestamp ?? props.recovery.generatedAt)}</strong>
+                    <StatusBadge label={formatStatusLabel(props.recovery.status, props.recovery.flaky)} tone={getStatusTone(props.recovery.status, props.recovery.flaky)} />
+                </div>
+                <div className="subtle-copy">{props.recovery.branch ?? '—'} • {formatCommit(props.recovery.commit)} • {formatDuration(props.recovery.durationMs)}</div>
+                <div className="event-description compact-top">
+                    {formatTemplate(HISTORY_TEXT.texts.recoveryAfter, {
+                        source: sourceLabel,
+                        date: formatDate(props.previousUnstable.reportTimestamp ?? props.previousUnstable.generatedAt),
+                    })}
+                </div>
+                <div className="anchor-link-row compact-top">
+                    <a className="ghost-link" href={`#${buildHistoryRowAnchor(props.recovery.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function StabilityStreakSnapshot(props: {
+    history: TestHistoryResponse['history']
+    streak: ReturnType<typeof findCurrentStabilityStreak>
+}): React.JSX.Element {
+    return (
+        <div className="stack-list">
+            <div className={`stack-item event-panel-card ${props.streak.count > 0 ? 'is-good' : 'is-warn'}`}>
+                <div className="stack-item-header">
+                    <strong>{formatRunsLabel(props.streak.count)}</strong>
+                    <StatusBadge label={props.streak.count > 0 ? 'stable' : HISTORY_TEXT.states.unknown} tone={props.streak.count > 0 ? 'good' : 'warn'} />
+                </div>
+                <div className="event-description">{formatCurrentStabilityDescription(props.streak)}</div>
+                <div className="meta-badge-row compact-top">
+                    <span className="meta-badge">{HISTORY_TEXT.meta.latestStable}: {formatOptionalDate(props.streak.latestStable?.reportTimestamp ?? props.streak.latestStable?.generatedAt ?? null)}</span>
+                    <span className="meta-badge">{HISTORY_TEXT.meta.streakStart}: {formatOptionalDate(props.streak.oldestStable?.reportTimestamp ?? props.streak.oldestStable?.generatedAt ?? null)}</span>
+                    <span className="meta-badge">{HISTORY_TEXT.meta.currentLatestRun}: {formatOptionalDate(props.history[0]?.reportTimestamp ?? props.history[0]?.generatedAt ?? null)}</span>
+                </div>
+                {props.streak.latestStable ? (
+                    <div className="anchor-link-row compact-top">
+                        <a className="ghost-link" href={`#${buildHistoryRowAnchor(props.streak.latestStable.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
+                    </div>
+                ) : null}
+            </div>
+        </div>
+    )
+}
+
+function UnstableStreakSnapshot(props: {
+    streak: NonNullable<ReturnType<typeof findUnstableStreakBeforeRecovery>>
+}): React.JSX.Element {
+    return (
+        <div className="stack-list">
+            <div className={`stack-item event-panel-card ${getEventToneClass(props.streak.latestUnstable)}`}>
+                <div className="stack-item-header">
+                    <strong>{formatRunsLabel(props.streak.count)}</strong>
+                    <StatusBadge label={getUnstableEventLabel(props.streak.latestUnstable)} tone={getStatusTone(props.streak.latestUnstable.status, props.streak.latestUnstable.flaky)} />
+                </div>
+                <div className="event-description">
+                    {formatTemplate(HISTORY_TEXT.texts.unstableStreakBeforeRecovery, {
+                        count: String(props.streak.count),
+                        label: getUnstableEventLabel(props.streak.latestUnstable),
+                    })}
+                </div>
+                <div className="meta-badge-row compact-top">
+                    <span className="meta-badge">{HISTORY_TEXT.meta.recoveryAt}: {formatDate(props.streak.recovery.reportTimestamp ?? props.streak.recovery.generatedAt)}</span>
+                    <span className="meta-badge">{HISTORY_TEXT.meta.latestUnstable}: {formatDate(props.streak.latestUnstable.reportTimestamp ?? props.streak.latestUnstable.generatedAt)}</span>
+                    <span className="meta-badge">{HISTORY_TEXT.meta.oldestUnstable}: {formatDate(props.streak.oldestUnstable.reportTimestamp ?? props.streak.oldestUnstable.generatedAt)}</span>
+                </div>
+                <div className="anchor-link-row compact-top">
+                    <a className="ghost-link" href={`#${buildHistoryRowAnchor(props.streak.latestUnstable.runId)}`}>{HISTORY_TEXT.actions.jumpToRow}</a>
+                </div>
             </div>
         </div>
     )
@@ -346,32 +548,39 @@ function isImageAttachment(attachment: TestHistoryAttachment): boolean {
     return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(attachment.path ?? attachment.url ?? attachment.name)
 }
 
-function formatCommit(commit: string | null): string {
-    return commit ? commit.slice(0, 8) : '—'
+function formatOptionalDate(value: string | null): string {
+    return value ? formatDate(value) : '—'
 }
 
-function formatStatusLabel(status: string, flaky: boolean): string {
-    if (flaky) {
-        return HISTORY_TEXT.labels.flaky
-    }
+function extractIncidentLead(summary: string): string | null {
+    const [lead] = summary
+        .split(/\.\s+/)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
 
-    return DASHBOARD_TEXT.statusLabels[status as keyof typeof DASHBOARD_TEXT.statusLabels] ?? status
+    return lead ? (lead.endsWith('.') ? lead : `${lead}.`) : null
 }
 
-function getStatusTone(status: string, flaky: boolean): 'neutral' | 'good' | 'warn' | 'danger' {
-    if (flaky) {
-        return 'warn'
-    }
-
-    const normalized = status.trim().toLowerCase()
-
-    if (normalized === 'passed') {
-        return 'good'
-    }
-
-    if (normalized === 'failed' || normalized === 'timedout' || normalized === 'interrupted') {
+function getIncidentSeverityTone(severity: NonNullable<TestHistoryResponse['incidentSummary']>['severity']): 'danger' | 'warn' | 'good' {
+    if (severity === 'active') {
         return 'danger'
     }
 
-    return 'neutral'
+    if (severity === 'monitoring') {
+        return 'warn'
+    }
+
+    return 'good'
+}
+
+function getEventToneClass(run: TestHistoryResponse['history'][number]): 'is-danger' | 'is-warn' | 'is-good' {
+    if (run.errorMessage || run.status === 'failed' || run.status === 'timedout' || run.status === 'interrupted') {
+        return 'is-danger'
+    }
+
+    if (run.flaky) {
+        return 'is-warn'
+    }
+
+    return 'is-good'
 }

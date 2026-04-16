@@ -11,6 +11,20 @@ import {
     buildTestHistoryHrefFromDashboardBasePath,
     normalizeOptionalFilter as normalizeSharedOptionalFilter,
 } from './shared/navigation'
+import {
+    buildHistoryRowAnchor as buildSharedHistoryRowAnchor,
+    findCurrentStabilityStreak as findSharedCurrentStabilityStreak,
+    findLatestStableRecovery as findSharedLatestStableRecovery,
+    findUnstableStreakBeforeRecovery as findSharedUnstableStreakBeforeRecovery,
+    formatCurrentStabilityDescription as formatSharedCurrentStabilityDescription,
+    formatRunsLabel as formatSharedRunsLabel,
+    formatTemplate as formatSharedTemplate,
+    getRunWord as getSharedRunWord,
+    getUnstableEventLabel as getSharedUnstableEventLabel,
+    getUnstableHistoryItems as getSharedUnstableHistoryItems,
+    isStableHistoryItem as isSharedStableHistoryItem,
+    isUnstableHistoryItem as isSharedUnstableHistoryItem,
+} from './shared/test-history-helpers'
 import { ru } from './shared/i18n/ru'
 import { escapeHtml } from './shared/text-utils'
 
@@ -691,19 +705,7 @@ export function findLatestStableRecovery(history: TestHistoryResponse['history']
     recovery: TestHistoryResponse['history'][number]
     previousUnstable: TestHistoryResponse['history'][number]
 } | null {
-    for (let index = 0; index < history.length - 1; index += 1) {
-        const currentItem = history[index]
-        const previousOlderItem = history[index + 1]
-
-        if (isStableHistoryItem(currentItem) && isUnstableHistoryItem(previousOlderItem)) {
-            return {
-                recovery: currentItem,
-                previousUnstable: previousOlderItem,
-            }
-        }
-    }
-
-    return null
+    return findSharedLatestStableRecovery(history)
 }
 
 export function findCurrentStabilityStreak(history: TestHistoryResponse['history']): {
@@ -712,40 +714,7 @@ export function findCurrentStabilityStreak(history: TestHistoryResponse['history
     oldestStable: TestHistoryResponse['history'][number] | null
     previousUnstable: TestHistoryResponse['history'][number] | null
 } {
-    if (history.length === 0) {
-        return {
-            count: 0,
-            latestStable: null,
-            oldestStable: null,
-            previousUnstable: null,
-        }
-    }
-
-    let count = 0
-
-    for (const item of history) {
-        if (!isStableHistoryItem(item)) {
-            break
-        }
-
-        count += 1
-    }
-
-    if (count === 0) {
-        return {
-            count: 0,
-            latestStable: null,
-            oldestStable: null,
-            previousUnstable: history[0] ?? null,
-        }
-    }
-
-    return {
-        count,
-        latestStable: history[0] ?? null,
-        oldestStable: history[count - 1] ?? null,
-        previousUnstable: history[count] ?? null,
-    }
+    return findSharedCurrentStabilityStreak(history)
 }
 
 export function findUnstableStreakBeforeRecovery(history: TestHistoryResponse['history']): {
@@ -754,83 +723,27 @@ export function findUnstableStreakBeforeRecovery(history: TestHistoryResponse['h
     latestUnstable: TestHistoryResponse['history'][number]
     oldestUnstable: TestHistoryResponse['history'][number]
 } | null {
-    const recoveryPair = findLatestStableRecovery(history)
-
-    if (!recoveryPair) {
-        return null
-    }
-
-    const recoveryIndex = history.findIndex((item) => item.runId === recoveryPair.recovery.runId)
-
-    if (recoveryIndex < 0 || recoveryIndex === history.length - 1) {
-        return null
-    }
-
-    const unstableItems: TestHistoryResponse['history'] = []
-
-    for (let index = recoveryIndex + 1; index < history.length; index += 1) {
-        const currentItem = history[index]
-
-        if (!isUnstableHistoryItem(currentItem)) {
-            break
-        }
-
-        unstableItems.push(currentItem)
-    }
-
-    if (unstableItems.length === 0) {
-        return null
-    }
-
-    return {
-        count: unstableItems.length,
-        recovery: recoveryPair.recovery,
-        latestUnstable: unstableItems[0],
-        oldestUnstable: unstableItems[unstableItems.length - 1],
-    }
+    return findSharedUnstableStreakBeforeRecovery(history)
 }
 
 export function isStableHistoryItem(item: TestHistoryResponse['history'][number]): boolean {
-    return item.status === 'passed' && !item.flaky && !item.errorMessage
+    return isSharedStableHistoryItem(item)
 }
 
 export function getUnstableHistoryItems(history: TestHistoryResponse['history']): TestHistoryResponse['history'] {
-    return history.filter(isUnstableHistoryItem)
+    return getSharedUnstableHistoryItems(history)
 }
 
 export function getUnstableEventLabel(item: TestHistoryResponse['history'][number]): string {
-    if (item.errorMessage) {
-        return HISTORY_TEXT.labels.error
-    }
-
-    if (item.flaky) {
-        return HISTORY_TEXT.labels.flaky
-    }
-
-    return formatStatusLabel(item.status, false)
+    return getSharedUnstableEventLabel(item)
 }
 
 export function formatCurrentStabilityDescription(streak: ReturnType<typeof findCurrentStabilityStreak>): string {
-    if (streak.count === 0) {
-        return HISTORY_TEXT.texts.streakNotStarted
-    }
-
-    if (!streak.previousUnstable) {
-        return formatTemplate(HISTORY_TEXT.texts.streakWholeHistory, { count: String(streak.count) })
-    }
-
-    return formatTemplate(HISTORY_TEXT.texts.streakAfterEvent, {
-        count: String(streak.count),
-        event: getUnstableEventLabel(streak.previousUnstable),
-    })
+    return formatSharedCurrentStabilityDescription(streak)
 }
 
 export function isUnstableHistoryItem(item: TestHistoryResponse['history'][number]): boolean {
-    return Boolean(item.errorMessage)
-        || item.flaky
-        || item.status === 'failed'
-        || item.status === 'timedout'
-        || item.status === 'interrupted'
+    return isSharedUnstableHistoryItem(item)
 }
 
 export function renderStatePage(options: {
@@ -1010,42 +923,19 @@ export function formatCommit(commit: string | null): string {
 }
 
 export function buildHistoryRowAnchor(runId: string): string {
-    const normalizedId = runId
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-
-    return normalizedId.length > 0 ? `history-row-${normalizedId}` : 'history-row-run'
+    return buildSharedHistoryRowAnchor(runId)
 }
 
 export function formatRunsLabel(count: number): string {
-    return `${count} ${getRunWord(count)}`
+    return formatSharedRunsLabel(count)
 }
 
 export function getRunWord(count: number): string {
-    const remainder100 = count % 100
-    const remainder10 = count % 10
-
-    if (remainder100 >= 11 && remainder100 <= 14) {
-        return 'прогонов'
-    }
-
-    if (remainder10 === 1) {
-        return 'прогон'
-    }
-
-    if (remainder10 >= 2 && remainder10 <= 4) {
-        return 'прогона'
-    }
-
-    return 'прогонов'
+    return getSharedRunWord(count)
 }
 
 export function formatTemplate(template: string, values: Record<string, string>): string {
-    return Object.entries(values).reduce(
-        (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, 'g'), value),
-        template,
-    )
+    return formatSharedTemplate(template, values)
 }
 
 

@@ -153,6 +153,24 @@ input {
     font-size: 13px;
 }
 
+.meta-badge,
+.meta-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.meta-badge {
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(133, 157, 194, 0.16);
+    background: rgba(10, 21, 38, 0.8);
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 .hero-meta-row strong,
 .metric-value {
     font-weight: 700;
@@ -657,6 +675,24 @@ th {
     background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(7, 15, 27, 0.84));
 }
 
+.incident-panel.is-monitoring,
+.event-panel-card.is-warn {
+    border-color: rgba(245, 158, 11, 0.18);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(7, 15, 27, 0.84));
+}
+
+.incident-panel.is-resolved,
+.event-panel-card.is-good {
+    border-color: rgba(16, 185, 129, 0.18);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(7, 15, 27, 0.84));
+}
+
+.incident-panel.is-active,
+.event-panel-card.is-danger {
+    border-color: rgba(239, 68, 68, 0.18);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(7, 15, 27, 0.84));
+}
+
 .panel-info {
     border-color: rgba(14, 165, 233, 0.18);
     background: linear-gradient(180deg, rgba(14, 165, 233, 0.08), rgba(7, 15, 27, 0.84));
@@ -704,6 +740,11 @@ th {
 
 .compact-top {
     margin-top: 12px;
+}
+
+.anchor-link-row {
+    display: flex;
+    justify-content: flex-start;
 }
 
 .module-header-row,
@@ -787,6 +828,19 @@ th {
 .signal-grid,
 .incident-grid-react {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.incident-summary-lead-react,
+.event-description {
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+.incident-summary-lead-react {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(133, 157, 194, 0.16);
+    background: rgba(10, 21, 38, 0.72);
 }
 
 .attempt-card {

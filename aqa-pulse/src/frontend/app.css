@@ -1282,9 +1282,23 @@ th {
     cursor: pointer;
 }
 
+.trace-disclosure-trigger-react.is-compact {
+    align-items: center;
+    padding: 6px 8px;
+    gap: 8px;
+}
+
 .trace-disclosure-copy-react {
     flex: 1 1 auto;
     min-width: 0;
+}
+
+.trace-disclosure-copy-react.is-compact {
+    display: block;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .trace-disclosure-pill-react {
@@ -1300,6 +1314,12 @@ th {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+.trace-disclosure-trigger-react.is-compact .trace-disclosure-pill-react {
+    min-height: 20px;
+    padding: 0 6px;
+    font-size: 10px;
 }
 
 .trace-disclosure-modal-react[hidden] {

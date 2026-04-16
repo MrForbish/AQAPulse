@@ -215,7 +215,7 @@ export function DashboardRecentRunCompactRow(props: { run: DashboardSummary['his
 function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined }): React.JSX.Element {
     return (
         <td>
-            <TraceDisclosure previewText={props.preview} text={props.details} />
+            <TraceDisclosure previewText={props.preview} text={props.details} compact />
         </td>
     )
 }

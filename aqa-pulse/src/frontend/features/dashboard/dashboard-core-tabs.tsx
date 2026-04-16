@@ -21,6 +21,7 @@ import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-
 import { ru } from '../../../shared/i18n/ru'
 import { ChartCard, type FrontendChartData } from '../../shared/chart-card'
 import { EmptyState, MetricCard, NarrativeList, OverflowText, Panel, StatusBadge, SummaryStrip } from '../../shared/ui'
+import { mapChangeTone, mapManagerTone } from './dashboard-manager-helpers'
 import {
     DashboardCurrentRunTestRow,
     DashboardEmptyTableRow,
@@ -357,26 +358,3 @@ function formatDurationDelta(value: number | null): string {
     return `${prefix}${value.toFixed(1)}% к прошлому прогону`
 }
 
-function mapManagerTone(level: 'healthy' | 'warning' | 'critical'): 'good' | 'warn' | 'danger' {
-    if (level === 'healthy') {
-        return 'good'
-    }
-
-    if (level === 'warning') {
-        return 'warn'
-    }
-
-    return 'danger'
-}
-
-function mapChangeTone(direction: 'improving' | 'regressing' | 'stable'): 'good' | 'warn' | 'accent' {
-    if (direction === 'improving') {
-        return 'good'
-    }
-
-    if (direction === 'regressing') {
-        return 'warn'
-    }
-
-    return 'accent'
-}

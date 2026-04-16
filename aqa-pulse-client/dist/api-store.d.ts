@@ -33,6 +33,50 @@ export interface TestHistoryItem {
     retries: number;
     attempts: number;
     errorMessage: string | null;
+    attemptDetails: TestHistoryAttemptDetail[];
+}
+export interface TestHistoryAttachment {
+    name: string;
+    contentType: string | null;
+    path: string | null;
+    url: string | null;
+}
+export interface TestHistoryStep {
+    title: string;
+    category: string | null;
+    durationMs: number;
+    status: string | null;
+    errorMessage: string | null;
+    isFailurePoint: boolean;
+}
+export interface TestHistoryAttemptDetail {
+    attempt: number;
+    status: string;
+    durationMs: number;
+    startTime: string | null;
+    errorMessage: string | null;
+    attachments: TestHistoryAttachment[];
+    steps: TestHistoryStep[];
+}
+export type TestHistoryIncidentCategory = 'network' | 'timeout' | 'selector' | 'assertion' | 'auth' | 'infrastructure' | 'unknown';
+export type TestHistoryIncidentSeverity = 'active' | 'monitoring' | 'resolved';
+export type TestHistoryIncidentConfidence = 'high' | 'medium' | 'low';
+export interface TestHistoryIncidentSummary {
+    severity: TestHistoryIncidentSeverity;
+    category: TestHistoryIncidentCategory;
+    confidence: TestHistoryIncidentConfidence;
+    summary: string;
+    evidence: string[];
+    unstableRuns: number;
+    matchingRuns: number;
+    affectedAttempts: number;
+    firstSeenAt: string | null;
+    latestSeenAt: string | null;
+    latestRecoveryAt: string | null;
+    latestErrorMessage: string | null;
+    failureStepTitle: string | null;
+    failureStepCategory: string | null;
+    failureStepErrorMessage: string | null;
 }
 export interface TestHistoryResponse {
     test: {
@@ -51,6 +95,7 @@ export interface TestHistoryResponse {
         mtbfDays: number | null;
     };
     latestRun: TestHistoryItem | null;
+    incidentSummary: TestHistoryIncidentSummary | null;
     history: TestHistoryItem[];
     missingRuns: string[];
 }
@@ -66,6 +111,7 @@ export declare class ApiStore {
     private readonly storage;
     constructor(options?: ApiStoreOptions);
     getSummary(): DashboardSummary;
+    private rebuildSummaryFromArchives;
     getFilteredSummary(filters?: ApiFilters): DashboardSummary;
     getHistory(): DashboardHistory;
     getRuns(filters?: ApiFilters): DashboardHistoryEntry[];

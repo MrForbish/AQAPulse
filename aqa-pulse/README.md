@@ -20,9 +20,27 @@
 - собирает React-based static shell `dist/index.html` и web bundle в `dist/web`;
 - показывает dashboard по табам категорий метрик: `Обзор`, `Производительность`, `Flaky-аналитика`, `Качество кода тестов`, `Бизнес-метрики`, `Командные метрики`, `AI / ML`;
 - открывает dashboard и историю теста через React frontend поверх существующих API `/api/summary` и `/api/test/:name`;
+- использует тот же React shell для `/admin`, `/admin/login`, `/w/:slug/login` и `/auth/workspaces/:slug/api-keys/login`;
 - показывает info icon / tooltip с описанием ключевых метрик;
 - использует общий helper `src/render-metric-info.ts` для tooltip'ов и заголовков метрик в dashboard и на drill-down странице теста;
 - поддерживает каскадные фильтры `branch -> project -> file` в UI и query params.
+
+## Legacy compatibility
+
+`aqa-pulse` больше не экспортирует string-based HTML renderers.
+
+`renderDashboardHtml` и `renderTestHistoryHtml` остаются только в `aqa-pulse-client` как compatibility layer.
+
+Основной продуктовый UI развивается через React runtime и self-hosted/server flow.
+
+Текущая публичная структура entry points у `aqa-pulse`:
+
+- корневой пакет: utilities + history/api types + frontend bootstrap helpers;
+- `aqa-pulse/core`: core utilities без legacy HTML renderer surface;
+- `aqa-pulse/client`: browser-safe formatting/bootstrap/types без HTML renderer surface;
+- `aqa-pulse/react`: React pages, runtime provider, admin auth building blocks, shared UI components и admin hooks/API helpers для embedded usage;
+- `aqa-pulse/hooks`: React hooks для dashboard/test-history data flows;
+- `aqa-pulse/types`: type-only re-exports для интеграций.
 
 ## Минимальная схема теста в upload JSON
 
@@ -331,9 +349,9 @@ npm run server:pack:check
 Отдельные практичные инструкции:
 
 - [`../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md`](../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md) — короткая версия: как быстро поставить на свой сервер
-- [`../aqa-pulse-server/CLIENT-QUICKSTART.md`](../aqa-pulse-server/CLIENT-QUICKSTART.md) — короткая версия: что передавать клиенту
 - [`../aqa-pulse-server/SELF-HOSTED-INSTALL.md`](../aqa-pulse-server/SELF-HOSTED-INSTALL.md) — как поставить на свой сервер
-- [`../aqa-pulse-server/CLIENT-ONBOARDING.md`](../aqa-pulse-server/CLIENT-ONBOARDING.md) — что передавать клиенту и как его онбордить
+- [`../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md`](../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md) — полный self-hosted deployment guide
+- [`../aqa-pulse-server/MIGRATION.md`](../aqa-pulse-server/MIGRATION.md) — как переходить с legacy HTML renderer flow на React runtime
 
 Он нужен для self-hosted / on-prem сценария и содержит:
 
@@ -398,6 +416,12 @@ Workspace access model в self-hosted режиме:
 ### Smoke-команды для актуального auth/storage flow
 
 ```bash
+# полный regression gate для пакета aqa-pulse
+npm run smoke:full
+
+# React embedded surface + error boundary smoke
+npm run smoke:react
+
 # полный self-hosted auth/UI/JWT smoke на file storage
 npm run self-hosted:smoke:auth
 
@@ -411,7 +435,17 @@ npm run self-hosted:smoke:postgres
 - создание workspace / user / API key;
 - exchange `raw token -> JWT`;
 - ingestion через JWT;
-- открытие `/w/:slug` и `/api/workspaces/:slug/*` через workspace JWT/cookie.
+- открытие `/w/:slug` и `/api/workspaces/:slug/*` через workspace JWT/cookie;
+- bootstrap `initialSessionStatus` для auth-shell и protected React routes;
+- unauthorized contract: `401` для JSON API и HTML redirect на login для shell routes.
+
+`smoke:full` собирает в один прогон:
+
+- быстрый baseline `npm run smoke`;
+- standalone static export smoke;
+- package export-surface smoke;
+- React embedded/exported surface smoke;
+- self-hosted auth/session smoke.
 
 Важно: `aqa-pulse-server` остаётся внутренним пакетом и не предназначен для публикации наружу.
 
@@ -583,6 +617,18 @@ npm run build -- "./dist/dashboard-data.json" "./dist/index.html"
 
 ```bash
 npm run smoke
+```
+
+Это именно быстрый локальный baseline:
+
+- пересобирает demo history;
+- проверяет TypeScript;
+- не включает self-hosted auth/session и package-surface regression checks.
+
+Если нужен полный regression gate перед публикацией изменений в runtime/build/auth flow, используй:
+
+```bash
+npm run smoke:full
 ```
 
 Примеры ручной проверки API:

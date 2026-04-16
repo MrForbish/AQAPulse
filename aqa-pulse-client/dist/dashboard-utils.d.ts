@@ -37,12 +37,33 @@ export interface ReporterError {
     message?: string;
     stack?: string;
 }
+export interface ReporterAttachment {
+    name?: string;
+    contentType?: string;
+    path?: string;
+    url?: string;
+    inlineContentBase64?: string;
+    inlineContentEncoding?: 'base64' | string;
+    inlineContentSizeBytes?: number;
+}
+export interface ReporterStep {
+    title?: string;
+    category?: string;
+    durationMs?: number;
+    status?: string;
+    failed?: boolean;
+    error?: ReporterError;
+}
 export interface ReporterAttempt {
     attempt?: number;
     status?: string;
     durationMs?: number;
     startTime?: string;
     error?: ReporterError;
+    attachments?: ReporterAttachment[];
+    steps?: ReporterStep[];
+    failedStepIndex?: number;
+    failedStepTitle?: string;
 }
 export interface ReporterTest {
     id?: string;
@@ -52,6 +73,7 @@ export interface ReporterTest {
     durationMs?: number;
     location?: ReporterLocation;
     project?: string;
+    browser?: string;
     retries?: number;
     errors?: ReporterError[];
     attempts?: ReporterAttempt[];
@@ -89,6 +111,24 @@ export interface DashboardKpis {
 export interface DashboardChartDataset {
     labels: string[];
     values: number[];
+}
+export interface DashboardCurrentRunTest {
+    title: string;
+    file: string;
+    project: string;
+    status: string;
+    flaky: boolean;
+    durationMs: number;
+    errorMessage: string | null;
+}
+export interface DashboardCurrentRunTests {
+    all: DashboardCurrentRunTest[];
+    passed: DashboardCurrentRunTest[];
+    failed: DashboardCurrentRunTest[];
+    flaky: DashboardCurrentRunTest[];
+    skipped: DashboardCurrentRunTest[];
+    timedOut: DashboardCurrentRunTest[];
+    interrupted: DashboardCurrentRunTest[];
 }
 export interface DashboardProblematicTest {
     title: string;
@@ -136,11 +176,37 @@ export interface DashboardFlakyResolutionMetric {
     detectedAt: string | null;
     fixedAt: string | null;
 }
+export interface DashboardBusinessTimeToDetectMetric {
+    minutes: number | null;
+    source: 'pendingIntegration';
+}
+export interface DashboardBusinessTimeToFixMetric {
+    averageDays: number | null;
+    resolvedIncidents: number;
+}
+export interface DashboardBusinessAutomationRoiMetric {
+    percent: number | null;
+    source: 'pendingAssumptions';
+}
+export interface DashboardPhaseBreakdownItem {
+    label: string;
+    durationMs: number;
+    sharePercent: number;
+}
+export interface DashboardDurationBreakdownItem {
+    label: string;
+    durationMs: number;
+    sharePercent: number;
+    tests: number;
+}
 export interface DashboardAdvancedMetrics {
     performance: {
         p95DurationMs: number;
         p99DurationMs: number;
         slowestTests: DashboardSlowTest[];
+        phaseBreakdown: DashboardPhaseBreakdownItem[];
+        suiteDuration: DashboardDurationBreakdownItem[];
+        durationPerBrowser: DashboardDurationBreakdownItem[];
         durationTrend: {
             currentDurationMs: number;
             previousDurationMs: number | null;
@@ -163,6 +229,8 @@ export interface DashboardAdvancedMetrics {
         flakyTrend: DashboardChartDataset;
     };
     businessMetrics: {
+        timeToDetect: DashboardBusinessTimeToDetectMetric;
+        timeToFixFlaky: DashboardBusinessTimeToFixMetric;
         costOfFlakiness: {
             totalRub: number | null;
             ciCostRub: number | null;
@@ -185,7 +253,35 @@ export interface DashboardAdvancedMetrics {
             activeDays: number;
         };
         releaseConfidenceScore: number;
+        automationRoi: DashboardBusinessAutomationRoiMetric;
     };
+}
+export interface DashboardManagerSignal {
+    score: number;
+    level: 'healthy' | 'warning' | 'critical';
+}
+export interface DashboardManagerBlocker {
+    kind: 'release-confidence' | 'problematic-test' | 'flaky' | 'duration' | 'error-cluster' | 'history-coverage';
+    severity: 'critical' | 'warning' | 'info';
+    title: string;
+    value: string;
+    details: string;
+    testTitle: string | null;
+    project: string | null;
+    file: string | null;
+}
+export interface DashboardManagerChange {
+    label: string;
+    value: string;
+    details: string;
+    direction: 'improving' | 'regressing' | 'stable';
+}
+export interface DashboardManagerSummary {
+    releaseReadiness: DashboardManagerSignal;
+    qualityRisk: DashboardManagerSignal;
+    deliveryRisk: DashboardManagerSignal;
+    blockers: DashboardManagerBlocker[];
+    changes: DashboardManagerChange[];
 }
 export interface DashboardSummary {
     generatedAt: string;
@@ -231,11 +327,15 @@ export interface DashboardSummary {
     performance: DashboardAdvancedMetrics['performance'];
     flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics'];
     businessMetrics: DashboardAdvancedMetrics['businessMetrics'];
+    managerSummary: DashboardManagerSummary;
+    currentRunTests: DashboardCurrentRunTests;
     topProblematicTests: DashboardProblematicTest[];
     errorClusters: DashboardErrorCluster[];
 }
 export declare function loadReporterReport(reportPath: string): ReporterRoot;
+export declare function enrichReporterReport(report: ReporterRoot): ReporterRoot;
 export declare function readDashboardSummary(summaryPath: string): DashboardSummary;
+export declare function normalizeDashboardSummary(summary: DashboardSummary): DashboardSummary;
 export declare function ensureDirectoryForFile(filePath: string): void;
 export declare function writeJsonFile(filePath: string, payload: unknown): void;
 export declare function writeTextFile(filePath: string, payload: string): void;
@@ -245,3 +345,4 @@ export declare function buildAdvancedMetricsFromArchivedRuns(report: ReporterRoo
     run: DashboardHistoryEntry;
     report: ReporterRoot;
 }>): DashboardAdvancedMetrics;
+export declare function collectCurrentRunTests(tests: ReporterTest[]): DashboardCurrentRunTests;

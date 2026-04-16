@@ -34,6 +34,7 @@
     "scripts/setup-self-hosted.js",
     "template/**/*",
     "README.md",
+    "MIGRATION.md",
     "SELF-HOSTED-DEPLOYMENT.md",
     "SELF-HOSTED-QUICKSTART.md",
     "SELF-HOSTED-INSTALL.md",

@@ -1,3 +1,4 @@
+// Purpose: assemble the legacy compatibility package from the compiled aqa-pulse output and keep its public runtime browser-only.
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -24,9 +25,9 @@ const declarationFiles = [
     path.join('shared', 'i18n', 'ru.d.ts'),
 ]
 
-const generatedIndexJs = `'use strict'\n\nexports.renderDashboardHtml = require('./render-dashboard').renderDashboardHtml\nexports.renderTestHistoryHtml = require('./render-test-history').renderTestHistoryHtml\nexports.METRIC_INFO_STYLES = require('./render-metric-info').METRIC_INFO_STYLES\nexports.renderMetricHeading = require('./render-metric-info').renderMetricHeading\nexports.formatDate = require('./shared/formatting').formatDate\nexports.formatDuration = require('./shared/formatting').formatDuration\nexports.formatPercent = require('./shared/formatting').formatPercent\nexports.ru = require('./shared/i18n/ru').ru\n`
+const generatedIndexJs = `'use strict'\n\nconst renderDashboardModule = require('./render-dashboard')\nconst renderTestHistoryModule = require('./render-test-history')\nconst metricInfoModule = require('./render-metric-info')\nconst formattingModule = require('./shared/formatting')\nconst i18nModule = require('./shared/i18n/ru')\n\nlet didWarnAboutLegacyPackage = false\n\nfunction warnLegacyPackage(apiName) {\n    if (didWarnAboutLegacyPackage) {\n        return\n    }\n\n    didWarnAboutLegacyPackage = true\n    console.warn('[AQA Pulse] aqa-pulse-client is a legacy compatibility package. ' + apiName + ' uses the old HTML renderer flow; new UI work ships through the React runtime in aqa-pulse-server.')\n}\n\nexports.renderDashboardHtml = (...args) => {\n    warnLegacyPackage('renderDashboardHtml')\n    return renderDashboardModule.renderDashboardHtml(...args)\n}\n\nexports.renderTestHistoryHtml = (...args) => {\n    warnLegacyPackage('renderTestHistoryHtml')\n    return renderTestHistoryModule.renderTestHistoryHtml(...args)\n}\n\nObject.defineProperty(exports, 'METRIC_INFO_STYLES', {\n    enumerable: true,\n    get() {\n        warnLegacyPackage('METRIC_INFO_STYLES')\n        return metricInfoModule.METRIC_INFO_STYLES\n    },\n})\n\nexports.renderMetricHeading = (...args) => {\n    warnLegacyPackage('renderMetricHeading')\n    return metricInfoModule.renderMetricHeading(...args)\n}\n\nexports.formatDate = formattingModule.formatDate\nexports.formatDuration = formattingModule.formatDuration\nexports.formatPercent = formattingModule.formatPercent\nexports.ru = i18nModule.ru\n`
 
-const generatedIndexDts = `export { renderDashboardHtml } from './render-dashboard'\nexport { renderTestHistoryHtml } from './render-test-history'\nexport { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'\nexport { formatDate, formatDuration, formatPercent } from './shared/formatting'\nexport { ru } from './shared/i18n/ru'\nexport type { DashboardAdvancedMetrics, DashboardAvailableFilters, DashboardFilters, DashboardKpis, DashboardRunMetadata, DashboardSummary } from './dashboard-utils'\nexport type { TestHistoryConflict, TestHistoryResponse } from './api-store'\n`
+const generatedIndexDts = `/** @deprecated Legacy HTML renderer compatibility layer. New UI work ships through the React runtime in aqa-pulse-server. */\nexport { renderDashboardHtml } from './render-dashboard'\n/** @deprecated Legacy HTML renderer compatibility layer. New UI work ships through the React runtime in aqa-pulse-server. */\nexport { renderTestHistoryHtml } from './render-test-history'\n/** @deprecated Legacy HTML renderer compatibility layer. Kept for string-based HTML consumers only. */\nexport { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'\nexport { formatDate, formatDuration, formatPercent } from './shared/formatting'\nexport { ru } from './shared/i18n/ru'\nexport type { DashboardAdvancedMetrics, DashboardAvailableFilters, DashboardFilters, DashboardKpis, DashboardRunMetadata, DashboardSummary } from './dashboard-utils'\nexport type { TestHistoryConflict, TestHistoryResponse } from './api-store'\n`
 
 const forbiddenRuntimePatterns = [
     'require("./server")',
@@ -83,6 +84,7 @@ function cleanDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true })
 }
 
+// The compatibility package must not accidentally pull server/runtime-only modules, otherwise old HTML consumers would stop being browser-safe.
 function assertNoForbiddenRuntimeImports(filePath) {
     const content = fs.readFileSync(filePath, 'utf8')
 

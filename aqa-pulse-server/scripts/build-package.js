@@ -1,16 +1,20 @@
+// Purpose: assemble the self-hosted server package, including backend runtime files and the compiled React web bundle.
 const fs = require('node:fs')
 const path = require('node:path')
 
 const packageRoot = path.resolve(__dirname, '..')
 const aqaPulseRoot = path.resolve(packageRoot, '..', 'aqa-pulse')
 const sourceRoot = path.resolve(packageRoot, '..', 'aqa-pulse', 'dist-ts')
+const webSourceRoot = path.resolve(aqaPulseRoot, 'dist', 'web')
 const distRoot = path.resolve(packageRoot, 'dist')
+const webTargetRoot = path.resolve(distRoot, 'web')
 const chartAssetSourcePath = path.resolve(aqaPulseRoot, 'node_modules', 'chart.js', 'dist', 'chart.umd.js')
 const chartAssetTargetPath = path.resolve(distRoot, 'assets', 'chart.umd.js')
 
 const runtimeFiles = [
     'api-store.js',
     'dashboard-utils.js',
+    'frontend-bootstrap.js',
     'history-utils.js',
     'render-dashboard.js',
     'render-dashboard-sections.js',
@@ -18,7 +22,6 @@ const runtimeFiles = [
     'render-test-history.js',
     'render-test-history-sections.js',
     'server.js',
-    path.join('backend', 'admin-ui.js'),
     path.join('backend', 'app.js'),
     path.join('backend', 'auth.js'),
     path.join('backend', 'bootstrap-workspace.js'),
@@ -44,13 +47,13 @@ const runtimeFiles = [
 const declarationFiles = [
     'api-store.d.ts',
     'dashboard-utils.d.ts',
+    'frontend-bootstrap.d.ts',
     'history-utils.d.ts',
     'render-dashboard.d.ts',
     'render-dashboard-sections.d.ts',
     'render-metric-info.d.ts',
     'render-test-history.d.ts',
     'render-test-history-sections.d.ts',
-    path.join('backend', 'admin-ui.d.ts'),
     path.join('backend', 'app.d.ts'),
     path.join('backend', 'auth.d.ts'),
     path.join('backend', 'bootstrap-workspace.d.ts'),
@@ -87,6 +90,8 @@ copyFile(
     path.resolve(distRoot, 'fixtures', 'sample-llm-report.json'),
 )
 
+copyDirectory(webSourceRoot, webTargetRoot)
+
 copyFile(chartAssetSourcePath, chartAssetTargetPath)
 
 verifyWorkspaceHistoryRoutingArtifacts()
@@ -113,6 +118,15 @@ function copyFile(sourcePath, targetPath) {
     fs.copyFileSync(sourcePath, targetPath)
 }
 
+function copyDirectory(sourcePath, targetPath) {
+    if (!fs.existsSync(sourcePath)) {
+        throw new Error(`Не найдена frontend-папка: ${sourcePath}`)
+    }
+
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true })
+    fs.cpSync(sourcePath, targetPath, { recursive: true })
+}
+
 function cleanDir(dirPath) {
     if (fs.existsSync(dirPath)) {
         fs.rmSync(dirPath, { recursive: true, force: true })
@@ -120,6 +134,7 @@ function cleanDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true })
 }
 
+// These assertions lock in the React-shell routing contract so packaging changes cannot silently regress workspace dashboard/test-history bootstrap behavior.
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(sourceRoot, 'backend', 'app.js')
     const compiledHistoryRendererPath = path.resolve(sourceRoot, 'render-test-history.js')
@@ -128,17 +143,27 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
 
     assertIncludes(
         compiledApp,
-        ".send((0, render_test_history_1.renderTestHistoryHtml)(payload, testName, filters, {",
+        "function sendFrontendShell(response, htmlTemplate, bootstrap, statusCode = 200) {",
         compiledAppPath,
     )
     assertIncludes(
         compiledApp,
-        "basePath: `/w/${workspace.slug}`",
+        "route: { kind: 'dashboard', workspaceSlug: workspace.slug },",
         compiledAppPath,
     )
     assertIncludes(
         compiledApp,
-        "apiBasePath: `/api/workspaces/${workspace.slug}/test`",
+        "route: { kind: 'test-history', workspaceSlug: workspace.slug, testName },",
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledApp,
+        "initialTestHistoryPayload: payload,",
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledApp,
+        ".send((0, frontend_bootstrap_1.injectFrontendBootstrap)(htmlTemplate, bootstrap));",
         compiledAppPath,
     )
 

@@ -31,7 +31,12 @@ export {
     type DashboardHistoryEntry,
     writeDashboardHistory,
 } from './history-utils'
-export { renderDashboardHtml } from './render-dashboard'
-export { renderTestHistoryHtml } from './render-test-history'
+export {
+    createEmptyFrontendBootstrap,
+    parseFrontendBootstrap,
+    type FrontendBootstrapData,
+    type FrontendRouteDescriptor,
+    type FrontendSessionStatus,
+} from './frontend-bootstrap'
 
 

@@ -29,6 +29,22 @@
       "types": "./dist-ts/client/index.d.ts",
       "default": "./dist-ts/client/index.js"
     },
+    "./hooks": {
+      "types": "./dist-ts/hooks/index.d.ts",
+      "default": "./dist-ts/hooks/index.js"
+    },
+    "./react": {
+      "types": "./dist-ts/react/index.d.ts",
+      "default": "./dist-ts/react/index.js"
+    },
+    "./types": {
+      "types": "./dist-ts/types/index.d.ts",
+      "default": "./dist-ts/types/index.js"
+    },
+    "./frontend-bootstrap": {
+      "types": "./dist-ts/frontend-bootstrap.d.ts",
+      "default": "./dist-ts/frontend-bootstrap.js"
+    },
     "./backend": {
       "types": "./dist-ts/backend/index.d.ts",
       "default": "./dist-ts/backend/index.js"
@@ -52,16 +68,20 @@
     "self-hosted:init": "ts-node src/backend/init-self-hosted.ts",
     "self-hosted:sqlite:migrate": "ts-node src/backend/sqlite-migrate.ts",
     "self-hosted:sqlite:backup": "ts-node src/backend/sqlite-backup.ts",
-    "self-hosted:smoke:auth": "ts-node src/backend/auth-flow-smoke.ts",
+    "self-hosted:smoke:auth": "npm run compile && ts-node src/backend/auth-flow-smoke.ts",
     "self-hosted:smoke:postgres": "ts-node src/backend/postgres-smoke.ts",
     "generate": "npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
     "generate:history-demo": "npm run parse -- ./fixtures/sample-llm-report-previous.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit abcdef123456 --author \"QA Bot\" && npm run parse -- ./fixtures/sample-llm-report.json ./dist/dashboard-data.json ./dist/history.json --branch main --commit fedcba654321 --author \"QA Bot\" && npm run build -- ./dist/dashboard-data.json ./dist/index.html",
+    "smoke:exports": "npm run compile && ts-node src/export-surface-smoke.ts",
+    "smoke:react": "npm run compile && ts-node src/react-surface-smoke.ts",
+    "smoke:static-export": "npm run generate:history-demo && ts-node src/static-export-smoke.ts",
     "clean:package": "node -e \"const fs=require('fs'); if(fs.existsSync('dist-ts')) fs.rmSync('dist-ts',{recursive:true,force:true});\"",
     "frontend:build": "vite build",
     "frontend:dev": "vite",
     "compile": "npm run clean:package && tsc -p tsconfig.json && npm run frontend:build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.frontend.json --noEmit",
-    "smoke": "node -e \"const fs=require('fs'); ['dist','history'].forEach((dir)=>{ if(fs.existsSync(dir)) fs.rmSync(dir,{recursive:true,force:true}); });\" && npm run generate:history-demo && npm run typecheck",
+    "smoke": "ts-node src/cleanup-smoke.ts && npm run generate:history-demo && npm run typecheck",
+    "smoke:full": "npm run smoke && npm run smoke:static-export && npm run smoke:exports && npm run smoke:react && npm run self-hosted:smoke:auth",
     "prepack": "npm run compile",
     "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse является внутренним и не предназначен для публикации. Публикуй только aqa-pulse-client.'); process.exit(1)\"",
     "pack:check": "npm pack --dry-run",
@@ -74,6 +94,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^26.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vite": "^8.0.8"

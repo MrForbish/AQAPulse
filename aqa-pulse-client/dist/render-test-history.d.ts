@@ -4,5 +4,10 @@ interface HistoryPageFilters {
     project?: string;
     file?: string;
 }
-export declare function renderTestHistoryHtml(payload: TestHistoryResponse | TestHistoryConflict | null, requestedTitle: string, filters?: HistoryPageFilters): string;
+interface HistoryPageOptions {
+    basePath?: string;
+    apiBasePath?: string;
+    artifactBasePath?: string;
+}
+export declare function renderTestHistoryHtml(payload: TestHistoryResponse | TestHistoryConflict | null, requestedTitle: string, filters?: HistoryPageFilters, options?: HistoryPageOptions): string;
 export {};

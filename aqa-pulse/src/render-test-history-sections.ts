@@ -1,6 +1,14 @@
+// Purpose: shared HTML renderer sections for legacy test-history pages, including incident summaries and attempt diagnostics.
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
+import {
+    buildApiTestHistoryHrefFromBasePath,
+    buildDashboardHrefFromBasePath,
+    buildQueryString as buildSharedQueryString,
+    buildTestHistoryHrefFromDashboardBasePath,
+    normalizeOptionalFilter as normalizeSharedOptionalFilter,
+} from './shared/navigation'
 import { ru } from './shared/i18n/ru'
 import { escapeHtml } from './shared/text-utils'
 
@@ -24,7 +32,7 @@ const METRIC_DESCRIPTIONS = {
 
 const HISTORY_TEXT = ru.testHistory
 
-
+// This block condenses the latest incident into a single operator-friendly summary card.
 export function renderIncidentSummary(
     incidentSummary: TestHistoryResponse['incidentSummary'],
     history: TestHistoryResponse['history'],
@@ -369,6 +377,7 @@ export function renderAttemptDiagnostics(history: TestHistoryResponse['history']
     `
 }
 
+// The diagnostics card intentionally duplicates latest and latest-unstable contexts so an engineer can compare the current state with the last bad run without scanning the whole table.
 export function renderAttemptDiagnosticsCard(
     item: TestHistoryResponse['history'][number],
     title: string,
@@ -514,6 +523,7 @@ export function renderStepDetail(
     `
 }
 
+// Incident summaries point to failure steps by title, so the lookup normalizes both the incident payload and rendered steps to keep anchors stable across whitespace/casing differences.
 export function findIncidentStepAnchor(
     history: TestHistoryResponse['history'],
     failureStepTitle: string | null,
@@ -890,9 +900,7 @@ export function buildDashboardHref(
     filters: { branch?: string | null; project?: string | null; file?: string | null },
     basePath: string,
 ): string {
-    const query = buildQueryString(filters)
-    const normalizedBasePath = basePath || '/'
-    return query ? `${normalizedBasePath}?${query}` : normalizedBasePath
+    return buildDashboardHrefFromBasePath(filters, basePath)
 }
 
 export function buildTestHistoryHref(
@@ -900,10 +908,7 @@ export function buildTestHistoryHref(
     filters: { branch?: string | null; project?: string | null; file?: string | null },
     basePath: string,
 ): string {
-    const query = buildQueryString(filters)
-    const testHistoryBasePath = basePath ? `${basePath}/test` : '/test'
-    const testHistoryHref = `${testHistoryBasePath}/${encodeURIComponent(title)}`
-    return query ? `${testHistoryHref}?${query}` : testHistoryHref
+    return buildTestHistoryHrefFromDashboardBasePath(title, filters, basePath)
 }
 
 export function buildApiTestHistoryHref(
@@ -911,32 +916,15 @@ export function buildApiTestHistoryHref(
     filters: { branch?: string | null; project?: string | null; file?: string | null },
     basePath: string,
 ): string {
-    const query = buildQueryString(filters)
-    const apiTestHistoryBasePath = basePath || '/api/test'
-    const apiTestHistoryHref = `${apiTestHistoryBasePath}/${encodeURIComponent(title)}`
-    return query ? `${apiTestHistoryHref}?${query}` : apiTestHistoryHref
+    return buildApiTestHistoryHrefFromBasePath(title, filters, basePath)
 }
 
 export function buildQueryString(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {
-    const searchParams = new URLSearchParams()
-
-    if (filters.branch) {
-        searchParams.set('branch', filters.branch)
-    }
-
-    if (filters.project) {
-        searchParams.set('project', filters.project)
-    }
-
-    if (filters.file) {
-        searchParams.set('file', filters.file)
-    }
-
-    return searchParams.toString()
+    return buildSharedQueryString(filters)
 }
 
 export function normalizeOptionalFilter(value: string | undefined): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+    return normalizeSharedOptionalFilter(value)
 }
 
 export function normalizeBasePath(value: string | undefined): string {

@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { TestHistoryAttachment, TestHistoryConflict, TestHistoryResponse } from '../../../api-store'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import { ru } from '../../../shared/i18n/ru'
+import { useTestHistoryData } from '../../hooks/use-test-history'
 import {
     buildArtifactBaseUrl,
     buildDashboardHref,
@@ -20,6 +21,7 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
     const location = useLocation()
     const [searchParams] = useSearchParams()
     const filters = readFiltersFromSearchParams(searchParams)
+    const isStaticMode = runtime.route.kind === 'static-dashboard'
     const currentRequestUrl = `${location.pathname}${location.search}`
     const apiUrl = buildTestHistoryApiUrl(props.workspaceSlug, props.requestedTitle, filters)
     const artifactBasePath = buildArtifactBaseUrl(props.workspaceSlug)
@@ -29,59 +31,17 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
         && runtime.initialRequestUrl === currentRequestUrl
     const initialPayload = bootstrapMatches ? runtime.initialTestHistoryPayload : null
 
-    const [payload, setPayload] = React.useState<TestHistoryResponse | TestHistoryConflict | null>(() => initialPayload)
-    const [loadedRequestUrl, setLoadedRequestUrl] = React.useState<string | null>(() => bootstrapMatches ? currentRequestUrl : null)
-    const [isLoading, setIsLoading] = React.useState<boolean>(() => !bootstrapMatches)
-    const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
-
-    React.useEffect(() => {
-        if (loadedRequestUrl === currentRequestUrl) {
-            return undefined
-        }
-
-        const abortController = new AbortController()
-        setIsLoading(true)
-        setErrorMessage(null)
-
-        void fetch(apiUrl, { signal: abortController.signal })
-            .then(async (response) => {
-                if (response.status === 404) {
-                    setPayload(null)
-                    setLoadedRequestUrl(currentRequestUrl)
-                    return null
-                }
-
-                const json = await response.json() as TestHistoryResponse | TestHistoryConflict | { error?: string }
-
-                if (response.status === 409) {
-                    setPayload(json as TestHistoryConflict)
-                    setLoadedRequestUrl(currentRequestUrl)
-                    return null
-                }
-
-                if (!response.ok) {
-                    throw new Error((json as { error?: string }).error ?? `HTTP ${response.status}`)
-                }
-
-                setPayload(json as TestHistoryResponse)
-                setLoadedRequestUrl(currentRequestUrl)
-                return null
-            })
-            .catch((error: unknown) => {
-                if (!abortController.signal.aborted) {
-                    setErrorMessage(error instanceof Error ? error.message : String(error))
-                }
-            })
-            .finally(() => {
-                if (!abortController.signal.aborted) {
-                    setIsLoading(false)
-                }
-            })
-
-        return () => {
-            abortController.abort()
-        }
-    }, [apiUrl, currentRequestUrl, loadedRequestUrl])
+    const { payload, isLoading, errorMessage } = useTestHistoryData({
+        workspaceSlug: props.workspaceSlug,
+        apiUrl,
+        currentRequestUrl,
+        initialPayload,
+        isStaticMode,
+        branch: filters.branch,
+        project: filters.project,
+        file: filters.file,
+        requestedTitle: props.requestedTitle,
+    })
 
     if (isLoading && !payload && !errorMessage) {
         return (
@@ -229,7 +189,7 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
                 </Panel>
                 {latestRun ? (
                     <Panel title={HISTORY_TEXT.diagnostics.latestRunTitle} description={HISTORY_TEXT.diagnostics.latestRunDescription} className="span-2">
-                        <AttemptDiagnostics runId={latestRun.runId} attempts={latestRun.attemptDetails} artifactBasePath={artifactBasePath} />
+                        <AttemptDiagnostics runId={latestRun.runId} attempts={latestRun.attemptDetails} artifactBasePath={artifactBasePath} isStaticMode={isStaticMode} />
                     </Panel>
                 ) : null}
             </div>
@@ -256,6 +216,7 @@ function AttemptDiagnostics(props: {
     runId: string
     attempts: TestHistoryResponse['history'][number]['attemptDetails']
     artifactBasePath: string
+    isStaticMode: boolean
 }): React.JSX.Element {
     if (props.attempts.length === 0) {
         return <EmptyState title="Attempt details отсутствуют" message={HISTORY_TEXT.diagnostics.emptyAttempt} />
@@ -291,7 +252,7 @@ function AttemptDiagnostics(props: {
                         {attempt.attachments.length > 0 ? (
                             <div className="attachment-grid-react">
                                 {attempt.attachments.map((attachment) => (
-                                    <AttachmentCard key={`${attachment.name}-${attachment.path ?? attachment.url ?? 'inline'}`} runId={props.runId} attachment={attachment} artifactBasePath={props.artifactBasePath} />
+                                    <AttachmentCard key={`${attachment.name}-${attachment.path ?? attachment.url ?? 'inline'}`} runId={props.runId} attachment={attachment} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} />
                                 ))}
                             </div>
                         ) : null}
@@ -302,8 +263,8 @@ function AttemptDiagnostics(props: {
     )
 }
 
-function AttachmentCard(props: { runId: string; attachment: TestHistoryAttachment; artifactBasePath: string }): React.JSX.Element {
-    const href = buildAttachmentHref(props.runId, props.attachment, props.artifactBasePath)
+function AttachmentCard(props: { runId: string; attachment: TestHistoryAttachment; artifactBasePath: string; isStaticMode: boolean }): React.JSX.Element {
+    const href = buildAttachmentHref(props.runId, props.attachment, props.artifactBasePath, props.isStaticMode)
     const isImage = isImageAttachment(props.attachment)
 
     return (
@@ -340,9 +301,13 @@ function buildCandidateHref(
     return `${pathname}?${searchParams.toString()}`
 }
 
-function buildAttachmentHref(runId: string, attachment: TestHistoryAttachment, artifactBasePath: string): string | null {
+function buildAttachmentHref(runId: string, attachment: TestHistoryAttachment, artifactBasePath: string, isStaticMode: boolean): string | null {
     if (attachment.url) {
         return attachment.url
+    }
+
+    if (isStaticMode) {
+        return null
     }
 
     if (!attachment.path) {

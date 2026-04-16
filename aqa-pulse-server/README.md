@@ -4,7 +4,7 @@ Self-hosted server package для AQA Pulse.
 
 В этом пакете есть:
 
-- готовый сервер и HTML dashboard;
+- готовый сервер и React dashboard/runtime bundle;
 - storage для `file`, `sqlite`, `postgres`;
 - auth для admin, workspace API key и workspace user token;
 - Dockerfile и Docker Compose;
@@ -16,6 +16,7 @@ Self-hosted server package для AQA Pulse.
 - [`SELF-HOSTED-DEPLOYMENT.md`](./SELF-HOSTED-DEPLOYMENT.md) — основной и единственный полный guide по self-hosted развёртке.
 - [`SELF-HOSTED-QUICKSTART.md`](./SELF-HOSTED-QUICKSTART.md) — короткий checklist для первого запуска.
 - [`SELF-HOSTED-INSTALL.md`](./SELF-HOSTED-INSTALL.md) — reference по вариантам установки.
+- [`MIGRATION.md`](./MIGRATION.md) — как переходить с legacy HTML renderer flow на текущий React runtime.
 - [`GITLAB-CI-INTEGRATION.md`](./GITLAB-CI-INTEGRATION.md) — только про upload из GitLab CI.
 
 ## Рекомендуемый старт
@@ -67,7 +68,7 @@ npm run update:docker -- --build-package
 - `scripts/setup-self-hosted.js`;
 - `scripts/update-self-hosted.js`;
 - `scripts/install-self-hosted.ps1`;
-- docs и `template/gitlab/aqa-pulse-upload.gitlab-ci.yml`.
+- docs включая `MIGRATION.md` и `template/gitlab/aqa-pulse-upload.gitlab-ci.yml`.
 
 ## CLI
 

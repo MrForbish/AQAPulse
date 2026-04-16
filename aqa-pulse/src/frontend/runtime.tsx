@@ -4,6 +4,15 @@ import {
     parseFrontendBootstrap,
     type FrontendBootstrapData,
 } from '../frontend-bootstrap'
+import {
+    buildArtifactBaseUrl as buildSharedArtifactBaseUrl,
+    buildSummaryApiUrl as buildSharedSummaryApiUrl,
+    buildWorkspaceDashboardHref,
+    buildWorkspaceTestHistoryHref,
+    buildTestHistoryApiUrl as buildSharedTestHistoryApiUrl,
+    readFiltersFromSearchParams as readSharedFiltersFromSearchParams,
+    type QueryFilters,
+} from '../shared/navigation'
 
 const RuntimeContext = React.createContext<FrontendBootstrapData>(createEmptyFrontendBootstrap())
 
@@ -21,71 +30,27 @@ export function useRuntime(): FrontendBootstrapData {
 }
 
 export function buildDashboardHref(workspaceSlug: string | null, filters: FrontendFilters): string {
-    const pathname = workspaceSlug ? `/w/${encodeURIComponent(workspaceSlug)}` : '/'
-    const query = buildQueryString(filters)
-    return query ? `${pathname}?${query}` : pathname
+    return buildWorkspaceDashboardHref(workspaceSlug, filters)
 }
 
 export function buildSummaryApiUrl(workspaceSlug: string | null, filters: FrontendFilters): string {
-    const pathname = workspaceSlug ? `/api/workspaces/${encodeURIComponent(workspaceSlug)}/summary` : '/api/summary'
-    const query = buildQueryString(filters)
-    return query ? `${pathname}?${query}` : pathname
+    return buildSharedSummaryApiUrl(workspaceSlug, filters)
 }
 
 export function buildTestHistoryHref(workspaceSlug: string | null, testName: string, filters: FrontendFilters): string {
-    const basePath = workspaceSlug
-        ? `/w/${encodeURIComponent(workspaceSlug)}/test/${encodeURIComponent(testName)}`
-        : `/test/${encodeURIComponent(testName)}`
-    const query = buildQueryString(filters)
-    return query ? `${basePath}?${query}` : basePath
+    return buildWorkspaceTestHistoryHref(workspaceSlug, testName, filters)
 }
 
 export function buildTestHistoryApiUrl(workspaceSlug: string | null, testName: string, filters: FrontendFilters): string {
-    const basePath = workspaceSlug
-        ? `/api/workspaces/${encodeURIComponent(workspaceSlug)}/test/${encodeURIComponent(testName)}`
-        : `/api/test/${encodeURIComponent(testName)}`
-    const query = buildQueryString(filters)
-    return query ? `${basePath}?${query}` : basePath
+    return buildSharedTestHistoryApiUrl(workspaceSlug, testName, filters)
 }
 
 export function buildArtifactBaseUrl(workspaceSlug: string | null): string {
-    return workspaceSlug
-        ? `/api/workspaces/${encodeURIComponent(workspaceSlug)}/artifacts`
-        : '/api/artifacts'
+    return buildSharedArtifactBaseUrl(workspaceSlug)
 }
 
 export function readFiltersFromSearchParams(searchParams: URLSearchParams): FrontendFilters {
-    return {
-        branch: normalizeQueryValue(searchParams.get('branch')),
-        project: normalizeQueryValue(searchParams.get('project')),
-        file: normalizeQueryValue(searchParams.get('file')),
-    }
+    return readSharedFiltersFromSearchParams(searchParams)
 }
 
-export interface FrontendFilters {
-    branch?: string | null
-    project?: string | null
-    file?: string | null
-}
-
-function buildQueryString(filters: FrontendFilters): string {
-    const searchParams = new URLSearchParams()
-
-    if (filters.branch) {
-        searchParams.set('branch', filters.branch)
-    }
-
-    if (filters.project) {
-        searchParams.set('project', filters.project)
-    }
-
-    if (filters.file) {
-        searchParams.set('file', filters.file)
-    }
-
-    return searchParams.toString()
-}
-
-function normalizeQueryValue(value: string | null): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
+export type FrontendFilters = QueryFilters

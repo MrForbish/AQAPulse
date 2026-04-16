@@ -1,11 +1,23 @@
 import type { TestHistoryConflict, TestHistoryResponse } from './api-store'
+import type { WorkspaceDescriptor } from './backend/contracts'
 import type { DashboardSummary } from './dashboard-utils'
 
 export const FRONTEND_BOOTSTRAP_PLACEHOLDER = '__AQA_PULSE_BOOTSTRAP__'
 
+export interface FrontendSessionStatus {
+    scope: 'admin' | 'workspace' | 'public'
+    authenticated: boolean
+    authRequired: boolean
+    workspaceSlug: string | null
+}
+
 export type FrontendRouteDescriptor =
     | { kind: 'dashboard'; workspaceSlug: string | null }
     | { kind: 'test-history'; workspaceSlug: string | null; testName: string }
+    | { kind: 'admin-dashboard' }
+    | { kind: 'admin-login' }
+    | { kind: 'workspace-login'; workspaceSlug: string }
+    | { kind: 'workspace-api-key-exchange'; workspaceSlug: string }
     | { kind: 'static-dashboard'; workspaceSlug: null }
 
 export interface FrontendBootstrapData {
@@ -13,6 +25,8 @@ export interface FrontendBootstrapData {
     initialRequestUrl: string
     initialDashboardSummary: DashboardSummary | null
     initialTestHistoryPayload: TestHistoryResponse | TestHistoryConflict | null
+    initialAdminWorkspaces: WorkspaceDescriptor[] | null
+    initialSessionStatus: FrontendSessionStatus | null
 }
 
 export function createEmptyFrontendBootstrap(): FrontendBootstrapData {
@@ -21,6 +35,8 @@ export function createEmptyFrontendBootstrap(): FrontendBootstrapData {
         initialRequestUrl: '/',
         initialDashboardSummary: null,
         initialTestHistoryPayload: null,
+        initialAdminWorkspaces: null,
+        initialSessionStatus: null,
     }
 }
 
@@ -39,6 +55,8 @@ export function parseFrontendBootstrap(rawValue: string | null | undefined): Fro
                 : '/',
             initialDashboardSummary: parsedValue.initialDashboardSummary ?? null,
             initialTestHistoryPayload: parsedValue.initialTestHistoryPayload ?? null,
+            initialAdminWorkspaces: Array.isArray(parsedValue.initialAdminWorkspaces) ? parsedValue.initialAdminWorkspaces : null,
+            initialSessionStatus: normalizeSessionStatus(parsedValue.initialSessionStatus),
         }
     } catch {
         return createEmptyFrontendBootstrap()
@@ -66,6 +84,17 @@ function normalizeRouteDescriptor(route: FrontendBootstrapData['route'] | undefi
         return { kind: 'static-dashboard', workspaceSlug: null }
     }
 
+    if (route.kind === 'admin-dashboard' || route.kind === 'admin-login') {
+        return route
+    }
+
+    if (route.kind === 'workspace-login' || route.kind === 'workspace-api-key-exchange') {
+        return {
+            kind: route.kind,
+            workspaceSlug: normalizeRequiredWorkspaceSlug(route.workspaceSlug),
+        }
+    }
+
     return {
         kind: 'dashboard',
         workspaceSlug: normalizeWorkspaceSlug(route.workspaceSlug),
@@ -74,6 +103,27 @@ function normalizeRouteDescriptor(route: FrontendBootstrapData['route'] | undefi
 
 function normalizeWorkspaceSlug(value: string | null | undefined): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function normalizeRequiredWorkspaceSlug(value: string | null | undefined): string {
+    return normalizeWorkspaceSlug(value) ?? 'workspace'
+}
+
+function normalizeSessionStatus(value: Partial<FrontendSessionStatus> | null | undefined): FrontendSessionStatus | null {
+    if (!value || typeof value !== 'object') {
+        return null
+    }
+
+    const scope = value.scope === 'admin' || value.scope === 'workspace' || value.scope === 'public'
+        ? value.scope
+        : 'public'
+
+    return {
+        scope,
+        authenticated: value.authenticated === true,
+        authRequired: value.authRequired === true,
+        workspaceSlug: scope === 'workspace' ? normalizeRequiredWorkspaceSlug(value.workspaceSlug) : null,
+    }
 }
 
 function serializeInlineBootstrap(value: FrontendBootstrapData): string {

@@ -165,6 +165,18 @@ curl --silent --show-error --fail \
 https://your-domain.example.com/w/autotests-main
 ```
 
+Начиная с React frontend migration, сервер дополнительно раздаёт web bundle по пути:
+
+```text
+https://your-domain.example.com/ui-assets/
+```
+
+Если перед AQA Pulse стоит reverse proxy, убедись, что он пропускает не только `/w/<slug>` и `/api/*`, но и `/ui-assets/*`.
+
+Это относится и к admin/auth экранам: `/admin`, `/admin/login`, `/w/<slug>/login`, `/auth/workspaces/<slug>/api-keys/login` теперь тоже используют тот же frontend bundle.
+
+Legacy HTML renderer packages вроде `aqa-pulse-client` больше не являются основным deployment path для этих экранов. Для migration path см. `./MIGRATION.md`.
+
 Если read-routes закрыты:
 
 ```text

@@ -8,6 +8,11 @@
 } from './dashboard-utils'
 import { METRIC_INFO_STYLES, renderMetricHeading } from './render-metric-info'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
+import {
+    buildDashboardTabHref as buildSharedDashboardTabHref,
+    buildQueryString as buildSharedQueryString,
+    buildTestHistoryHrefFromTestDetailsBasePath,
+} from './shared/navigation'
 import { ru } from './shared/i18n/ru'
 import { escapeHtml } from './shared/text-utils'
 
@@ -1071,9 +1076,7 @@ export function buildTestHistoryHref(
     filters: { branch?: string | null; project?: string | null; file?: string | null },
     testDetailsBasePath: string,
 ): string {
-    const query = buildQueryString(filters)
-    const basePath = `${testDetailsBasePath}/${encodeURIComponent(title)}`
-    return query ? `${basePath}?${query}` : basePath
+    return buildTestHistoryHrefFromTestDetailsBasePath(title, filters, testDetailsBasePath)
 }
 
 export function normalizeDashboardBasePath(basePath: string | undefined): string {
@@ -1096,27 +1099,11 @@ export function buildDashboardTabHref(
     tabId: string,
     sectionId?: string,
 ): string {
-    const query = buildQueryString(filters)
-    const hash = sectionId ? `#${tabId}:${sectionId}` : `#${tabId}`
-    return query ? `${dashboardActionPath}?${query}${hash}` : `${dashboardActionPath}${hash}`
+    return buildSharedDashboardTabHref(dashboardActionPath, filters, tabId, sectionId)
 }
 
 export function buildQueryString(filters: { branch?: string | null; project?: string | null; file?: string | null }): string {
-    const searchParams = new URLSearchParams()
-
-    if (filters.branch) {
-        searchParams.set('branch', filters.branch)
-    }
-
-    if (filters.project) {
-        searchParams.set('project', filters.project)
-    }
-
-    if (filters.file) {
-        searchParams.set('file', filters.file)
-    }
-
-    return searchParams.toString()
+    return buildSharedQueryString(filters)
 }
 
 export function serializeForInlineScript(value: unknown): string {

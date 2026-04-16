@@ -2,9 +2,11 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadReporterReport } from '../dashboard-utils'
+import { loadReporterReport, type ReporterRoot } from '../dashboard-utils'
+import { parseFrontendBootstrap, type FrontendBootstrapData, type FrontendSessionStatus } from '../frontend-bootstrap'
 import { getErrorMessage } from '../shared/error-utils'
 import { createSaasApp } from './app'
+import { type WorkspaceProvisioningResult, type WorkspaceUserProvisioningResult } from './contracts'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 
 interface AuthFlowSmokeOptions {
@@ -27,11 +29,28 @@ interface IngestionResponse {
     archivedRunDirectory: string
 }
 
+interface SessionResponse {
+    authenticated: boolean
+    authRequired: boolean
+    scope: string
+    workspace?: string
+}
+
+interface JsonErrorResponse {
+    error: string
+}
+
+interface JsonResponse<T> {
+    response: Response
+    payload: T | null
+}
+
 export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Promise<void> {
     const scenarioName = options.scenarioName ?? 'auth-flow'
     const scenarioId = `${scenarioName}-${Date.now()}`
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), `aqa-pulse-${scenarioName}-`))
     const adminToken = options.configOverrides?.adminToken ?? 'smoke-admin-token'
+    const distPath = options.configOverrides?.distPath ?? path.resolve(__dirname, '../../dist')
     const config = resolveSaasAppConfig({
         adminToken,
         jwtSecret: 'smoke-jwt-secret',
@@ -39,17 +58,19 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         allowDevBootstrap: false,
         requireWorkspaceAuth: true,
         dataRoot: options.configOverrides?.dataRoot ?? path.join(tempRoot, 'data'),
-        distPath: options.configOverrides?.distPath ?? path.join(tempRoot, 'dist'),
+        distPath,
         legacyArchiveRootPath: options.configOverrides?.legacyArchiveRootPath ?? path.join(tempRoot, 'history'),
         ...options.configOverrides,
     })
     const fixturePath = path.resolve(__dirname, '../../fixtures/sample-llm-report.json')
     const report = loadReporterReport(fixturePath)
+    const sampleTestTitle = requireFirstTestTitle(report)
     const workspaceSlug = normalizeSlug(`smoke-${scenarioId}`)
     const workspaceName = `Smoke ${scenarioId}`
 
+    assert(fs.existsSync(path.resolve(config.distPath, 'web', 'index.html')), 'Для auth smoke нужен собранный frontend template в dist/web/index.html.')
+
     fs.mkdirSync(config.dataRoot, { recursive: true })
-    fs.mkdirSync(config.distPath, { recursive: true })
     fs.mkdirSync(config.legacyArchiveRootPath, { recursive: true })
 
     const app = createSaasApp(config)
@@ -64,94 +85,29 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
 
     try {
         const adminLoginPage = await fetchText(`${baseUrl}/admin/login`)
-        assertIncludes(adminLoginPage, 'AQA Pulse Admin', 'admin login page')
+        const adminLoginBootstrap = extractBootstrapFromHtml(adminLoginPage)
+        assert(adminLoginBootstrap.route.kind === 'admin-login', 'admin login shell должен содержать route.kind=admin-login.')
+        assertBootstrapSession(adminLoginBootstrap.initialSessionStatus, {
+            scope: 'admin',
+            authenticated: false,
+            authRequired: true,
+            workspaceSlug: null,
+        }, 'admin login bootstrap')
 
-        const adminLoginResponse = await fetch(`${baseUrl}/auth/admin/login`, {
-            method: 'POST',
-            headers: {
-                accept: 'text/html',
-                'content-type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({ token: adminToken }),
+        const adminDashboardBeforeLogin = await fetch(`${baseUrl}/admin`, {
+            headers: { accept: 'text/html' },
             redirect: 'manual',
         })
-        assertStatus(adminLoginResponse, 302, 'admin form login')
-        assertHeader(adminLoginResponse, 'location', '/admin', 'admin form login redirect')
-        const adminCookie = extractCookieHeader(adminLoginResponse, config.adminSessionCookieName)
+        assertStatus(adminDashboardBeforeLogin, 302, 'admin dashboard before login')
+        assertHeader(adminDashboardBeforeLogin, 'location', '/admin/login', 'admin dashboard redirect before login')
 
-        const adminDashboardHtml = await fetchText(`${baseUrl}/admin`, {
-            headers: { cookie: adminCookie },
+        const adminSessionBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/auth/admin/session`, {
+            headers: { accept: 'application/json' },
         })
-        assertIncludes(adminDashboardHtml, 'Создать workspace', 'admin dashboard')
+        assertStatus(adminSessionBeforeLogin.response, 401, 'admin session before login')
+        assertIncludes(requirePayload(adminSessionBeforeLogin, 'admin session before login').error, 'admin session', 'admin session unauthorized error')
 
-        const createWorkspaceHtml = await fetchText(`${baseUrl}/admin/workspaces`, {
-            method: 'POST',
-            headers: {
-                accept: 'text/html',
-                cookie: adminCookie,
-                'content-type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                name: workspaceName,
-                slug: workspaceSlug,
-                apiKeyLabel: 'Smoke ingestion key',
-            }),
-        })
-        const workspaceApiKeyToken = extractProvisioningToken(createWorkspaceHtml, 'aqp_')
-        assertIncludes(createWorkspaceHtml, `/auth/workspaces/${workspaceSlug}/api-keys/login`, 'workspace create action result')
-
-        const createUserHtml = await fetchText(`${baseUrl}/admin/workspaces/${workspaceSlug}/users`, {
-            method: 'POST',
-            headers: {
-                accept: 'text/html',
-                cookie: adminCookie,
-                'content-type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                label: 'Smoke workspace owner',
-                role: 'owner',
-            }),
-        })
-        const workspaceUserToken = extractProvisioningToken(createUserHtml, 'aqu_')
-        assertIncludes(createUserHtml, `/w/${workspaceSlug}/login`, 'workspace user create action result')
-
-        const apiKeyExchangePage = await fetchText(`${baseUrl}/auth/workspaces/${workspaceSlug}/api-keys/login`)
-        assertIncludes(apiKeyExchangePage, 'API key → ingestion JWT', 'api key exchange page')
-
-        const apiKeyExchangeHtml = await fetchText(`${baseUrl}/auth/workspaces/${workspaceSlug}/api-keys/login`, {
-            method: 'POST',
-            headers: {
-                accept: 'text/html',
-                'content-type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({ token: workspaceApiKeyToken }),
-        })
-        const ingestionJwtFromHtml = extractJwtToken(apiKeyExchangeHtml)
-        assertIncludes(apiKeyExchangeHtml, `/api/workspaces/${workspaceSlug}/ingestions`, 'api key html exchange result')
-        assertTokenLooksLikeJwt(ingestionJwtFromHtml, 'html ingestion jwt')
-
-        const workspaceLoginPage = await fetchText(`${baseUrl}/w/${workspaceSlug}/login`)
-        assertIncludes(workspaceLoginPage, `Workspace: <strong>${workspaceSlug}</strong>`, 'workspace login page')
-
-        const workspaceLoginResponse = await fetch(`${baseUrl}/auth/workspaces/${workspaceSlug}/users/login`, {
-            method: 'POST',
-            headers: {
-                accept: 'text/html',
-                'content-type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({ token: workspaceUserToken }),
-            redirect: 'manual',
-        })
-        assertStatus(workspaceLoginResponse, 302, 'workspace form login')
-        assertHeader(workspaceLoginResponse, 'location', `/w/${workspaceSlug}`, 'workspace form login redirect')
-        const workspaceCookie = extractCookieHeader(workspaceLoginResponse, `${config.workspaceSessionCookiePrefix}_${workspaceSlug}`)
-
-        const workspaceDashboardHtml = await fetchText(`${baseUrl}/w/${workspaceSlug}`, {
-            headers: { cookie: workspaceCookie },
-        })
-        assertIncludes(workspaceDashboardHtml, 'AQA Pulse', 'workspace dashboard html via cookie')
-
-        const adminJsonLogin = await fetchJson<JsonLoginResponse>(`${baseUrl}/auth/admin/login`, {
+        const adminLoginResult = await fetchJsonResponse<JsonLoginResponse>(`${baseUrl}/auth/admin/login`, {
             method: 'POST',
             headers: {
                 accept: 'application/json',
@@ -159,7 +115,83 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
             },
             body: JSON.stringify({ token: adminToken }),
         })
+        assertStatus(adminLoginResult.response, 200, 'admin json login')
+        const adminJsonLogin = requirePayload(adminLoginResult, 'admin json login')
         assertTokenLooksLikeJwt(adminJsonLogin.accessToken, 'admin json jwt')
+        const adminCookie = extractCookieHeader(adminLoginResult.response, config.adminSessionCookieName)
+
+        const adminSessionViaCookie = await fetchJson<SessionResponse>(`${baseUrl}/auth/admin/session`, {
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+            },
+        })
+        assertSessionPayload(adminSessionViaCookie, {
+            authenticated: true,
+            authRequired: true,
+            scope: 'admin',
+        }, 'admin session via cookie')
+
+        const adminDashboardHtml = await fetchText(`${baseUrl}/admin`, {
+            headers: { accept: 'text/html', cookie: adminCookie },
+        })
+        const adminDashboardBootstrap = extractBootstrapFromHtml(adminDashboardHtml)
+        assert(adminDashboardBootstrap.route.kind === 'admin-dashboard', 'admin dashboard shell должен содержать route.kind=admin-dashboard.')
+        assertBootstrapSession(adminDashboardBootstrap.initialSessionStatus, {
+            scope: 'admin',
+            authenticated: true,
+            authRequired: true,
+            workspaceSlug: null,
+        }, 'admin dashboard bootstrap')
+        assert(Array.isArray(adminDashboardBootstrap.initialAdminWorkspaces), 'admin dashboard shell должен содержать initialAdminWorkspaces.')
+
+        const createWorkspaceResult = await fetchJsonResponse<WorkspaceProvisioningResult>(`${baseUrl}/admin/workspaces`, {
+            method: 'POST',
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: workspaceName,
+                slug: workspaceSlug,
+                apiKeyLabel: 'Smoke ingestion key',
+            }),
+        })
+        assertStatus(createWorkspaceResult.response, 201, 'create workspace')
+        const createdWorkspace = requirePayload(createWorkspaceResult, 'create workspace')
+        const workspaceApiKeyToken = createdWorkspace.apiKey.token
+        assert(workspaceApiKeyToken.startsWith('aqp_'), 'create workspace должен вернуть plaintext API key.')
+
+        const createApiKeyResult = await fetchJsonResponse<WorkspaceProvisioningResult>(`${baseUrl}/admin/workspaces/${workspaceSlug}/api-keys`, {
+            method: 'POST',
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({ label: 'Secondary smoke ingestion key' }),
+        })
+        assertStatus(createApiKeyResult.response, 201, 'create workspace api key')
+        const secondaryApiKey = requirePayload(createApiKeyResult, 'create workspace api key')
+        assert(secondaryApiKey.apiKey.token.startsWith('aqp_'), 'create api key должен вернуть plaintext API key.')
+
+        const createUserResult = await fetchJsonResponse<WorkspaceUserProvisioningResult>(`${baseUrl}/admin/workspaces/${workspaceSlug}/users`, {
+            method: 'POST',
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                label: 'Smoke workspace owner',
+                role: 'owner',
+            }),
+        })
+        assertStatus(createUserResult.response, 201, 'create workspace user')
+        const createdUser = requirePayload(createUserResult, 'create workspace user')
+        const workspaceUserToken = createdUser.user.token
+        assert(workspaceUserToken.startsWith('aqu_'), 'create user должен вернуть plaintext workspace user token.')
 
         const workspaceDescriptor = await fetchJson<{ workspace: { slug: string } }>(`${baseUrl}/api/workspaces/${workspaceSlug}`, {
             headers: {
@@ -169,7 +201,83 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         })
         assert(workspaceDescriptor.workspace.slug === workspaceSlug, 'admin JWT должен открывать admin API routes.')
 
-        const ingestionJsonLogin = await fetchJson<JsonLoginResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/api-keys/login`, {
+        const workspaceLoginPage = await fetchText(`${baseUrl}/w/${workspaceSlug}/login`)
+        const workspaceLoginBootstrap = extractBootstrapFromHtml(workspaceLoginPage)
+        assert(workspaceLoginBootstrap.route.kind === 'workspace-login', 'workspace login shell должен содержать route.kind=workspace-login.')
+        assert(workspaceLoginBootstrap.route.workspaceSlug === workspaceSlug, 'workspace login shell должен содержать корректный workspaceSlug.')
+        assertBootstrapSession(workspaceLoginBootstrap.initialSessionStatus, {
+            scope: 'workspace',
+            authenticated: false,
+            authRequired: true,
+            workspaceSlug,
+        }, 'workspace login bootstrap')
+
+        const apiKeyExchangePage = await fetchText(`${baseUrl}/auth/workspaces/${workspaceSlug}/api-keys/login`)
+        const apiKeyExchangeBootstrap = extractBootstrapFromHtml(apiKeyExchangePage)
+        assert(apiKeyExchangeBootstrap.route.kind === 'workspace-api-key-exchange', 'api key exchange shell должен содержать route.kind=workspace-api-key-exchange.')
+        assert(apiKeyExchangeBootstrap.route.workspaceSlug === workspaceSlug, 'api key exchange shell должен содержать корректный workspaceSlug.')
+        assertBootstrapSession(apiKeyExchangeBootstrap.initialSessionStatus, {
+            scope: 'workspace',
+            authenticated: false,
+            authRequired: true,
+            workspaceSlug,
+        }, 'workspace api key exchange bootstrap')
+
+        const workspaceDashboardBeforeLogin = await fetch(`${baseUrl}/w/${workspaceSlug}`, {
+            headers: { accept: 'text/html' },
+            redirect: 'manual',
+        })
+        assertStatus(workspaceDashboardBeforeLogin, 302, 'workspace dashboard before login')
+        assertHeader(workspaceDashboardBeforeLogin, 'location', `/w/${workspaceSlug}/login`, 'workspace dashboard redirect before login')
+
+        const workspaceSessionBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/session`, {
+            headers: { accept: 'application/json' },
+        })
+        assertStatus(workspaceSessionBeforeLogin.response, 401, 'workspace session before login')
+        assertIncludes(requirePayload(workspaceSessionBeforeLogin, 'workspace session before login').error, 'workspace session', 'workspace session unauthorized error')
+
+        const workspaceSummaryBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/api/workspaces/${workspaceSlug}/summary`, {
+            headers: { accept: 'application/json' },
+        })
+        assertStatus(workspaceSummaryBeforeLogin.response, 401, 'workspace summary before login')
+        assertIncludes(requirePayload(workspaceSummaryBeforeLogin, 'workspace summary before login').error, 'workspace session', 'workspace summary unauthorized error')
+
+        const workspaceHistoryBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/api/workspaces/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, {
+            headers: { accept: 'application/json' },
+        })
+        assertStatus(workspaceHistoryBeforeLogin.response, 401, 'workspace test history before login')
+        assertIncludes(requirePayload(workspaceHistoryBeforeLogin, 'workspace test history before login').error, 'workspace session', 'workspace history unauthorized error')
+
+        const workspaceSessionViaAdmin = await fetchJson<SessionResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/session`, {
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+            },
+        })
+        assertSessionPayload(workspaceSessionViaAdmin, {
+            authenticated: true,
+            authRequired: true,
+            scope: 'workspace:read',
+            workspace: workspaceSlug,
+        }, 'workspace session via admin cookie')
+
+        const workspaceHtmlViaAdmin = await fetchText(`${baseUrl}/w/${workspaceSlug}`, {
+            headers: {
+                accept: 'text/html',
+                cookie: adminCookie,
+            },
+        })
+        const workspaceAdminBootstrap = extractBootstrapFromHtml(workspaceHtmlViaAdmin)
+        assert(workspaceAdminBootstrap.route.kind === 'dashboard', 'workspace dashboard shell via admin cookie должен содержать route.kind=dashboard.')
+        assert(workspaceAdminBootstrap.route.workspaceSlug === workspaceSlug, 'workspace dashboard shell via admin cookie должен содержать workspaceSlug.')
+        assertBootstrapSession(workspaceAdminBootstrap.initialSessionStatus, {
+            scope: 'workspace',
+            authenticated: true,
+            authRequired: true,
+            workspaceSlug,
+        }, 'workspace dashboard bootstrap via admin cookie')
+
+        const ingestionLoginResult = await fetchJsonResponse<JsonLoginResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/api-keys/login`, {
             method: 'POST',
             headers: {
                 accept: 'application/json',
@@ -177,6 +285,8 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
             },
             body: JSON.stringify({ token: workspaceApiKeyToken }),
         })
+        assertStatus(ingestionLoginResult.response, 200, 'workspace api key login')
+        const ingestionJsonLogin = requirePayload(ingestionLoginResult, 'workspace api key login')
         assertTokenLooksLikeJwt(ingestionJsonLogin.accessToken, 'json ingestion jwt')
 
         const ingestionResult = await fetchJson<IngestionResponse>(`${baseUrl}/api/workspaces/${workspaceSlug}/ingestions`, {
@@ -199,7 +309,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         assert(ingestionResult.workspace.slug === workspaceSlug, 'ingestion должен сохраняться в целевой workspace.')
         assert(Boolean(ingestionResult.runId), 'ingestion должен вернуть runId.')
 
-        const workspaceJsonLogin = await fetchJson<JsonLoginResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/users/login`, {
+        const workspaceLoginResult = await fetchJsonResponse<JsonLoginResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/users/login`, {
             method: 'POST',
             headers: {
                 accept: 'application/json',
@@ -207,7 +317,23 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
             },
             body: JSON.stringify({ token: workspaceUserToken }),
         })
+        assertStatus(workspaceLoginResult.response, 200, 'workspace user login')
+        const workspaceJsonLogin = requirePayload(workspaceLoginResult, 'workspace user login')
         assertTokenLooksLikeJwt(workspaceJsonLogin.accessToken, 'json workspace read jwt')
+        const workspaceCookie = extractCookieHeader(workspaceLoginResult.response, `${config.workspaceSessionCookiePrefix}_${workspaceSlug}`)
+
+        const workspaceSessionViaCookie = await fetchJson<SessionResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/session`, {
+            headers: {
+                accept: 'application/json',
+                cookie: workspaceCookie,
+            },
+        })
+        assertSessionPayload(workspaceSessionViaCookie, {
+            authenticated: true,
+            authRequired: true,
+            scope: 'workspace:read',
+            workspace: workspaceSlug,
+        }, 'workspace session via cookie')
 
         const summaryPayload = await fetchJson<Record<string, unknown>>(`${baseUrl}/api/workspaces/${workspaceSlug}/summary`, {
             headers: {
@@ -217,8 +343,13 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         })
         assert(typeof summaryPayload === 'object' && summaryPayload !== null, 'workspace summary должен возвращать JSON payload.')
 
-        const sampleTestTitle = report.tests?.[0]?.title
-        assert(typeof sampleTestTitle === 'string' && sampleTestTitle.length > 0, 'fixture report должен содержать хотя бы один тест с title.')
+        const historyPayload = await fetchJson<Record<string, unknown>>(`${baseUrl}/api/workspaces/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, {
+            headers: {
+                accept: 'application/json',
+                authorization: `Bearer ${workspaceJsonLogin.accessToken}`,
+            },
+        })
+        assert(typeof historyPayload === 'object' && historyPayload !== null, 'workspace test history должен возвращать JSON payload.')
 
         const workspaceHistoryHtml = await fetchText(`${baseUrl}/w/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, {
             headers: {
@@ -226,8 +357,17 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
                 authorization: `Bearer ${workspaceJsonLogin.accessToken}`,
             },
         })
-        assertIncludes(workspaceHistoryHtml, `href="/w/${workspaceSlug}"`, 'workspace history back link')
-        assertIncludes(workspaceHistoryHtml, `href="/api/workspaces/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, 'workspace history api link')
+        const workspaceHistoryBootstrap = extractBootstrapFromHtml(workspaceHistoryHtml)
+        assert(workspaceHistoryBootstrap.route.kind === 'test-history', 'workspace history shell должен содержать route.kind=test-history.')
+        assert(workspaceHistoryBootstrap.route.workspaceSlug === workspaceSlug, 'workspace history shell должен содержать workspaceSlug.')
+        assert(workspaceHistoryBootstrap.route.testName === sampleTestTitle, 'workspace history shell должен содержать testName.')
+        assertBootstrapSession(workspaceHistoryBootstrap.initialSessionStatus, {
+            scope: 'workspace',
+            authenticated: true,
+            authRequired: true,
+            workspaceSlug,
+        }, 'workspace history bootstrap')
+        assert(workspaceHistoryBootstrap.initialTestHistoryPayload !== null, 'workspace history shell должен содержать initialTestHistoryPayload.')
 
         const workspaceHtmlViaJwt = await fetchText(`${baseUrl}/w/${workspaceSlug}`, {
             headers: {
@@ -235,33 +375,65 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
                 authorization: `Bearer ${workspaceJsonLogin.accessToken}`,
             },
         })
-        assertIncludes(workspaceHtmlViaJwt, 'AQA Pulse', 'workspace dashboard html via JWT')
+        const workspaceDashboardBootstrap = extractBootstrapFromHtml(workspaceHtmlViaJwt)
+        assert(workspaceDashboardBootstrap.route.kind === 'dashboard', 'workspace dashboard shell должен содержать route.kind=dashboard.')
+        assert(workspaceDashboardBootstrap.route.workspaceSlug === workspaceSlug, 'workspace dashboard shell должен содержать workspaceSlug.')
+        assertBootstrapSession(workspaceDashboardBootstrap.initialSessionStatus, {
+            scope: 'workspace',
+            authenticated: true,
+            authRequired: true,
+            workspaceSlug,
+        }, 'workspace dashboard bootstrap via jwt')
+        assert(workspaceDashboardBootstrap.initialDashboardSummary !== null, 'workspace dashboard shell должен содержать initialDashboardSummary.')
 
-        const workspaceLogoutResponse = await fetch(`${baseUrl}/auth/workspaces/${workspaceSlug}/users/logout`, {
+        const workspaceLogoutResult = await fetchJsonResponse<{ status: string }>(`${baseUrl}/auth/workspaces/${workspaceSlug}/users/logout`, {
             method: 'POST',
             headers: {
-                accept: 'text/html',
+                accept: 'application/json',
                 cookie: workspaceCookie,
-                'content-type': 'application/x-www-form-urlencoded',
             },
-            body: new URLSearchParams(),
+        })
+        assertStatus(workspaceLogoutResult.response, 200, 'workspace logout')
+        assert(requirePayload(workspaceLogoutResult, 'workspace logout').status === 'ok', 'workspace logout должен вернуть status=ok.')
+
+        const workspaceSessionAfterLogout = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/auth/workspaces/${workspaceSlug}/session`, {
+            headers: { accept: 'application/json' },
+        })
+        assertStatus(workspaceSessionAfterLogout.response, 401, 'workspace session after logout')
+
+        const workspaceSummaryAfterLogout = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/api/workspaces/${workspaceSlug}/summary`, {
+            headers: { accept: 'application/json' },
+        })
+        assertStatus(workspaceSummaryAfterLogout.response, 401, 'workspace summary after logout')
+
+        const workspaceDashboardAfterLogout = await fetch(`${baseUrl}/w/${workspaceSlug}`, {
+            headers: { accept: 'text/html' },
             redirect: 'manual',
         })
-        assertStatus(workspaceLogoutResponse, 302, 'workspace form logout')
-        assertHeader(workspaceLogoutResponse, 'location', `/w/${workspaceSlug}/login`, 'workspace logout redirect')
+        assertStatus(workspaceDashboardAfterLogout, 302, 'workspace dashboard after logout')
+        assertHeader(workspaceDashboardAfterLogout, 'location', `/w/${workspaceSlug}/login`, 'workspace dashboard redirect after logout')
 
-        const adminLogoutResponse = await fetch(`${baseUrl}/auth/admin/logout`, {
+        const adminLogoutResult = await fetchJsonResponse<{ status: string }>(`${baseUrl}/auth/admin/logout`, {
             method: 'POST',
             headers: {
-                accept: 'text/html',
+                accept: 'application/json',
                 cookie: adminCookie,
-                'content-type': 'application/x-www-form-urlencoded',
             },
-            body: new URLSearchParams(),
+        })
+        assertStatus(adminLogoutResult.response, 200, 'admin logout')
+        assert(requirePayload(adminLogoutResult, 'admin logout').status === 'ok', 'admin logout должен вернуть status=ok.')
+
+        const adminSessionAfterLogout = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/auth/admin/session`, {
+            headers: { accept: 'application/json' },
+        })
+        assertStatus(adminSessionAfterLogout.response, 401, 'admin session after logout')
+
+        const adminDashboardAfterLogout = await fetch(`${baseUrl}/admin`, {
+            headers: { accept: 'text/html' },
             redirect: 'manual',
         })
-        assertStatus(adminLogoutResponse, 302, 'admin form logout')
-        assertHeader(adminLogoutResponse, 'location', '/admin/login', 'admin logout redirect')
+        assertStatus(adminDashboardAfterLogout, 302, 'admin dashboard after logout')
+        assertHeader(adminDashboardAfterLogout, 'location', '/admin/login', 'admin dashboard redirect after logout')
 
         console.log(`Smoke auth/UI flow завершён успешно (${scenarioName}).`)
         console.log(`Storage driver: ${config.storageDriver}`)
@@ -290,9 +462,69 @@ async function fetchText(url: string, init?: RequestInit): Promise<string> {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const result = await fetchJsonResponse<T>(url, init)
+    assertOk(result.response, `json response for ${url}`)
+    return requirePayload(result, `json response for ${url}`)
+}
+
+async function fetchJsonResponse<T>(url: string, init?: RequestInit): Promise<JsonResponse<T>> {
     const response = await fetch(url, init)
-    assertOk(response, `json response for ${url}`)
-    return response.json() as Promise<T>
+    const responseText = await response.text()
+
+    if (!responseText.trim()) {
+        return { response, payload: null }
+    }
+
+    return {
+        response,
+        payload: JSON.parse(responseText) as T,
+    }
+}
+
+function requirePayload<T>(result: JsonResponse<T>, label: string): T {
+    if (result.payload === null) {
+        throw new Error(`${label}: ожидался JSON payload.`)
+    }
+
+    return result.payload
+}
+
+function extractBootstrapFromHtml(html: string): FrontendBootstrapData {
+    const scriptMatch = html.match(/<script[^>]*id=(['"])aqa-pulse-bootstrap\1[^>]*>([\s\S]*?)<\/script>/i)
+
+    if (!scriptMatch) {
+        throw new Error('Не удалось найти <script id="aqa-pulse-bootstrap"> в HTML shell.')
+    }
+
+    return parseFrontendBootstrap(scriptMatch[2])
+}
+
+function assertBootstrapSession(actual: FrontendSessionStatus | null, expected: FrontendSessionStatus, label: string): void {
+    assert(actual !== null, `${label}: initialSessionStatus должен присутствовать.`)
+    assert(actual.scope === expected.scope, `${label}: ожидался scope=${expected.scope}, получен ${actual.scope}.`)
+    assert(actual.authenticated === expected.authenticated, `${label}: ожидался authenticated=${expected.authenticated}, получен ${actual.authenticated}.`)
+    assert(actual.authRequired === expected.authRequired, `${label}: ожидался authRequired=${expected.authRequired}, получен ${actual.authRequired}.`)
+    assert(actual.workspaceSlug === expected.workspaceSlug, `${label}: ожидался workspaceSlug=${expected.workspaceSlug}, получен ${actual.workspaceSlug}.`)
+}
+
+function assertSessionPayload(
+    actual: SessionResponse,
+    expected: { authenticated: boolean; authRequired: boolean; scope: string; workspace?: string },
+    label: string,
+): void {
+    assert(actual.authenticated === expected.authenticated, `${label}: ожидался authenticated=${expected.authenticated}, получен ${actual.authenticated}.`)
+    assert(actual.authRequired === expected.authRequired, `${label}: ожидался authRequired=${expected.authRequired}, получен ${actual.authRequired}.`)
+    assert(actual.scope === expected.scope, `${label}: ожидался scope=${expected.scope}, получен ${actual.scope}.`)
+
+    if ('workspace' in expected) {
+        assert(actual.workspace === expected.workspace, `${label}: ожидался workspace=${expected.workspace}, получен ${actual.workspace}.`)
+    }
+}
+
+function requireFirstTestTitle(report: ReporterRoot): string {
+    const title = report.tests?.[0]?.title
+    assert(typeof title === 'string' && title.length > 0, 'fixture report должен содержать хотя бы один тест с title.')
+    return title
 }
 
 function assertOk(response: Response, label: string): void {
@@ -336,26 +568,6 @@ function extractCookieHeader(response: Response, cookieName: string): string {
     }
 
     return cookieValue.split(';')[0].trim()
-}
-
-function extractProvisioningToken(html: string, prefix: 'aqp_' | 'aqu_'): string {
-    const match = html.match(new RegExp(`${prefix}[a-f0-9]+`, 'i'))
-
-    if (!match) {
-        throw new Error(`Не удалось найти provisioning token с префиксом ${prefix} в HTML action result.`)
-    }
-
-    return match[0]
-}
-
-function extractJwtToken(html: string): string {
-    const match = html.match(/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/)
-
-    if (!match) {
-        throw new Error('Не удалось найти JWT token в HTML response.')
-    }
-
-    return match[0]
 }
 
 function assertTokenLooksLikeJwt(token: string, label: string): void {

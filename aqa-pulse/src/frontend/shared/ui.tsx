@@ -1,10 +1,21 @@
 import React from 'react'
 
-export function PageFrame(props: { children: React.ReactNode }): React.JSX.Element {
+export interface PageFrameProps {
+    children: React.ReactNode
+}
+
+export function PageFrame(props: PageFrameProps): React.JSX.Element {
     return <div className="app-shell">{props.children}</div>
 }
 
-export function Panel(props: { title?: string; description?: string; children: React.ReactNode; className?: string }): React.JSX.Element {
+export interface PanelProps {
+    title?: string
+    description?: string
+    children: React.ReactNode
+    className?: string
+}
+
+export function Panel(props: PanelProps): React.JSX.Element {
     return (
         <section className={['panel', props.className].filter(Boolean).join(' ')}>
             {(props.title || props.description) ? (
@@ -18,7 +29,14 @@ export function Panel(props: { title?: string; description?: string; children: R
     )
 }
 
-export function MetricCard(props: { label: string; value: string; hint?: string; tone?: 'default' | 'good' | 'warn' | 'danger' }): React.JSX.Element {
+export interface MetricCardProps {
+    label: string
+    value: string
+    hint?: string
+    tone?: 'default' | 'good' | 'warn' | 'danger'
+}
+
+export function MetricCard(props: MetricCardProps): React.JSX.Element {
     return (
         <article className={['metric-card', props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
             <div className="metric-label">{props.label}</div>
@@ -28,15 +46,22 @@ export function MetricCard(props: { label: string; value: string; hint?: string;
     )
 }
 
-export function StatusBadge(props: { label: string; tone?: 'neutral' | 'good' | 'warn' | 'danger' | 'accent' }): React.JSX.Element {
+export interface StatusBadgeProps {
+    label: string
+    tone?: 'neutral' | 'good' | 'warn' | 'danger' | 'accent'
+}
+
+export function StatusBadge(props: StatusBadgeProps): React.JSX.Element {
     return <span className={`status-badge is-${props.tone ?? 'neutral'}`}>{props.label}</span>
 }
 
-export function SegmentedTabs(props: {
+export interface SegmentedTabsProps {
     activeTab: string
     items: Array<{ id: string; label: string }>
     onChange: (value: string) => void
-}): React.JSX.Element {
+}
+
+export function SegmentedTabs(props: SegmentedTabsProps): React.JSX.Element {
     return (
         <div className="segmented-tabs" role="tablist" aria-label="Категории метрик">
             {props.items.map((item) => (
@@ -53,7 +78,11 @@ export function SegmentedTabs(props: {
     )
 }
 
-export function LoadingView(props: { label?: string }): React.JSX.Element {
+export interface LoadingViewProps {
+    label?: string
+}
+
+export function LoadingView(props: LoadingViewProps): React.JSX.Element {
     return (
         <Panel>
             <div className="state-block">
@@ -64,7 +93,13 @@ export function LoadingView(props: { label?: string }): React.JSX.Element {
     )
 }
 
-export function ErrorView(props: { title: string; message: string; action?: React.ReactNode }): React.JSX.Element {
+export interface ErrorViewProps {
+    title: string
+    message: string
+    action?: React.ReactNode
+}
+
+export function ErrorView(props: ErrorViewProps): React.JSX.Element {
     return (
         <Panel className="panel-error">
             <div className="state-block">
@@ -76,7 +111,12 @@ export function ErrorView(props: { title: string; message: string; action?: Reac
     )
 }
 
-export function EmptyState(props: { title: string; message: string }): React.JSX.Element {
+export interface EmptyStateProps {
+    title: string
+    message: string
+}
+
+export function EmptyState(props: EmptyStateProps): React.JSX.Element {
     return (
         <div className="empty-state">
             <strong>{props.title}</strong>

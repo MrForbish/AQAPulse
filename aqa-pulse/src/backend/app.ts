@@ -7,23 +7,17 @@ import { injectFrontendBootstrap, type FrontendBootstrapData } from '../frontend
 import { createEmptyHistory } from '../history-utils'
 import { getErrorMessage } from '../shared/error-utils'
 import {
-    type AdminDashboardActionResult,
-    renderAdminDashboardHtml,
-    renderAdminLoginHtml,
-    renderWorkspaceApiKeyExchangeHtml,
-    renderWorkspaceLoginHtml,
-} from './admin-ui'
-import {
     createAdminGuard,
     createWorkspaceApiKeyGuard,
     createWorkspaceResolver,
     createWorkspaceUserGuard,
+    extractAccessToken,
     getWorkspaceSessionCookieName,
     requireWorkspaceFromLocals,
 } from './auth'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 import type { IngestionRequestPayload } from './contracts'
-import { buildCookieHeader, buildExpiredCookieHeader, issueJwtToken } from './jwt'
+import { buildCookieHeader, buildExpiredCookieHeader, issueJwtToken, verifyJwtToken } from './jwt'
 import { ingestReporterRun } from './run-ingestion.service'
 import { createBackendStorage, type BackendStorage } from './storage'
 import { WorkspaceRegistry } from './workspace-registry'
@@ -59,17 +53,19 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     app.use('/static', express.static(distPath))
     app.use('/w/:slug/assets', express.static(distAssetsPath))
 
-    app.get('/admin/login', (_request: Request, response: Response) => {
-        response.type('html').send(renderAdminLoginHtml())
+    app.get('/admin/login', (request: Request, response: Response) => {
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'admin-login' },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: null,
+            initialTestHistoryPayload: null,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: readAdminBootstrapSession(request, config),
+        })
     })
 
     app.post('/auth/admin/login', (request: Request, response: Response) => {
         if (!config.adminToken) {
-            if (expectsFormResponse(request)) {
-                response.status(400).type('html').send(renderAdminLoginHtml('Admin token не настроен в конфигурации сервера.'))
-                return
-            }
-
             response.status(400).json({ error: 'Admin token не настроен в конфигурации сервера.' })
             return
         }
@@ -77,11 +73,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const providedToken = pickOptionalString(request.body?.token)
 
         if (!providedToken || providedToken !== config.adminToken) {
-            if (expectsFormResponse(request)) {
-                response.status(401).type('html').send(renderAdminLoginHtml('Неверный admin token.'))
-                return
-            }
-
             response.status(401).json({ error: 'Неверный admin token.' })
             return
         }
@@ -100,11 +91,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             maxAgeSeconds: config.accessTokenTtlSeconds,
         }))
 
-        if (expectsFormResponse(request)) {
-            response.redirect('/admin')
-            return
-        }
-
         response.json({
             accessToken: issuedToken.token,
             expiresAt: new Date(issuedToken.claims.exp * 1000).toISOString(),
@@ -115,30 +101,36 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     app.post('/auth/admin/logout', (_request: Request, response: Response) => {
         response.setHeader('Set-Cookie', buildExpiredCookieHeader(config.adminSessionCookieName))
 
-        if (expectsFormResponse(_request)) {
-            response.redirect('/admin/login')
-            return
-        }
-
         response.json({ status: 'ok' })
     })
 
-    app.get('/admin', adminOnly, (_request: Request, response: Response) => {
-        response.type('html').send(renderAdminDashboardHtml({ workspaces: registry.listWorkspaces() }))
+    app.get('/auth/admin/session', (request: Request, response: Response, next: NextFunction) => {
+        if (!config.adminToken) {
+            response.json({ authenticated: true, authRequired: false, scope: 'admin' })
+            return
+        }
+
+        next()
+    }, adminOnly, (_request: Request, response: Response) => {
+        response.json({ authenticated: true, authRequired: true, scope: 'admin' })
+    })
+
+    app.get('/admin', adminOnly, (request: Request, response: Response) => {
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'admin-dashboard' },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: null,
+            initialTestHistoryPayload: null,
+            initialAdminWorkspaces: registry.listWorkspaces(),
+            initialSessionStatus: readAdminBootstrapSession(request, config),
+        })
     })
 
     app.post('/admin/workspaces', adminOnly, (request: Request, response: Response) => {
         const name = pickOptionalString(request.body?.name)
 
         if (!name) {
-            sendAdminDashboardHtml(response, registry, {
-                statusCode: 400,
-                actionResult: {
-                    tone: 'error',
-                    title: 'Ошибка создания workspace',
-                    details: { error: 'Поле name обязательно.' },
-                },
-            })
+            response.status(400).json({ error: 'Поле "name" обязательно.' })
             return
         }
 
@@ -150,27 +142,9 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             })
             ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage)
 
-            sendAdminDashboardHtml(response, registry, {
-                actionResult: {
-                    title: 'Workspace создан',
-                    details: {
-                        workspace: createdWorkspace.workspace.slug,
-                        apiKeyLabel: createdWorkspace.apiKey.label,
-                        apiKeyToken: createdWorkspace.apiKey.token,
-                        workspaceLoginUrl: `/w/${createdWorkspace.workspace.slug}/login`,
-                        apiKeyExchangeUrl: `/auth/workspaces/${createdWorkspace.workspace.slug}/api-keys/login`,
-                    },
-                },
-            })
+            response.status(201).json(createdWorkspace)
         } catch (error) {
-            sendAdminDashboardHtml(response, registry, {
-                statusCode: 400,
-                actionResult: {
-                    tone: 'error',
-                    title: 'Ошибка создания workspace',
-                    details: { error: getErrorMessage(error) },
-                },
-            })
+            response.status(400).json({ error: getErrorMessage(error) })
         }
     })
 
@@ -180,28 +154,11 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         try {
             const createdApiKey = registry.createApiKey(workspace.slug, pickOptionalString(request.body?.label) ?? 'Generated key')
 
-            sendAdminDashboardHtml(response, registry, {
-                actionResult: {
-                    title: 'API key создан',
-                    details: {
-                        workspace: workspace.slug,
-                        label: createdApiKey.apiKey.label,
-                        apiKeyToken: createdApiKey.apiKey.token,
-                        apiKeyExchangeUrl: `/auth/workspaces/${workspace.slug}/api-keys/login`,
-                    },
-                },
-            })
+            response.status(201).json(createdApiKey)
         } catch (error) {
-            sendAdminDashboardHtml(response, registry, {
-                statusCode: 400,
-                actionResult: {
-                    tone: 'error',
-                    title: 'Ошибка создания API key',
-                    details: {
-                        workspace: workspace.slug,
-                        error: getErrorMessage(error),
-                    },
-                },
+            response.status(400).json({
+                error: getErrorMessage(error),
+                workspace: workspace.slug,
             })
         }
     })
@@ -211,14 +168,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const label = pickOptionalString(request.body?.label)
 
         if (!label) {
-            sendAdminDashboardHtml(response, registry, {
-                statusCode: 400,
-                actionResult: {
-                    tone: 'error',
-                    title: 'Ошибка создания user token',
-                    details: { error: 'Поле label обязательно.' },
-                },
-            })
+            response.status(400).json({ error: 'Поле "label" обязательно.' })
             return
         }
 
@@ -228,41 +178,37 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
                 role: request.body?.role === 'owner' ? 'owner' : 'viewer',
             })
 
-            sendAdminDashboardHtml(response, registry, {
-                actionResult: {
-                    title: 'Workspace user token создан',
-                    details: {
-                        workspace: workspace.slug,
-                        label: createdUser.user.label,
-                        role: createdUser.user.role,
-                        workspaceUserToken: createdUser.user.token,
-                        workspaceLoginUrl: `/w/${workspace.slug}/login`,
-                    },
-                },
-            })
+            response.status(201).json(createdUser)
         } catch (error) {
-            sendAdminDashboardHtml(response, registry, {
-                statusCode: 400,
-                actionResult: {
-                    tone: 'error',
-                    title: 'Ошибка создания user token',
-                    details: {
-                        workspace: workspace.slug,
-                        error: getErrorMessage(error),
-                    },
-                },
+            response.status(400).json({
+                error: getErrorMessage(error),
+                workspace: workspace.slug,
             })
         }
     })
 
     app.get('/w/:slug/login', workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        response.type('html').send(renderWorkspaceLoginHtml(workspace.slug))
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'workspace-login', workspaceSlug: workspace.slug },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: null,
+            initialTestHistoryPayload: null,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, config),
+        })
     })
 
-    app.get('/auth/workspaces/:slug/api-keys/login', workspaceResolver, (_request: Request, response: Response) => {
+    app.get('/auth/workspaces/:slug/api-keys/login', workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        response.type('html').send(renderWorkspaceApiKeyExchangeHtml({ slug: workspace.slug }))
+        sendFrontendShell(response, frontendTemplate, {
+            route: { kind: 'workspace-api-key-exchange', workspaceSlug: workspace.slug },
+            initialRequestUrl: request.originalUrl,
+            initialDashboardSummary: null,
+            initialTestHistoryPayload: null,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, config),
+        })
     })
 
     app.post('/auth/workspaces/:slug/users/login', workspaceResolver, (request: Request, response: Response) => {
@@ -270,11 +216,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const rawToken = pickOptionalString(request.body?.token)
 
         if (!rawToken) {
-            if (expectsFormResponse(request)) {
-                response.status(401).type('html').send(renderWorkspaceLoginHtml(workspace.slug, 'Нужно передать workspace user token.'))
-                return
-            }
-
             response.status(401).json({ error: 'Нужно передать workspace user token.' })
             return
         }
@@ -282,11 +223,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const authResult = registry.authenticateWorkspaceUser(rawToken)
 
         if (!authResult || authResult.workspace.slug !== workspace.slug) {
-            if (expectsFormResponse(request)) {
-                response.status(401).type('html').send(renderWorkspaceLoginHtml(workspace.slug, 'Неверный workspace user token.'))
-                return
-            }
-
             response.status(401).json({ error: 'Неверный workspace user token.' })
             return
         }
@@ -308,11 +244,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             path: '/',
         }))
 
-        if (expectsFormResponse(request)) {
-            response.redirect(`/w/${workspace.slug}`)
-            return
-        }
-
         response.json({
             accessToken: issuedToken.token,
             expiresAt: new Date(issuedToken.claims.exp * 1000).toISOString(),
@@ -326,14 +257,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const rawToken = pickOptionalString(request.body?.token)
 
         if (!rawToken) {
-            if (expectsFormResponse(request)) {
-                response.status(401).type('html').send(renderWorkspaceApiKeyExchangeHtml({
-                    slug: workspace.slug,
-                    errorMessage: 'Нужно передать workspace API key.',
-                }))
-                return
-            }
-
             response.status(401).json({ error: 'Нужно передать workspace API key.' })
             return
         }
@@ -341,14 +264,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const authResult = registry.authenticate(rawToken)
 
         if (!authResult || authResult.workspace.slug !== workspace.slug) {
-            if (expectsFormResponse(request)) {
-                response.status(401).type('html').send(renderWorkspaceApiKeyExchangeHtml({
-                    slug: workspace.slug,
-                    errorMessage: 'Неверный workspace API key.',
-                }))
-                return
-            }
-
             response.status(401).json({ error: 'Неверный workspace API key.' })
             return
         }
@@ -361,21 +276,6 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             ttlSeconds: config.accessTokenTtlSeconds,
             workspaceSlug: workspace.slug,
         })
-
-        if (expectsFormResponse(request)) {
-            response.type('html').send(renderWorkspaceApiKeyExchangeHtml({
-                slug: workspace.slug,
-                exchangeResult: {
-                    accessToken: issuedToken.token,
-                    expiresAt: new Date(issuedToken.claims.exp * 1000).toISOString(),
-                    scope: issuedToken.claims.scope,
-                    workspace: workspace.slug,
-                    authorizationHeader: `Bearer ${issuedToken.token}`,
-                    ingestionEndpoint: `/api/workspaces/${workspace.slug}/ingestions`,
-                },
-            }))
-            return
-        }
 
         response.json({
             accessToken: issuedToken.token,
@@ -390,12 +290,32 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
         response.setHeader('Set-Cookie', buildExpiredCookieHeader(getWorkspaceSessionCookieName(config, workspace.slug)))
 
-        if (expectsFormResponse(_request)) {
-            response.redirect(`/w/${workspace.slug}/login`)
+        response.json({ status: 'ok' })
+    })
+
+    app.get('/auth/workspaces/:slug/session', workspaceResolver, (request: Request, response: Response, next: NextFunction) => {
+        const workspace = requireWorkspaceFromLocals(response)
+
+        if (!config.requireWorkspaceAuth) {
+            response.json({
+                authenticated: true,
+                authRequired: false,
+                scope: 'workspace:read',
+                workspace: workspace.slug,
+            })
             return
         }
 
-        response.json({ status: 'ok' })
+        next()
+    }, workspaceUserGuard, (_request: Request, response: Response) => {
+        const workspace = requireWorkspaceFromLocals(response)
+
+        response.json({
+            authenticated: true,
+            authRequired: true,
+            scope: 'workspace:read',
+            workspace: workspace.slug,
+        })
     })
 
     app.get('/', (request: Request, response: Response) => {
@@ -404,6 +324,8 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: defaultStore.getFilteredSummary(getFiltersFromRequest(request)),
             initialTestHistoryPayload: null,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: { scope: 'public', authenticated: true, authRequired: false, workspaceSlug: null },
         })
     })
 
@@ -457,6 +379,8 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
             initialTestHistoryPayload: payload,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: { scope: 'public', authenticated: true, authRequired: false, workspaceSlug: null },
         }, getTestHistoryHtmlStatusCode(payload))
     })
 
@@ -572,6 +496,8 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: store.getFilteredSummary(getFiltersFromRequest(request)),
             initialTestHistoryPayload: null,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, config),
         })
     })
 
@@ -587,6 +513,8 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
             initialTestHistoryPayload: payload,
+            initialAdminWorkspaces: null,
+            initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, config),
         }, getTestHistoryHtmlStatusCode(payload))
     })
 
@@ -784,6 +712,69 @@ function getTestHistoryHtmlStatusCode(payload: ReturnType<ApiStore['getTestHisto
     return 200
 }
 
+function readAdminBootstrapSession(request: Request, config: SaasAppConfig): FrontendBootstrapData['initialSessionStatus'] {
+    if (!config.adminToken) {
+        return { scope: 'admin', authenticated: true, authRequired: false, workspaceSlug: null }
+    }
+
+    const token = extractAccessToken(request, 'x-admin-token')
+        ?? readCookieValue(request, config.adminSessionCookieName)
+    const claims = token ? verifyJwtToken(token, config.jwtSecret) : null
+
+    return {
+        scope: 'admin',
+        authenticated: claims?.scope === 'admin' && claims.kind === 'admin',
+        authRequired: true,
+        workspaceSlug: null,
+    }
+}
+
+function readWorkspaceBootstrapSession(request: Request, workspaceSlug: string, config: SaasAppConfig): FrontendBootstrapData['initialSessionStatus'] {
+    if (!config.requireWorkspaceAuth) {
+        return { scope: 'workspace', authenticated: true, authRequired: false, workspaceSlug }
+    }
+
+    const adminToken = extractAccessToken(request, 'x-admin-token')
+        ?? readCookieValue(request, config.adminSessionCookieName)
+    const adminClaims = adminToken ? verifyJwtToken(adminToken, config.jwtSecret) : null
+
+    if (adminClaims?.scope === 'admin' && adminClaims.kind === 'admin') {
+        return { scope: 'workspace', authenticated: true, authRequired: true, workspaceSlug }
+    }
+
+    const workspaceToken = extractAccessToken(request, 'x-workspace-token')
+        ?? readCookieValue(request, getWorkspaceSessionCookieName(config, workspaceSlug))
+    const workspaceClaims = workspaceToken ? verifyJwtToken(workspaceToken, config.jwtSecret) : null
+
+    return {
+        scope: 'workspace',
+        authenticated: workspaceClaims?.kind === 'workspace-user'
+            && workspaceClaims.scope === 'workspace:read'
+            && workspaceClaims.workspaceSlug === workspaceSlug,
+        authRequired: true,
+        workspaceSlug,
+    }
+}
+
+function readCookieValue(request: Request, name: string): string | null {
+    const cookieHeader = request.header('cookie')
+
+    if (!cookieHeader) {
+        return null
+    }
+
+    const cookiePart = cookieHeader
+        .split(';')
+        .map((entry) => entry.trim())
+        .find((entry) => entry.startsWith(`${name}=`))
+
+    if (!cookiePart) {
+        return null
+    }
+
+    return decodeURIComponent(cookiePart.slice(name.length + 1))
+}
+
 function ensureDevBootstrapEnabled(config: SaasAppConfig) {
     return (_request: Request, response: Response, next: NextFunction) => {
         if (!config.allowDevBootstrap) {
@@ -847,20 +838,6 @@ function pickOptionalString(value: unknown): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
-function sendAdminDashboardHtml(
-    response: Response,
-    registry: WorkspaceRegistry,
-    options: { statusCode?: number; actionResult?: AdminDashboardActionResult } = {},
-): void {
-    response
-        .status(options.statusCode ?? 200)
-        .type('html')
-        .send(renderAdminDashboardHtml({
-            workspaces: registry.listWorkspaces(),
-            actionResult: options.actionResult,
-        }))
-}
-
 function sendArtifactFile(response: Response, artifactsRootPath: string, runId: string, requestedPath: string | undefined): void {
     if (!requestedPath) {
         response.status(400).json({ error: 'Нужно передать query-параметр path.' })
@@ -896,15 +873,6 @@ function normalizeRunDirectory(runId: string): string {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '') || 'run'
-}
-
-function expectsFormResponse(request: Request): boolean {
-    const contentType = request.header('content-type') ?? ''
-    const acceptHeader = request.header('accept') ?? ''
-
-    return contentType.includes('application/x-www-form-urlencoded')
-        || contentType.includes('multipart/form-data')
-        || acceptHeader.includes('text/html')
 }
 
 

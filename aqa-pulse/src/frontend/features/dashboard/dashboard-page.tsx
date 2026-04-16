@@ -1,9 +1,9 @@
 import React from 'react'
-import type { ChartData } from 'chart.js'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { DashboardErrorCluster, DashboardSummary } from '../../../dashboard-utils'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
 import { ru } from '../../../shared/i18n/ru'
+import { useDashboardSummaryData } from '../../hooks/use-dashboard-summary'
 import {
     buildDashboardHref,
     buildSummaryApiUrl,
@@ -11,7 +11,7 @@ import {
     readFiltersFromSearchParams,
     useRuntime,
 } from '../../runtime'
-import { ChartCard } from '../../shared/chart-card'
+import { ChartCard, type FrontendChartData } from '../../shared/chart-card'
 import { EmptyState, ErrorView, LoadingView, MetricCard, PageFrame, Panel, SegmentedTabs, StatusBadge } from '../../shared/ui'
 
 const DASHBOARD_TEXT = ru.dashboard
@@ -43,52 +43,13 @@ export function DashboardPage(props: { workspaceSlug: string | null }): React.JS
             && runtime.initialRequestUrl === currentRequestUrl)
     const initialSummary = bootstrapMatches ? runtime.initialDashboardSummary : null
 
-    const [summary, setSummary] = React.useState<DashboardSummary | null>(() => initialSummary)
-    const [loadedRequestUrl, setLoadedRequestUrl] = React.useState<string | null>(() => initialSummary ? currentRequestUrl : null)
-    const [isLoading, setIsLoading] = React.useState<boolean>(() => !initialSummary && !isStaticMode)
-    const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
-
-    React.useEffect(() => {
-        if (isStaticMode) {
-            return undefined
-        }
-
-        if (loadedRequestUrl === currentRequestUrl && summary) {
-            return undefined
-        }
-
-        const abortController = new AbortController()
-        setIsLoading(true)
-        setErrorMessage(null)
-
-        void fetch(apiUrl, { signal: abortController.signal })
-            .then(async (response) => {
-                if (!response.ok) {
-                    const payload = await safeReadError(response)
-                    throw new Error(payload)
-                }
-
-                return response.json() as Promise<DashboardSummary>
-            })
-            .then((payload) => {
-                setSummary(payload)
-                setLoadedRequestUrl(currentRequestUrl)
-            })
-            .catch((error: unknown) => {
-                if (!abortController.signal.aborted) {
-                    setErrorMessage(error instanceof Error ? error.message : String(error))
-                }
-            })
-            .finally(() => {
-                if (!abortController.signal.aborted) {
-                    setIsLoading(false)
-                }
-            })
-
-        return () => {
-            abortController.abort()
-        }
-    }, [apiUrl, currentRequestUrl, isStaticMode, loadedRequestUrl, summary])
+    const { summary, isLoading, errorMessage } = useDashboardSummaryData({
+        workspaceSlug: props.workspaceSlug,
+        apiUrl,
+        currentRequestUrl,
+        initialSummary,
+        isStaticMode,
+    })
 
     if (!summary && isLoading) {
         return (
@@ -517,7 +478,7 @@ function buildReleaseConfidenceBars(summary: DashboardSummary): Array<{ label: s
     ]
 }
 
-function buildLineChart(labels: string[], values: number[], color: string): ChartData<'line'> {
+function buildLineChart(labels: string[], values: number[], color: string): FrontendChartData<'line'> {
     return {
         labels,
         datasets: [
@@ -533,7 +494,7 @@ function buildLineChart(labels: string[], values: number[], color: string): Char
     }
 }
 
-function buildBarChart(labels: string[], values: number[], color: string): ChartData<'bar'> {
+function buildBarChart(labels: string[], values: number[], color: string): FrontendChartData<'bar'> {
     return {
         labels,
         datasets: [
@@ -547,7 +508,7 @@ function buildBarChart(labels: string[], values: number[], color: string): Chart
     }
 }
 
-function buildDoughnutChart(labels: string[], values: number[]): ChartData<'doughnut'> {
+function buildDoughnutChart(labels: string[], values: number[]): FrontendChartData<'doughnut'> {
     return {
         labels,
         datasets: [
@@ -658,13 +619,4 @@ function resetFilters(setSearchParams: ReturnType<typeof useSearchParams>[1]): v
         nextParams.delete('file')
         return nextParams
     })
-}
-
-async function safeReadError(response: Response): Promise<string> {
-    try {
-        const payload = await response.json() as { error?: string }
-        return payload.error ?? `HTTP ${response.status}`
-    } catch {
-        return `HTTP ${response.status}`
-    }
 }

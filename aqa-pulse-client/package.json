@@ -2,7 +2,7 @@
   "name": "aqa-pulse-client",
   "version": "0.1.0",
   "private": false,
-  "description": "Публичный клиентский пакет AQA Pulse для рендера HTML-дашбордов и страниц истории тестов",
+  "description": "Legacy compatibility package for AQA Pulse HTML renderers; new UI work ships via the React runtime",
   "license": "UNLICENSED",
   "keywords": [
     "playwright",

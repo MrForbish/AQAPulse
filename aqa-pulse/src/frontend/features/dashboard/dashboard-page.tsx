@@ -88,8 +88,7 @@ export function DashboardPage(props: { workspaceSlug: string | null }): React.JS
                     <div className="eyebrow">React UI</div>
                     <h1>{DASHBOARD_TEXT.title}</h1>
                     <p>
-                        UI теперь строится как модульный React frontend поверх существующих API и workspace-маршрутов.
-                        Структура ориентирована на feature-модули, а не на одну строковую HTML-функцию на тысячи строк.
+                        унифицированная экосистема для автоматизации тестирования, агрегации артефактов и контроля здоровья продукта на всех этапах CI/CD.
                     </p>
                 </div>
                 <div className="hero-meta-card">

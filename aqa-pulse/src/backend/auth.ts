@@ -12,7 +12,15 @@ interface AqaPulseLocals {
     aqaPulseAuthClaims?: AuthTokenClaims
 }
 
-export function createAdminGuard(config: SaasAppConfig): RequestHandler {
+type UnauthorizedResponseMode = 'json' | 'redirect'
+
+interface GuardOptions {
+    unauthorizedResponseMode?: UnauthorizedResponseMode
+}
+
+export function createAdminGuard(config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
+    const unauthorizedResponseMode = options.unauthorizedResponseMode ?? 'json'
+
     return (request: Request, response: Response, next: NextFunction) => {
         if (!config.adminToken) {
             next()
@@ -24,7 +32,8 @@ export function createAdminGuard(config: SaasAppConfig): RequestHandler {
 
         if (!token) {
             handleUnauthorized(request, response, {
-                htmlRedirectUrl: '/admin/login',
+                responseMode: unauthorizedResponseMode,
+                redirectUrl: '/admin/login',
                 jsonMessage: 'Требуется admin session или Bearer JWT.',
             })
             return
@@ -39,7 +48,8 @@ export function createAdminGuard(config: SaasAppConfig): RequestHandler {
         }
 
         handleUnauthorized(request, response, {
-            htmlRedirectUrl: '/admin/login',
+            responseMode: unauthorizedResponseMode,
+            redirectUrl: '/admin/login',
             jsonMessage: 'Требуется admin session или Bearer JWT.',
         })
     }
@@ -93,7 +103,9 @@ export function createWorkspaceApiKeyGuard(_registry: WorkspaceRegistry, config:
     }
 }
 
-export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: SaasAppConfig): RequestHandler {
+export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
+    const unauthorizedResponseMode = options.unauthorizedResponseMode ?? 'json'
+
     return (request: Request, response: Response, next: NextFunction) => {
         if (!config.requireWorkspaceAuth) {
             next()
@@ -123,7 +135,8 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
 
         if (!token) {
             handleUnauthorized(request, response, {
-                htmlRedirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
+                responseMode: unauthorizedResponseMode,
+                redirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
                 jsonMessage: 'Требуется workspace session или Bearer JWT.',
             })
             return
@@ -133,7 +146,8 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
 
         if (!claims || claims.kind !== 'workspace-user' || claims.scope !== 'workspace:read') {
             handleUnauthorized(request, response, {
-                htmlRedirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
+                responseMode: unauthorizedResponseMode,
+                redirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
                 jsonMessage: 'Workspace JWT не распознан или scope некорректен.',
             })
             return
@@ -243,18 +257,13 @@ function getCookie(request: Request, name: string): string | null {
 function handleUnauthorized(
     request: Request,
     response: Response,
-    options: { htmlRedirectUrl: string; jsonMessage: string },
+    options: { responseMode: UnauthorizedResponseMode; redirectUrl: string; jsonMessage: string },
 ): void {
-    if (acceptsHtml(request)) {
-        response.redirect(options.htmlRedirectUrl)
+    if (options.responseMode === 'redirect') {
+        response.redirect(options.redirectUrl)
         return
     }
 
     response.status(401).json({ error: options.jsonMessage })
-}
-
-function acceptsHtml(request: Request): boolean {
-    const acceptHeader = request.header('accept') ?? ''
-    return acceptHeader.includes('text/html')
 }
 

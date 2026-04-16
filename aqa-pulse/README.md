@@ -25,19 +25,19 @@
 - использует общий helper `src/render-metric-info.ts` для tooltip'ов и заголовков метрик в dashboard и на drill-down странице теста;
 - поддерживает каскадные фильтры `branch -> project -> file` в UI и query params.
 
-## Compatibility Boundary
+## Runtime Boundary
 
 `aqa-pulse` больше не экспортирует string-based HTML renderers.
 
 Исторический string-based HTML renderer path удалён из активной поставки repo; для product UI используй `aqa-pulse-server`, а для offline/embedded сценариев - React/static runtime из `aqa-pulse`.
 
-Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale и публичные Dashboard/TestHistory types для новых интеграций теперь публикуются через `aqa-pulse-browser`, а не через deprecated renderer package.
+Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale и публичные Dashboard/TestHistory types для новых интеграций теперь публикуются через `aqa-pulse-browser`, а не через отдельный legacy renderer package.
 
-Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит compatibility HTML renderer в стандартный build output.
+Обычный `npm run compile` в `aqa-pulse` теперь собирает только основной React/runtime surface и не тащит removed HTML renderer surface в стандартный build output.
 
-Исходники deprecated string-based renderer больше не живут в `aqa-pulse` и больше не поддерживаются как отдельный package surface.
+Исходники legacy string-based renderer больше не живут в `aqa-pulse` и больше не поддерживаются как отдельный package surface.
 
-`npm run smoke:full` теперь тоже не зависит от compatibility renderer path: negative checks в export-surface smoke следят, чтобы main package и self-hosted packaging не тянули удалённый renderer обратно.
+`npm run smoke:full` теперь тоже не зависит от retired renderer path: negative checks в export-surface smoke следят, чтобы main package и self-hosted packaging не тянули удалённый renderer обратно.
 
 Файлы уровня `src/backend/contracts.ts`, `src/backend/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
 
@@ -46,9 +46,9 @@ Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale
 Текущая публичная структура entry points у `aqa-pulse`:
 
 - корневой пакет: utilities + history/api types + frontend bootstrap helpers;
-- `aqa-pulse/core`: core utilities без compatibility HTML renderer surface;
+- `aqa-pulse/core`: core utilities без legacy HTML renderer surface;
 - `aqa-pulse/client`: browser-safe formatting/bootstrap/types без HTML renderer surface;
-- `aqa-pulse-browser`: публичный browser-safe package с formatting, metric-heading helpers, bootstrap/types для внешних интеграций без deprecated renderer API;
+- `aqa-pulse-browser`: публичный browser-safe package с formatting, metric-heading helpers, bootstrap/types для внешних интеграций без legacy renderer API;
 - `aqa-pulse/react`: React pages, runtime provider, admin auth building blocks, shared UI components и admin hooks/API helpers для embedded usage;
 - `aqa-pulse/hooks`: React hooks для dashboard/test-history data flows;
 - `aqa-pulse/types`: type-only re-exports для интеграций.
@@ -126,7 +126,7 @@ Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale
   - `Кластеры ошибок`
   - `Топ проблемных тестов`
   - `Top flaky tests (P1)`
-  - drill-down ссылки на HTML-страницу истории теста сохранены
+  - drill-down ссылки на React route истории теста сохранены
 - `Бизнес-метрики`
   - `Cost of Flakiness` (proxy)
   - `Developer Friction` (proxy)
@@ -169,7 +169,7 @@ npm run typecheck
 - registry рабочих пространств в `dev-data/registry.json`;
 - изоляция данных по workspace в `dev-data/workspaces/<slug>/`;
 - ingestion Playwright JSON-репорта по HTTP;
-- отдельные HTML/API routes на workspace:
+- отдельные React shell/API routes на workspace:
   - `GET /w/:slug`
   - `GET /w/:slug/test/:name`
   - `GET /api/workspaces/:slug/*`
@@ -324,7 +324,7 @@ curl --silent --show-error --fail \
 ### Короткие команды запуска
 
 ```bash
-# демо-данные + HTML
+# демо-данные + React static shell
 npm run generate:history-demo
 
 # локальный API
@@ -362,7 +362,7 @@ npm run server:pack:check
 - [`../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md`](../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md) — короткая версия: как быстро поставить на свой сервер
 - [`../aqa-pulse-server/SELF-HOSTED-INSTALL.md`](../aqa-pulse-server/SELF-HOSTED-INSTALL.md) — как поставить на свой сервер
 - [`../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md`](../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md) — полный self-hosted deployment guide
-- [`../aqa-pulse-server/MIGRATION.md`](../aqa-pulse-server/MIGRATION.md) — как переходить с compatibility HTML renderer flow на React runtime
+- [`../aqa-pulse-server/MIGRATION.md`](../aqa-pulse-server/MIGRATION.md) — как переходить со старого pre-React delivery flow на React runtime
 
 Он нужен для self-hosted / on-prem сценария и содержит:
 
@@ -448,7 +448,7 @@ npm run self-hosted:smoke:postgres
 - ingestion через JWT;
 - открытие `/w/:slug` и `/api/workspaces/:slug/*` через workspace JWT/cookie;
 - bootstrap `initialSessionStatus` для auth-shell и protected React routes;
-- unauthorized contract: `401` для JSON API и HTML redirect на login для shell routes.
+- unauthorized contract: `401` для JSON API и redirect на login для React shell routes.
 
 `smoke:full` собирает в один прогон:
 
@@ -519,7 +519,7 @@ aqa-pulse/history/
 Важно:
 
 - переходы в drill-down историю теста работают в API-driven режиме через серверный route;
-- `static/index.html` остаётся полезным fallback для обзора summary, но HTML drill-down страница не генерируется как набор статических файлов на каждый тест.
+- `static/index.html` остаётся полезным fallback для обзора summary, но отдельный test-history route не генерируется как набор статических файлов на каждый тест.
 
 Доступные endpoint'ы:
 
@@ -559,7 +559,7 @@ npm run api:demo
 http://127.0.0.1:3000
 ```
 
-Главная страница `/` рендерится сервером из текущего `GET /api/summary`, то есть UI теперь живёт поверх того же источника данных, что и API.
+Главная страница `/` отдаётся сервером как React shell с bootstrap из текущего `GET /api/summary`, то есть UI теперь живёт поверх того же источника данных, что и API.
 
 Дополнительно из таблиц:
 
@@ -567,7 +567,7 @@ http://127.0.0.1:3000
 - `Top flaky tests (P1)`
 - `Top slowest tests (P1)`
 
-название теста является ссылкой на отдельную HTML-страницу истории этого теста.
+название теста является ссылкой на отдельный React route истории этого теста.
 
 Примеры UI с фильтрами:
 
@@ -656,7 +656,7 @@ curl --silent --show-error --fail "http://127.0.0.1:3000/api/summary?project=api
 curl --silent --show-error --fail "http://127.0.0.1:3000/api/runs?branch=main&file=tests%2FUI%2Fcheckout%2Fpayment.spec.ts"
 ```
 
-Примеры ручной проверки HTML drill-down страницы:
+Примеры ручной проверки test-history route:
 
 ```bash
 curl --silent --show-error --fail "http://127.0.0.1:3000/"

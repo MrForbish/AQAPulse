@@ -103,11 +103,18 @@ function cleanDir(dirPath) {
  */
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(distRoot, 'backend', 'app.js')
+    const compiledFrontendShellPath = path.resolve(distRoot, 'backend', 'frontend-shell.js')
     const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
+    const compiledFrontendShell = fs.readFileSync(compiledFrontendShellPath, 'utf8')
 
     assertIncludes(
         compiledApp,
-        "function sendFrontendShell(response, htmlTemplate, bootstrap, statusCode = 200) {",
+        'createFrontendShellRenderer',
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledApp,
+        'frontendShell.send(response, {',
         compiledAppPath,
     )
     assertIncludes(
@@ -126,9 +133,14 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
         compiledAppPath,
     )
     assertIncludes(
-        compiledApp,
-        ".send((0, frontend_bootstrap_1.injectFrontendBootstrap)(htmlTemplate, bootstrap));",
-        compiledAppPath,
+        compiledFrontendShell,
+        'function createFrontendShellRenderer(frontendDistPath)',
+        compiledFrontendShellPath,
+    )
+    assertIncludes(
+        compiledFrontendShell,
+        '.send((0, frontend_bootstrap_1.injectFrontendBootstrap)(frontendTemplate, bootstrap));',
+        compiledFrontendShellPath,
     )
 }
 

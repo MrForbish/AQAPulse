@@ -1,5 +1,5 @@
 /**
- * Назначение: полноценные React-модули dashboard для business/code quality/team/ai. Здесь собирается feature-level UI поверх уже рассчитанных summary-метрик без возврата к deprecated compatibility renderer path.
+ * Назначение: полноценные React-модули dashboard для business/code quality/team/ai. Здесь собирается feature-level UI поверх уже рассчитанных summary-метрик без возврата к removed pre-React delivery path.
  */
 import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'

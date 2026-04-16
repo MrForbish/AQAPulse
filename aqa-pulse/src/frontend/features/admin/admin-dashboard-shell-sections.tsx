@@ -12,7 +12,7 @@ export function AdminDashboardHero(props: {
             <div className="panel admin-hero-copy">
                 <div className="eyebrow">Admin workspace control</div>
                 <h1>AQA Pulse Admin</h1>
-                <p>Единый React shell для provisioning, workspace access и ingestion flow без отдельного compatibility renderer path для admin-страниц.</p>
+                <p>Единый React shell для provisioning, workspace access и ingestion flow без отдельного legacy delivery слоя для admin-страниц.</p>
             </div>
             <div className="hero-meta-card admin-toolbar-card">
                 <div className="hero-meta-row">

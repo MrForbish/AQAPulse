@@ -1,6 +1,6 @@
 # aqa-pulse-browser
 
-`aqa-pulse-browser` — публичный browser-safe package для интеграций, которым нужны shared utilities, metric heading helpers, locale, bootstrap helpers и публичные типы AQA Pulse без deprecated HTML renderer API.
+`aqa-pulse-browser` — публичный browser-safe package для интеграций, которым нужны shared utilities, metric heading helpers, locale, bootstrap helpers и публичные типы AQA Pulse без legacy HTML renderer API.
 
 Этот пакет зеркалит browser-safe surface внутреннего `aqa-pulse/client`, но публикуется отдельно и не тянет product UI/runtime bundle.
 
@@ -30,7 +30,7 @@
 
 - если нужен browser-safe bootstrap contract для embedded/static integrations;
 - если нужны shared formatting helpers, metric heading helpers или locale;
-- если нужны Dashboard/TestHistory types без зависимости от deprecated renderer package.
+- если нужны Dashboard/TestHistory types без зависимости от удалённого renderer package.
 
 Когда не использовать:
 

@@ -6,7 +6,7 @@ import * as path from 'node:path'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ApiStore, type ApiFilters } from '../api-store'
 import { buildDashboardSummary, type ReporterRoot } from '../dashboard-utils'
-import { injectFrontendBootstrap, type FrontendBootstrapData } from '../frontend-bootstrap'
+import { type FrontendBootstrapData } from '../frontend-bootstrap'
 import { createEmptyHistory } from '../history-utils'
 import { getErrorMessage } from '../shared/error-utils'
 import {
@@ -20,6 +20,7 @@ import {
 } from './auth'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 import type { IngestionRequestPayload } from './contracts'
+import { createFrontendShellRenderer } from './frontend-shell'
 import { buildCookieHeader, buildExpiredCookieHeader, issueJwtToken, verifyJwtToken } from './jwt'
 import { ingestReporterRun } from './run-ingestion.service'
 import { createBackendStorage, type BackendStorage } from './storage'
@@ -33,10 +34,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     const config = resolveSaasAppConfig(options)
     const backendStorage = createBackendStorage(config)
     const registry = new WorkspaceRegistry(backendStorage.registry)
-    const adminOnly = createAdminGuard(config)
+    const adminShellGuard = createAdminGuard(config, { unauthorizedResponseMode: 'redirect' })
+    const adminApiGuard = createAdminGuard(config, { unauthorizedResponseMode: 'json' })
     const workspaceResolver = createWorkspaceResolver(registry)
     const workspaceApiKeyGuard = createWorkspaceApiKeyGuard(registry, config)
-    const workspaceUserGuard = createWorkspaceUserGuard(registry, config)
+    const workspaceShellGuard = createWorkspaceUserGuard(registry, config, { unauthorizedResponseMode: 'redirect' })
+    const workspaceApiGuard = createWorkspaceUserGuard(registry, config, { unauthorizedResponseMode: 'json' })
     const defaultStore = new ApiStore({
         storage: backendStorage.createDashboardReadStorage({
             summaryPath: path.join(config.distPath, 'dashboard-data.json'),
@@ -47,10 +50,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     const distPath = config.distPath
     const distAssetsPath = path.resolve(distPath, './assets')
     const frontendDistPath = path.resolve(distPath, './web')
-    const frontendTemplatePath = path.resolve(frontendDistPath, './index.html')
-    const frontendTemplate = fs.existsSync(frontendTemplatePath)
-        ? fs.readFileSync(frontendTemplatePath, 'utf8')
-        : null
+    const frontendShell = createFrontendShellRenderer(frontendDistPath)
 
     app.use(express.json({ limit: config.requestBodyLimit }))
     app.use(express.urlencoded({ extended: true, limit: config.requestBodyLimit }))
@@ -60,7 +60,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     app.use('/w/:slug/assets', express.static(distAssetsPath))
 
     app.get('/admin/login', (request: Request, response: Response) => {
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'admin-login' },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
@@ -117,12 +117,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         }
 
         next()
-    }, adminOnly, (_request: Request, response: Response) => {
+    }, adminApiGuard, (_request: Request, response: Response) => {
         response.json({ authenticated: true, authRequired: true, scope: 'admin' })
     })
 
-    app.get('/admin', adminOnly, (request: Request, response: Response) => {
-        sendFrontendShell(response, frontendTemplate, {
+    app.get('/admin', adminShellGuard, (request: Request, response: Response) => {
+        frontendShell.send(response, {
             route: { kind: 'admin-dashboard' },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
@@ -132,7 +132,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         })
     })
 
-    app.post('/admin/workspaces', adminOnly, (request: Request, response: Response) => {
+    app.post('/admin/workspaces', adminApiGuard, (request: Request, response: Response) => {
         const name = pickOptionalString(request.body?.name)
 
         if (!name) {
@@ -154,7 +154,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         }
     })
 
-    app.post('/admin/workspaces/:slug/api-keys', adminOnly, workspaceResolver, (request: Request, response: Response) => {
+    app.post('/admin/workspaces/:slug/api-keys', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
 
         try {
@@ -169,7 +169,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         }
     })
 
-    app.post('/admin/workspaces/:slug/users', adminOnly, workspaceResolver, (request: Request, response: Response) => {
+    app.post('/admin/workspaces/:slug/users', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const label = pickOptionalString(request.body?.label)
 
@@ -195,7 +195,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.get('/w/:slug/login', workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'workspace-login', workspaceSlug: workspace.slug },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
@@ -207,7 +207,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.get('/auth/workspaces/:slug/api-keys/login', workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'workspace-api-key-exchange', workspaceSlug: workspace.slug },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
@@ -313,7 +313,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         }
 
         next()
-    }, workspaceUserGuard, (_request: Request, response: Response) => {
+    }, workspaceApiGuard, (_request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
 
         response.json({
@@ -325,7 +325,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
     })
 
     app.get('/', (request: Request, response: Response) => {
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'dashboard', workspaceSlug: null },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: defaultStore.getFilteredSummary(getFiltersFromRequest(request)),
@@ -380,7 +380,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         const filters = getTestHistoryFiltersFromRequest(request)
         const payload = defaultStore.getTestHistory(testName, filters)
 
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'test-history', workspaceSlug: null, testName },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
@@ -407,7 +407,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response.json(payload)
     })
 
-    app.post('/api/dev/bootstrap', ensureDevBootstrapEnabled(config), adminOnly, (request: Request, response: Response) => {
+    app.post('/api/dev/bootstrap', ensureDevBootstrapEnabled(config), adminApiGuard, (request: Request, response: Response) => {
         const requestedName = pickOptionalString(request.body?.name) ?? 'Demo Workspace'
         const requestedSlug = pickOptionalString(request.body?.slug) ?? 'demo'
         const existingWorkspace = registry.getWorkspace(requestedSlug)
@@ -425,16 +425,16 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response.json(registry.createApiKey(requestedSlug, 'Bootstrap key'))
     })
 
-    app.get('/api/workspaces', adminOnly, (_request: Request, response: Response) => {
+    app.get('/api/workspaces', adminApiGuard, (_request: Request, response: Response) => {
         response.json({ workspaces: registry.listWorkspaces() })
     })
 
-    app.get('/api/workspaces/:slug', adminOnly, workspaceResolver, (_request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug', adminApiGuard, workspaceResolver, (_request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         response.json({ workspace })
     })
 
-    app.post('/api/workspaces', adminOnly, (request: Request, response: Response) => {
+    app.post('/api/workspaces', adminApiGuard, (request: Request, response: Response) => {
         const name = pickOptionalString(request.body?.name)
 
         if (!name) {
@@ -453,12 +453,12 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response.status(201).json(createdWorkspace)
     })
 
-    app.post('/api/workspaces/:slug/api-keys', adminOnly, workspaceResolver, (request: Request, response: Response) => {
+    app.post('/api/workspaces/:slug/api-keys', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         response.status(201).json(registry.createApiKey(workspace.slug, pickOptionalString(request.body?.label) ?? 'Generated key'))
     })
 
-    app.post('/api/workspaces/:slug/users', adminOnly, workspaceResolver, (request: Request, response: Response) => {
+    app.post('/api/workspaces/:slug/users', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const label = pickOptionalString(request.body?.label)
 
@@ -494,10 +494,10 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response.status(202).json(result)
     })
 
-    app.get('/w/:slug', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/w/:slug', workspaceResolver, workspaceShellGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'dashboard', workspaceSlug: workspace.slug },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: store.getFilteredSummary(getFiltersFromRequest(request)),
@@ -507,14 +507,14 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         })
     })
 
-    app.get('/w/:slug/test/:name', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/w/:slug/test/:name', workspaceResolver, workspaceShellGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
         const testName = getRouteParam(request, 'name')
         const filters = getTestHistoryFiltersFromRequest(request)
         const payload = store.getTestHistory(testName, filters)
 
-        sendFrontendShell(response, frontendTemplate, {
+        frontendShell.send(response, {
             route: { kind: 'test-history', workspaceSlug: workspace.slug, testName },
             initialRequestUrl: request.originalUrl,
             initialDashboardSummary: null,
@@ -524,25 +524,25 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         }, getTestHistoryHtmlStatusCode(payload))
     })
 
-    app.get('/api/workspaces/:slug/artifacts/:runId', workspaceResolver, workspaceUserGuard, (_request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/artifacts/:runId', workspaceResolver, workspaceApiGuard, (_request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const storage = backendStorage.getWorkspaceStorage(workspace.slug)
         sendArtifactFile(response, storage.paths.artifactsPath, getRouteParam(_request, 'runId'), pickOptionalString(_request.query.path) ?? undefined)
     })
 
-    app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
         response.json(store.getFilteredSummary(getFiltersFromRequest(request)))
     })
 
-    app.get('/api/workspaces/:slug/runs', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/runs', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
         response.json({ runs: store.getRuns(getFiltersFromRequest(request)) })
     })
 
-    app.get('/api/workspaces/:slug/run/:id', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/run/:id', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
 
@@ -557,25 +557,25 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
         response.json(run)
     })
 
-    app.get('/api/workspaces/:slug/flaky', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/flaky', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
         response.json(store.getFlakyPayload(getFiltersFromRequest(request)))
     })
 
-    app.get('/api/workspaces/:slug/errors/clusters', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/errors/clusters', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
         response.json(store.getErrorClustersPayload(getFiltersFromRequest(request)))
     })
 
-    app.get('/api/workspaces/:slug/metrics/cost', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/metrics/cost', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
         response.json(store.getCostMetricsPayload(getFiltersFromRequest(request)))
     })
 
-    app.get('/api/workspaces/:slug/test/:name', workspaceResolver, workspaceUserGuard, (request: Request, response: Response) => {
+    app.get('/api/workspaces/:slug/test/:name', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
         const store = createWorkspaceApiStore(workspace.slug, backendStorage)
 
@@ -629,20 +629,6 @@ function isPayloadTooLargeError(error: unknown): boolean {
         || maybeError.status === 413
         || maybeError.statusCode === 413
         || maybeError.message === 'request entity too large'
-}
-
-function sendFrontendShell(
-    response: Response,
-    htmlTemplate: string | null,
-    bootstrap: FrontendBootstrapData,
-    statusCode = 200,
-): void {
-    if (!htmlTemplate) {
-        response.status(503).type('html').send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>AQA Pulse UI unavailable</title></head><body><h1>React frontend не собран</h1><p>Запусти compile/build для aqa-pulse, чтобы получить dist/web/index.html.</p></body></html>`)
-        return
-    }
-
-    response.status(statusCode).type('html').send(injectFrontendBootstrap(htmlTemplate, bootstrap))
 }
 
 function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage): ApiStore {

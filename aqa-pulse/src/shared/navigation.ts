@@ -1,5 +1,5 @@
 /**
- * Назначение: единая сборка href и query/filter routing для compatibility HTML renderers, React runtime и static mode.
+ * Назначение: единая сборка href и query/filter routing для React runtime, server shell routes и static mode.
  */
 export interface QueryFilters {
     branch?: string | null
@@ -71,7 +71,7 @@ export function buildWorkspaceLoginHref(workspaceSlug: string): string {
 }
 
 /**
- * Нормализует фильтры из URLSearchParams в общий QueryFilters shape, чтобы runtime и renderer-слои не расходились по трактовке пустых значений.
+ * Нормализует фильтры из URLSearchParams в общий QueryFilters shape, чтобы runtime и shell route-слои не расходились по трактовке пустых значений.
  */
 export function readFiltersFromSearchParams(searchParams: URLSearchParams): QueryFilters {
     return {

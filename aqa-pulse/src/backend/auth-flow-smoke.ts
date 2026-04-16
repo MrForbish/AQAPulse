@@ -101,7 +101,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         }, 'admin login bootstrap')
 
         const adminDashboardBeforeLogin = await fetch(`${baseUrl}/admin`, {
-            headers: { accept: 'text/html' },
+            headers: { accept: 'application/json' },
             redirect: 'manual',
         })
         assertStatus(adminDashboardBeforeLogin, 302, 'admin dashboard before login')
@@ -112,6 +112,12 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         })
         assertStatus(adminSessionBeforeLogin.response, 401, 'admin session before login')
         assertIncludes(requirePayload(adminSessionBeforeLogin, 'admin session before login').error, 'admin session', 'admin session unauthorized error')
+
+        const adminSessionHtmlAcceptBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/auth/admin/session`, {
+            headers: { accept: 'text/html' },
+        })
+        assertStatus(adminSessionHtmlAcceptBeforeLogin.response, 401, 'admin session before login with html accept')
+        assertIncludes(requirePayload(adminSessionHtmlAcceptBeforeLogin, 'admin session before login with html accept').error, 'admin session', 'admin session unauthorized error with html accept')
 
         const adminLoginResult = await fetchJsonResponse<JsonLoginResponse>(`${baseUrl}/auth/admin/login`, {
             method: 'POST',
@@ -230,7 +236,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         }, 'workspace api key exchange bootstrap')
 
         const workspaceDashboardBeforeLogin = await fetch(`${baseUrl}/w/${workspaceSlug}`, {
-            headers: { accept: 'text/html' },
+            headers: { accept: 'application/json' },
             redirect: 'manual',
         })
         assertStatus(workspaceDashboardBeforeLogin, 302, 'workspace dashboard before login')
@@ -247,6 +253,12 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         })
         assertStatus(workspaceSummaryBeforeLogin.response, 401, 'workspace summary before login')
         assertIncludes(requirePayload(workspaceSummaryBeforeLogin, 'workspace summary before login').error, 'workspace session', 'workspace summary unauthorized error')
+
+        const workspaceSummaryHtmlAcceptBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/api/workspaces/${workspaceSlug}/summary`, {
+            headers: { accept: 'text/html' },
+        })
+        assertStatus(workspaceSummaryHtmlAcceptBeforeLogin.response, 401, 'workspace summary before login with html accept')
+        assertIncludes(requirePayload(workspaceSummaryHtmlAcceptBeforeLogin, 'workspace summary before login with html accept').error, 'workspace session', 'workspace summary unauthorized error with html accept')
 
         const workspaceHistoryBeforeLogin = await fetchJsonResponse<JsonErrorResponse>(`${baseUrl}/api/workspaces/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, {
             headers: { accept: 'application/json' },

@@ -52,7 +52,7 @@ function printCommandHelp(commandName) {
 
     if (commandName === 'init') {
         console.log('aqa-pulse-server init')
-        console.log('Создаёт data root, workspaces/, registry.json и legacy директории.')
+        console.log('Создаёт data root, workspaces/, registry.json и runtime storage директории.')
         return
     }
 

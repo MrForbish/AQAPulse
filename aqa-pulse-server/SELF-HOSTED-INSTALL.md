@@ -23,16 +23,25 @@ cd /opt/aqa-pulse-server
 npm run setup:docker -- --workspace-name "Autotests main" --workspace-slug autotests-main --public-host aqa-pulse.example.com
 ```
 
+Если `.env` уже лежит рядом, `setup:docker` использует его без перезаписи. Для замены старых placeholder-значений добавь `--overwrite-env`.
+
 Используй этот вариант для первого запуска и для обычного production/self-hosted сценария.
 
 ### 2. Node.js напрямую
 
 Используй только если Docker недоступен или нужен запуск под своим supervisor.
 
+Важно: `.env` не загружается автоматически командами `npm run init` и `npm run start`. Перед запуском нужно либо экспортировать переменные из `.env` в текущий shell, либо передать их через supervisor/systemd.
+
 ```bash
 cd /opt/aqa-pulse-server
 npm install
 npm run build
+
+set -a
+. ./.env
+set +a
+
 npm run init
 npm run start
 ```

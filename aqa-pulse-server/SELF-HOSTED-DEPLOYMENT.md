@@ -78,12 +78,33 @@ AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true
 
 Для первого запуска рекомендован `sqlite`.
 
+Важно: файл `.env` автоматически используется в `docker compose` и в scripts вроде `setup:docker` / `update:docker`, но команды `npm run init` и `npm run start` сами по себе его не подхватывают.
+
+Если запускаешь сервер не через Docker Compose, сначала экспортируй переменные окружения из `.env` в текущий shell:
+
+```bash
+set -a
+. ./.env
+set +a
+```
+
 ### 2. Поднять сервер
 
 ```bash
 docker compose up --build -d
 docker compose ps
 docker compose logs -f aqa-pulse-server
+```
+
+Для прямого Node.js запуска вместо Docker Compose:
+
+```bash
+set -a
+. ./.env
+set +a
+
+npm run init
+npm run start
 ```
 
 ### 3. Проверить health

@@ -18,6 +18,8 @@
 npm run setup:docker -- --workspace-name "Autotests main" --workspace-slug autotests-main --public-host aqa-pulse.example.com
 ```
 
+Если `.env` уже существует, команда по умолчанию не переписывает его, а использует существующие значения как есть. Если в файле остались `change-me-*` заглушки, пересоздай конфиг через `--overwrite-env` или обнови нужные поля вручную.
+
 Результат:
 
 - создан `.env`;

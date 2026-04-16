@@ -12,7 +12,7 @@
     "qa"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "main": "./dist-ts/index.js",
   "types": "./dist-ts/index.d.ts",

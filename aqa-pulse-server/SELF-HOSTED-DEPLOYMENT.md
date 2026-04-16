@@ -14,11 +14,14 @@
 
 Нужно:
 
+- Node.js 22+, если собираешь проект на самом сервере из исходников;
 - Docker;
 - Docker Compose;
 - каталог `aqa-pulse-server`.
 
 Если у тебя уже есть готовая сборка с `dist/**/*`, соседний `aqa-pulse` не нужен.
+
+Если на сервере стоит Node 18 или Node 20 ниже `20.19`, сборка React frontend через Vite не запустится. Для текущего self-hosted flow ориентируйся на Node 22.
 
 Все команды ниже выполняются из директории `aqa-pulse-server`.
 
@@ -42,6 +45,15 @@ npm run setup:docker -- --workspace-name "Autotests main" --workspace-slug autot
 Если `.env` уже существует и его нужно пересоздать, добавь `--overwrite-env`.
 
 ## Если нужен ручной путь
+
+### 0. Проверить Node.js
+
+```bash
+node -v
+npm -v
+```
+
+Если версия Node ниже `22`, сначала обнови её, а уже потом запускай `npm install` и `npm run build`.
 
 ### 1. Подготовить `.env`
 

@@ -1,5 +1,6 @@
 import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
+import { SegmentedTabs } from '../../shared/ui'
 import { ru } from '../../../shared/i18n/ru'
 import { FlakyTab, OverviewTab, PerformanceTab } from './dashboard-core-tabs'
 import { AiModule, BusinessModule, CodeQualityModule, TeamModule } from './dashboard-modules'
@@ -17,6 +18,8 @@ export const DASHBOARD_TABS = [
 ] as const
 
 export type DashboardTabId = typeof DASHBOARD_TABS[number]['id']
+
+const DASHBOARD_TAB_ITEMS = DASHBOARD_TABS.map((item) => ({ id: item.id, label: item.label }))
 
 export function DashboardActiveTabContent(props: {
     activeTab: DashboardTabId
@@ -52,4 +55,20 @@ export function DashboardActiveTabContent(props: {
     }
 
     return null
+}
+
+export function DashboardTabsSection(props: {
+    activeTab: DashboardTabId
+    summary: DashboardSummary
+    workspaceSlug: string | null
+    onTabChange: (value: string) => void
+    children?: React.ReactNode
+}): React.JSX.Element {
+    return (
+        <>
+            <SegmentedTabs activeTab={props.activeTab} items={DASHBOARD_TAB_ITEMS} onChange={props.onTabChange} />
+            {props.children}
+            <DashboardActiveTabContent activeTab={props.activeTab} summary={props.summary} workspaceSlug={props.workspaceSlug} />
+        </>
+    )
 }

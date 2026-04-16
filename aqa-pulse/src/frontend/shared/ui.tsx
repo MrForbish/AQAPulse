@@ -164,14 +164,14 @@ export interface TraceDisclosureProps {
     badgeLabel?: string
     compact?: boolean
     compactSize?: 'tight' | 'comfortable'
-    variant?: 'default' | 'cluster'
+    variant?: 'default' | 'cluster' | 'table'
 }
 
 export function TraceDisclosure(props: TraceDisclosureProps): React.JSX.Element {
     const fullText = normalizeDisclosureText(props.text)
     const previewText = buildDisclosurePreview(props.previewText ?? fullText)
     const compactClassName = props.compact ? (props.compactSize === 'comfortable' ? 'is-compact-roomy' : 'is-compact') : ''
-    const variantClassName = props.variant === 'cluster' ? 'is-cluster' : ''
+    const variantClassName = props.variant === 'cluster' ? 'is-cluster' : props.variant === 'table' ? 'is-table' : ''
     const [isOpen, setIsOpen] = React.useState(false)
     const closeRef = React.useRef<HTMLButtonElement | null>(null)
     const previousActiveElementRef = React.useRef<HTMLElement | null>(null)

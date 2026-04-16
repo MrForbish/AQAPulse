@@ -1303,6 +1303,14 @@ th {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.trace-disclosure-trigger-react.is-table {
+    align-items: stretch;
+    min-height: 56px;
+    padding: 10px 12px;
+    gap: 12px;
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.06));
+}
+
 .trace-disclosure-copy-react {
     flex: 1 1 auto;
     min-width: 0;
@@ -1331,6 +1339,16 @@ th {
     overflow: hidden;
     text-overflow: ellipsis;
     color: #ffe4c7;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.trace-disclosure-copy-react.is-table {
+    display: -webkit-box;
+    line-height: 1.45;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
 }
@@ -1368,6 +1386,10 @@ th {
     padding: 0 7px;
     background: rgba(245, 158, 11, 0.14);
     color: #ffe7b8;
+}
+
+.trace-disclosure-trigger-react.is-table .trace-disclosure-pill-react {
+    align-self: center;
 }
 
 .trace-disclosure-modal-react[hidden] {

@@ -106,7 +106,7 @@ export function DashboardCurrentRunTestRow(props: {
             <td><StatusBadge label={formatStatusLabel(props.test.status, props.test.flaky)} tone={getStatusTone(props.test.status, props.test.flaky)} /></td>
             <td>{props.test.flaky ? props.yesLabel : props.noLabel}</td>
             <td>{formatDuration(props.test.durationMs)}</td>
-            <DashboardTraceTableCell preview={props.test.errorMessage} details={props.test.errorDetails ?? props.test.errorMessage} compactSize="comfortable" />
+            <DashboardTraceTableCell preview={props.test.errorMessage} details={props.test.errorDetails ?? props.test.errorMessage} />
         </tr>
     )
 }
@@ -153,7 +153,7 @@ export function DashboardSlowTestRow(props: {
 export function DashboardErrorClusterRow(props: { cluster: DashboardErrorCluster }): React.JSX.Element {
     return (
         <tr>
-            <DashboardTraceTableCell preview={props.cluster.message} details={props.cluster.sampleMessage ?? props.cluster.message} />
+            <DashboardTraceTableCell preview={props.cluster.message} details={props.cluster.sampleMessage ?? props.cluster.message} dialogTitle="Пример ошибки из кластера" />
             <td>{props.cluster.count}</td>
             <td>
                 <OverflowText as="span" text={props.cluster.tests.join(' • ')} className="cluster-tests-react" lines={2} />
@@ -212,10 +212,17 @@ export function DashboardRecentRunCompactRow(props: { run: DashboardSummary['his
     )
 }
 
-function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined; compactSize?: 'tight' | 'comfortable' }): React.JSX.Element {
+function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined; dialogTitle?: string }): React.JSX.Element {
     return (
         <td>
-            <TraceDisclosure previewText={props.preview} text={props.details} compact compactSize={props.compactSize} />
+            <TraceDisclosure
+                previewText={props.preview}
+                text={props.details}
+                dialogTitle={props.dialogTitle ?? 'Последняя ошибка'}
+                compact
+                compactSize="comfortable"
+                variant="table"
+            />
         </td>
     )
 }

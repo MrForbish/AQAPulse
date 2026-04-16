@@ -1,6 +1,6 @@
 import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
-import { formatDailyRatio, formatScore, getScoreTone } from '../../../shared/dashboard-helpers'
+import { formatDailyRatio, formatScore, getManagerReadinessLabel, getManagerRiskLabel, getScoreTone } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
 import { MetricCard } from '../../shared/ui'
@@ -16,8 +16,8 @@ export function DashboardTeamOverviewMetrics(props: { summary: DashboardSummary 
         <>
             <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} labelMetricKey="developerFriction" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.developerFriction} value={formatDailyRatio(summary.businessMetrics.developerFriction.rerunProxyPerActiveDay)} tone={summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.unstableRuns}: ${summary.businessMetrics.developerFriction.unstableRuns}`} />
             <MetricCard label="Активные блокеры" labelMetricKey="problematicTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} value={String(summary.managerSummary.blockers.length)} tone={summary.managerSummary.blockers.length > 0 ? 'danger' : 'good'} hint="Критичные сигналы для команды" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
-            <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} hint={summary.managerSummary.deliveryRisk.level} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={getManagerReadinessLabel(summary.managerSummary.releaseReadiness.level)} />
+            <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(summary.managerSummary.deliveryRisk.level)} hint={getManagerRiskLabel(summary.managerSummary.deliveryRisk.level)} />
         </>
     )
 }

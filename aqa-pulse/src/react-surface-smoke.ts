@@ -737,10 +737,8 @@ async function verifyDashboardTraceDisclosure(summary: ReturnType<ApiStore['getS
         }
 
         const metricTrigger = container.querySelector('.metrics-grid [data-trace-disclosure-trigger]')
-        const clusterMessage = summary.errorClusters[0]?.message ?? null
         assert(!metricTrigger, `Trace disclosure smoke expects no expandable cluster trigger in dashboard metrics. Actual DOM: ${container.innerHTML}`)
-        assert(clusterMessage, 'Trace disclosure smoke expects at least one dashboard error cluster message.')
-        assert(container.querySelector('.metrics-grid .cluster-message-react')?.textContent?.includes(clusterMessage.slice(0, 16)), 'Trace disclosure smoke expects the main cluster metric to keep the cluster message preview without a trace trigger.')
+        assert(!container.querySelector('.metrics-grid .cluster-message-react'), 'Trace disclosure smoke expects the main cluster metric to keep only the numeric value without a cluster message preview.')
 
         const trigger = container.querySelector('tbody [data-trace-disclosure-trigger]')
         assert(trigger, `Trace disclosure smoke expects an expandable table error trigger. Actual DOM: ${container.innerHTML}`)

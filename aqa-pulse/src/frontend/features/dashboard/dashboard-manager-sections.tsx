@@ -1,6 +1,6 @@
 import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
-import { formatScore, getManagerChangeLabel } from '../../../shared/dashboard-helpers'
+import { formatScore, getManagerChangeLabel, getManagerReadinessLabel, getManagerRiskLabel } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
 import { MetricCard, NarrativeList, Panel } from '../../shared/ui'
@@ -14,9 +14,9 @@ export function DashboardManagerSummarySection(props: {
     return (
         <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription}>
             <div className="signal-grid compact-top">
-                <MetricCard label={DASHBOARD_TEXT.manager.releaseReadiness} labelMetricKey="releaseReadiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseReadiness} value={formatScore(props.summary.managerSummary.releaseReadiness.score)} hint={props.summary.managerSummary.releaseReadiness.level} tone={props.mapTone(props.summary.managerSummary.releaseReadiness.level)} />
-                <MetricCard label={DASHBOARD_TEXT.manager.qualityRisk} labelMetricKey="qualityRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.qualityRisk} value={formatScore(props.summary.managerSummary.qualityRisk.score)} hint={props.summary.managerSummary.qualityRisk.level} tone={props.mapTone(props.summary.managerSummary.qualityRisk.level)} />
-                <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelMetricKey="deliveryRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(props.summary.managerSummary.deliveryRisk.score)} hint={props.summary.managerSummary.deliveryRisk.level} tone={props.mapTone(props.summary.managerSummary.deliveryRisk.level)} />
+                <MetricCard label={DASHBOARD_TEXT.manager.releaseReadiness} labelMetricKey="releaseReadiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseReadiness} value={formatScore(props.summary.managerSummary.releaseReadiness.score)} hint={getManagerReadinessLabel(props.summary.managerSummary.releaseReadiness.level)} tone={props.mapTone(props.summary.managerSummary.releaseReadiness.level)} />
+                <MetricCard label={DASHBOARD_TEXT.manager.qualityRisk} labelMetricKey="qualityRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.qualityRisk} value={formatScore(props.summary.managerSummary.qualityRisk.score)} hint={getManagerRiskLabel(props.summary.managerSummary.qualityRisk.level)} tone={props.mapTone(props.summary.managerSummary.qualityRisk.level)} />
+                <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelMetricKey="deliveryRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(props.summary.managerSummary.deliveryRisk.score)} hint={getManagerRiskLabel(props.summary.managerSummary.deliveryRisk.level)} tone={props.mapTone(props.summary.managerSummary.deliveryRisk.level)} />
             </div>
         </Panel>
     )

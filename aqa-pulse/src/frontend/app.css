@@ -416,8 +416,41 @@ input {
 }
 
 .metric-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     padding: 18px;
     min-width: 0;
+}
+
+.metric-label {
+    min-width: 0;
+}
+
+.metric-label-heading-react {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 100%;
+}
+
+.metric-label .metric-heading-react {
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+}
+
+.metric-label .metric-heading-label-react {
+    flex: 1 1 auto;
+}
+
+.metric-label .overflow-text-react {
+    display: -webkit-box;
+    white-space: normal;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .metric-value {
@@ -458,6 +491,11 @@ input {
 .metric-card.is-danger,
 .status-badge.is-danger {
     border-color: rgba(239, 68, 68, 0.28);
+}
+
+.metric-hint {
+    margin-top: auto;
+    padding-top: 8px;
 }
 
 .segmented-tabs {

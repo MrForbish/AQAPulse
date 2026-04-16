@@ -2,10 +2,9 @@ import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
-import { formatDelta, formatScore, getScoreTone } from '../../../shared/dashboard-helpers'
+import { formatDelta, formatScore, getManagerReadinessLabel, getScoreTone } from '../../../shared/dashboard-helpers'
 import { ru } from '../../../shared/i18n/ru'
 import { MetricCard } from '../../shared/ui'
-import { DashboardClusterMetricHint } from './dashboard-cluster-parts'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -101,9 +100,8 @@ export function DashboardMetricsSection(props: {
                 labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters}
                 value={String(props.summary.kpis.errorClusterCount)}
                 tone={props.summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'}
-                hint={<DashboardClusterMetricHint cluster={props.summary.errorClusters[0]} emptyLabel={DASHBOARD_TEXT.states.notesEmpty} showTrace={false} />}
             />
-            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={props.summary.managerSummary.releaseReadiness.level} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={getManagerReadinessLabel(props.summary.managerSummary.releaseReadiness.level)} />
         </section>
     )
 }

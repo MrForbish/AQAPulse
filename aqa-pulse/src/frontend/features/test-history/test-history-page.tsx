@@ -2,8 +2,7 @@
  * Назначение: React-страница истории теста с conflict-state, diagnostics и timeline для standalone и server маршрутов.
  */
 import React from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { ru } from '../../../shared/i18n/ru'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTestHistoryData } from '../../hooks/use-test-history'
 import {
     buildArtifactBaseUrl,
@@ -12,11 +11,10 @@ import {
     readFiltersFromSearchParams,
     useRuntime,
 } from '../../runtime'
-import { ErrorView, LoadingView, PageFrame, Panel } from '../../shared/ui'
+import { ErrorView, LoadingView, PageFrame } from '../../shared/ui'
 import { TestHistoryInsightsGrid } from './history-insights-grid'
 import { ArchiveGapsNotice, IncidentSummaryPanel, TestHistoryHero, TestHistorySummaryMetrics } from './history-overview'
-
-const HISTORY_TEXT = ru.testHistory
+import { TestHistoryConflictState, TestHistoryNotFoundState } from './history-route-states'
 
 /**
  * Страница принимает `requestedTitle` из router-слоя, а дальше сама решает, можно ли переиспользовать bootstrap payload или нужен повторный fetch/static resolve для нового URL.
@@ -65,36 +63,15 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
     }
 
     if (!payload) {
-        return (
-            <PageFrame>
-                <ErrorView
-                    title={HISTORY_TEXT.statePages.notFound.heading}
-                    message={HISTORY_TEXT.statePages.notFound.message}
-                    action={<Link className="ghost-link" to={buildDashboardHref(props.workspaceSlug, filters)}>{HISTORY_TEXT.backToDashboard}</Link>}
-                />
-            </PageFrame>
-        )
+        return <TestHistoryNotFoundState dashboardHref={buildDashboardHref(props.workspaceSlug, filters)} />
     }
 
     if ('candidates' in payload) {
         return (
-            <PageFrame>
-                <Panel title={HISTORY_TEXT.statePages.conflict.heading} description={payload.message}>
-                    <div className="candidate-list">
-                        {payload.candidates.map((candidate) => (
-                            <Link
-                                key={`${candidate.project}-${candidate.file}-${candidate.title}`}
-                                className="candidate-card"
-                                to={buildCandidateHref(props.workspaceSlug, candidate.title, filters, candidate.project, candidate.file)}
-                            >
-                                <strong>{candidate.title}</strong>
-                                <span>{candidate.project}</span>
-                                <span>{candidate.file}</span>
-                            </Link>
-                        ))}
-                    </div>
-                </Panel>
-            </PageFrame>
+            <TestHistoryConflictState
+                payload={payload}
+                buildCandidateHref={(candidate) => buildCandidateHref(props.workspaceSlug, candidate.title, filters, candidate.project, candidate.file)}
+            />
         )
     }
 

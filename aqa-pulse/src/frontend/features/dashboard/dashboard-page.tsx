@@ -3,9 +3,6 @@
  */
 import React from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
-import { formatDate, formatDuration, formatPercent } from '../../../shared/formatting'
-import { formatDelta, formatScore, getScoreTone } from '../../../shared/dashboard-helpers'
 import { ru } from '../../../shared/i18n/ru'
 import { useDashboardSummaryData } from '../../hooks/use-dashboard-summary'
 import {
@@ -14,9 +11,10 @@ import {
     readFiltersFromSearchParams,
     useRuntime,
 } from '../../runtime'
-import { ErrorView, LoadingView, MetricCard, PageFrame, SegmentedTabs } from '../../shared/ui'
+import { ErrorView, LoadingView, PageFrame, SegmentedTabs } from '../../shared/ui'
 import { FlakyTab, OverviewTab, PerformanceTab } from './dashboard-core-tabs'
 import { AiModule, BusinessModule, CodeQualityModule, TeamModule } from './dashboard-modules'
+import { DashboardFiltersSection, DashboardHeroSection, DashboardMetricsSection, DashboardRuntimeNotices } from './dashboard-shell-sections'
 
 const DASHBOARD_TEXT = ru.dashboard
 
@@ -84,74 +82,23 @@ export function DashboardPage(props: { workspaceSlug: string | null }): React.JS
 
     return (
         <PageFrame>
-            <section className="hero-block">
-                <div>
-                    <div className="eyebrow">TestOps</div>
-                    <h1>{DASHBOARD_TEXT.title}</h1>
-                    <p>
-                        унифицированная экосистема для автоматизации тестирования, агрегации артефактов и контроля здоровья продукта на всех этапах CI/CD.
-                    </p>
-                </div>
-                <div className="hero-meta-card">
-                    <div className="hero-meta-row"><span>Workspace</span><strong>{props.workspaceSlug ?? 'default'}</strong></div>
-                    <div className="hero-meta-row"><span>Отчёт</span><strong>{formatDate(summary.reportTimestamp ?? summary.generatedAt)}</strong></div>
-                    <div className="hero-meta-row"><span>Источник</span><strong>{summary.sourceFile}</strong></div>
-                    {isStaticMode ? <div className="hero-note">Статический snapshot, фильтры работают только в server mode.</div> : null}
-                </div>
-            </section>
-
-            <section className="filters-block">
-                <div className="filters-copy">
-                    <h2>{DASHBOARD_TEXT.filters.title}</h2>
-                    <p>{DASHBOARD_TEXT.filters.description}</p>
-                </div>
-                <div className="filters-grid">
-                    <label>
-                        <span>{DASHBOARD_TEXT.filters.branch}</span>
-                        <select value={selectedBranch} disabled={isStaticMode} onChange={(event) => updateSearchParams(setSearchParams, 'branch', event.target.value)}>
-                            <option value="">{DASHBOARD_TEXT.filters.all}</option>
-                            {summary.availableFilters.branches.map((branch) => (
-                                <option key={branch} value={branch}>{branch}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <label>
-                        <span>{DASHBOARD_TEXT.filters.project}</span>
-                        <select value={selectedProject} disabled={isStaticMode} onChange={(event) => updateSearchParams(setSearchParams, 'project', event.target.value)}>
-                            <option value="">{DASHBOARD_TEXT.filters.all}</option>
-                            {summary.availableFilters.projects.map((project) => (
-                                <option key={project} value={project}>{project}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <label>
-                        <span>{DASHBOARD_TEXT.filters.file}</span>
-                        <select value={selectedFile} disabled={isStaticMode} onChange={(event) => updateSearchParams(setSearchParams, 'file', event.target.value)}>
-                            <option value="">{DASHBOARD_TEXT.filters.all}</option>
-                            {summary.availableFilters.files.map((file) => (
-                                <option key={file} value={file}>{file}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <button type="button" className="secondary-button" disabled={isStaticMode} onClick={() => resetFilters(setSearchParams)}>
-                        {DASHBOARD_TEXT.filters.reset}
-                    </button>
-                </div>
-            </section>
-
-            <section className="metrics-grid">
-                <MetricCard label={DASHBOARD_TEXT.metrics.passRate} labelMetricKey="passRate" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.passRate} value={formatPercent(summary.kpis.passRate)} tone="good" hint={`${summary.kpis.passedTests} / ${summary.kpis.totalTests}`} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.failedTests} labelMetricKey="failedTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.failedTests} value={String(summary.kpis.failedTests)} tone={summary.kpis.failedTests > 0 ? 'danger' : 'default'} hint={formatDelta(summary.trend.failedTestsDelta, 'падений')} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTests} value={String(summary.kpis.flakyTests)} tone={summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(summary.trend.flakyTestsDelta, 'flaky')} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.runDuration} labelMetricKey="runDuration" labelTooltip={`${DASHBOARD_METRIC_DESCRIPTIONS.runDuration} ${DASHBOARD_METRIC_DESCRIPTIONS.medianDuration}`} value={formatDuration(summary.kpis.totalDurationMs)} hint={formatDuration(summary.kpis.medianDurationMs)} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters} value={String(summary.kpis.errorClusterCount)} tone={summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'} hint={summary.errorClusters[0]?.message ?? DASHBOARD_TEXT.states.notesEmpty} />
-                <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(summary.businessMetrics.releaseConfidenceScore)} hint={summary.managerSummary.releaseReadiness.level} />
-            </section>
+            <DashboardHeroSection summary={summary} workspaceSlug={props.workspaceSlug} isStaticMode={isStaticMode} />
+            <DashboardFiltersSection
+                summary={summary}
+                isStaticMode={isStaticMode}
+                selectedBranch={selectedBranch}
+                selectedProject={selectedProject}
+                selectedFile={selectedFile}
+                onBranchChange={(value) => updateSearchParams(setSearchParams, 'branch', value)}
+                onProjectChange={(value) => updateSearchParams(setSearchParams, 'project', value)}
+                onFileChange={(value) => updateSearchParams(setSearchParams, 'file', value)}
+                onReset={() => resetFilters(setSearchParams)}
+            />
+            <DashboardMetricsSection summary={summary} />
 
             <SegmentedTabs activeTab={activeTab} items={DASHBOARD_TABS.map((item) => ({ id: item.id, label: item.label }))} onChange={(value) => updateSearchParams(setSearchParams, 'tab', value, true)} />
 
-            {errorMessage ? <div className="inline-note is-warning">Последний запрос к API завершился с ошибкой: {errorMessage}</div> : null}
-            {isLoading && summary ? <div className="inline-note">Обновляем данные под новый фильтр...</div> : null}
+            <DashboardRuntimeNotices summaryPresent={Boolean(summary)} isLoading={isLoading} errorMessage={errorMessage} />
 
             {activeTab === 'overview' ? <OverviewTab summary={summary} workspaceSlug={props.workspaceSlug} /> : null}
 

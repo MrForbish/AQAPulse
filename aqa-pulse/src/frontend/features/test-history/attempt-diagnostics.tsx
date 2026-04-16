@@ -5,6 +5,7 @@ import { formatDate, formatDuration } from '../../../shared/formatting'
 import { ru } from '../../../shared/i18n/ru'
 import { formatStatusLabel, getStatusTone } from '../../../shared/dashboard-helpers'
 import {
+    buildDiagnosticStepTree,
     buildAttachmentHref,
     buildStepAnchor,
     canInlineMarkdownPreview,
@@ -14,12 +15,6 @@ import {
 import { EmptyState, OverflowText, StatusBadge } from '../../shared/ui'
 
 const HISTORY_TEXT = ru.testHistory
-
-interface DiagnosticStepNode {
-    step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number]
-    flatIndex: number
-    children: DiagnosticStepNode[]
-}
 
 export function AttemptDiagnostics(props: {
     runId: string
@@ -59,7 +54,7 @@ export function AttemptDiagnostics(props: {
                                 <div className="attachment-preview-body-react">
                                     <div className="step-tree-react">
                                         {buildDiagnosticStepTree(attempt.steps).map((node) => (
-                                            <DiagnosticStepCard key={`${attempt.attempt}-${node.flatIndex}-${node.step.title}`} node={node} runId={props.runId} attemptNumber={attempt.attempt} />
+                                            <DiagnosticStepCard key={`${attempt.attempt}-${node.stepIndex}-${node.step.title}`} node={node} runId={props.runId} attemptNumber={attempt.attempt} />
                                         ))}
                                     </div>
                                 </div>
@@ -310,55 +305,13 @@ function formatOptionalDate(value: string | null): string {
     return value ? formatDate(value) : '—'
 }
 
-function buildDiagnosticStepTree(steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps']): DiagnosticStepNode[] {
-    const roots: DiagnosticStepNode[] = []
-    let currentTopLevelTestStep: DiagnosticStepNode | null = null
-    let currentNestedTestStep: DiagnosticStepNode | null = null
-
-    steps.forEach((step, flatIndex) => {
-        const node: DiagnosticStepNode = {
-            step,
-            flatIndex,
-            children: [],
-        }
-
-        if (step.category === 'test.step') {
-            if (step.depth === 2 && currentTopLevelTestStep) {
-                currentTopLevelTestStep.children.push(node)
-                currentNestedTestStep = node
-                return
-            }
-
-            roots.push(node)
-            currentTopLevelTestStep = node
-            currentNestedTestStep = null
-            return
-        }
-
-        if (step.depth === 2) {
-            const parentNode = currentNestedTestStep ?? currentTopLevelTestStep
-
-            if (parentNode) {
-                parentNode.children.push(node)
-                return
-            }
-        }
-
-        roots.push(node)
-        currentTopLevelTestStep = null
-        currentNestedTestStep = null
-    })
-
-    return roots
-}
-
-function DiagnosticStepCard(props: { node: DiagnosticStepNode; runId: string; attemptNumber: number }): React.JSX.Element {
+function DiagnosticStepCard(props: { node: ReturnType<typeof buildDiagnosticStepTree>[number]; runId: string; attemptNumber: number }): React.JSX.Element {
     const { node } = props
     const meta = `${node.step.category ?? HISTORY_TEXT.diagnostics.noCategory} • depth ${node.step.depth} • ${formatDuration(node.step.durationMs)}`
 
     return (
         <div className={`step-card step-tree-node-react${node.step.isFailurePoint ? ' is-failure' : ''}${node.step.depth === 2 ? ' is-nested' : ''}`}>
-            <div id={buildStepAnchor(props.runId, props.attemptNumber, node.flatIndex)} className="step-tree-body-react">
+            <div id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className="step-tree-body-react">
                 <div className="stack-item-header">
                     <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />
                     {node.step.status ? <StatusBadge label={formatStatusLabel(node.step.status, false)} tone={getStatusTone(node.step.status, false)} /> : null}
@@ -374,7 +327,7 @@ function DiagnosticStepCard(props: { node: DiagnosticStepNode; runId: string; at
             {node.children.length > 0 ? (
                 <div className="step-tree-children-react">
                     {node.children.map((childNode) => (
-                        <DiagnosticStepCard key={`${props.attemptNumber}-${childNode.flatIndex}-${childNode.step.title}`} node={childNode} runId={props.runId} attemptNumber={props.attemptNumber} />
+                        <DiagnosticStepCard key={`${props.attemptNumber}-${childNode.stepIndex}-${childNode.step.title}`} node={childNode} runId={props.runId} attemptNumber={props.attemptNumber} />
                     ))}
                 </div>
             ) : null}

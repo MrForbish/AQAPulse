@@ -6,6 +6,7 @@ import { formatStatusLabel } from './shared/dashboard-helpers'
 import { formatDuration } from './shared/formatting'
 import { ru } from './shared/i18n/ru'
 import {
+    buildDiagnosticStepTree,
     buildAttachmentHref as buildSharedAttachmentHref,
     buildStepAnchor as buildSharedStepAnchor,
     canInlineMarkdownPreview as canInlineSharedMarkdownPreview,
@@ -16,19 +17,13 @@ import { escapeHtml } from './shared/text-utils'
 
 const HISTORY_TEXT = ru.testHistory
 
-interface LegacyDiagnosticStepNode {
-    step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number]
-    stepIndex: number
-    children: LegacyDiagnosticStepNode[]
-}
-
 export function renderLegacyAttemptSteps(
     runId: string,
     attemptNumber: number,
     steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
     isOpenByDefault: boolean,
 ): string {
-    const tree = buildLegacyDiagnosticStepTree(steps)
+    const tree = buildDiagnosticStepTree(steps)
 
     return `
         <details class="attempt-step-group"${isOpenByDefault ? ' open' : ''}>
@@ -102,7 +97,7 @@ export function renderLegacyAttachmentDetail(
 function renderLegacyStepNode(
     runId: string,
     attemptNumber: number,
-    node: LegacyDiagnosticStepNode,
+    node: ReturnType<typeof buildDiagnosticStepTree>[number],
 ): string {
     const statusBadge = node.step.status
         ? `<span class="status-badge ${getLegacyStatusClass(node.step.status, false)}">${escapeHtml(formatStatusLabel(node.step.status, false))}</span>`
@@ -134,50 +129,6 @@ function renderLegacyStepNode(
             ${node.children.length > 0 ? `<div class="step-tree-children">${node.children.map((childNode) => renderLegacyStepNode(runId, attemptNumber, childNode)).join('')}</div>` : ''}
         </div>
     `
-}
-
-function buildLegacyDiagnosticStepTree(
-    steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
-): LegacyDiagnosticStepNode[] {
-    const roots: LegacyDiagnosticStepNode[] = []
-    let currentTopLevelTestStep: LegacyDiagnosticStepNode | null = null
-    let currentNestedTestStep: LegacyDiagnosticStepNode | null = null
-
-    steps.forEach((step, stepIndex) => {
-        const node: LegacyDiagnosticStepNode = {
-            step,
-            stepIndex,
-            children: [],
-        }
-
-        if (step.category === 'test.step') {
-            if (step.depth === 2 && currentTopLevelTestStep) {
-                currentTopLevelTestStep.children.push(node)
-                currentNestedTestStep = node
-                return
-            }
-
-            roots.push(node)
-            currentTopLevelTestStep = node
-            currentNestedTestStep = null
-            return
-        }
-
-        if (step.depth === 2) {
-            const parentNode = currentNestedTestStep ?? currentTopLevelTestStep
-
-            if (parentNode) {
-                parentNode.children.push(node)
-                return
-            }
-        }
-
-        roots.push(node)
-        currentTopLevelTestStep = null
-        currentNestedTestStep = null
-    })
-
-    return roots
 }
 
 function renderLegacyOverflowText(

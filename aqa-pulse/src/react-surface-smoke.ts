@@ -236,6 +236,7 @@ async function main(): Promise<void> {
 
     await verifyStaticHashDeepLinkRoute(reactModule)
     await verifyStaticDashboardNavigation(navigationSummary, navigationTestHistoryPayload)
+    await verifyTestHistoryNestedDiagnosticsStructure(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
@@ -907,6 +908,150 @@ function injectAttachmentPreviewUrlsForSmoke(payload: TestHistoryResponse): Test
                 }),
             })),
         }
+    }
+}
+
+async function verifyTestHistoryNestedDiagnosticsStructure(
+    reactModule: typeof import('aqa-pulse/react'),
+    requestedTitle: string,
+    testHistoryPayload: TestHistoryResponse,
+): Promise<void> {
+    const nestedPayload = injectNestedDiagnosticsStepsForSmoke(testHistoryPayload)
+    const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/test-nested-diagnostics' })
+    const previousWindow = globalThis.window
+    const previousDocument = globalThis.document
+    const previousNavigator = globalThis.navigator
+    const previousHTMLElement = globalThis.HTMLElement
+    const previousNode = globalThis.Node
+    const previousMutationObserver = globalThis.MutationObserver
+    const previousEvent = globalThis.Event
+    const previousMouseEvent = globalThis.MouseEvent
+
+    let root: Root | null = null
+
+    try {
+        setGlobalValue('window', dom.window)
+        setGlobalValue('document', dom.window.document)
+        setGlobalValue('navigator', dom.window.navigator)
+        setGlobalValue('HTMLElement', dom.window.HTMLElement)
+        setGlobalValue('Node', dom.window.Node)
+        setGlobalValue('MutationObserver', dom.window.MutationObserver)
+        setGlobalValue('Event', dom.window.Event)
+        setGlobalValue('MouseEvent', dom.window.MouseEvent)
+
+        const container = dom.window.document.getElementById('root')
+        assert(container, 'Nested diagnostics smoke needs root container.')
+
+        root = createRoot(container)
+
+        await act(async () => {
+            root!.render(
+                React.createElement(
+                    MemoryRouter,
+                    { initialEntries: [`/test/${encodeURIComponent(requestedTitle)}`] },
+                    React.createElement(
+                        reactModule.RuntimeProvider,
+                        {
+                            bootstrap: createBootstrap({
+                                route: { kind: 'test-history', workspaceSlug: null, testName: requestedTitle },
+                                initialRequestUrl: `/test/${encodeURIComponent(requestedTitle)}`,
+                                initialTestHistoryPayload: nestedPayload,
+                            }),
+                            children: React.createElement(reactModule.TestHistoryPage, { workspaceSlug: null, requestedTitle }),
+                        },
+                    ),
+                ),
+            )
+            await flushMicrotasks()
+        })
+
+        const nestedChildrenGroup = container.querySelector('.step-tree-children-react') as HTMLDivElement | null
+        assert(nestedChildrenGroup, `Nested diagnostics smoke expects a children container. Actual DOM: ${container.innerHTML}`)
+
+        const nestedTitles = Array.from(nestedChildrenGroup.children)
+            .filter((child) => child.classList.contains('step-card'))
+            .map((child) => child.querySelector('.step-title-react')?.textContent?.trim() ?? '')
+            .filter((title) => title.length > 0)
+
+        assert(
+            nestedTitles.join(' | ') === 'Wait for gateway response | Retry policy applied | Capture timeout diagnostics',
+            `Depth-2 diagnostics steps should stay siblings under the depth-1 test.step parent. Actual DOM: ${container.innerHTML}`,
+        )
+    } finally {
+        if (root) {
+            await act(async () => {
+                root!.unmount()
+            })
+        }
+
+        setGlobalValue('window', previousWindow)
+        setGlobalValue('document', previousDocument)
+        setGlobalValue('navigator', previousNavigator)
+        setGlobalValue('HTMLElement', previousHTMLElement)
+        setGlobalValue('Node', previousNode)
+        setGlobalValue('MutationObserver', previousMutationObserver)
+        setGlobalValue('Event', previousEvent)
+        setGlobalValue('MouseEvent', previousMouseEvent)
+        dom.window.close()
+    }
+}
+
+function injectNestedDiagnosticsStepsForSmoke(payload: TestHistoryResponse): TestHistoryResponse {
+    const nestedSteps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'] = [
+        {
+            title: 'Submit payment',
+            category: 'test.step',
+            depth: 1,
+            durationMs: 7200,
+            status: 'failed',
+            errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
+            isFailurePoint: true,
+        },
+        {
+            title: 'Wait for gateway response',
+            category: 'pw:api',
+            depth: 2,
+            durationMs: 3200,
+            status: 'failed',
+            errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
+            isFailurePoint: true,
+        },
+        {
+            title: 'Retry policy applied',
+            category: 'test.step',
+            depth: 2,
+            durationMs: 1800,
+            status: 'failed',
+            errorMessage: null,
+            isFailurePoint: false,
+        },
+        {
+            title: 'Capture timeout diagnostics',
+            category: 'pw:api',
+            depth: 2,
+            durationMs: 900,
+            status: 'passed',
+            errorMessage: null,
+            isFailurePoint: false,
+        },
+    ]
+
+    const nestedLatestItem = payload.history[0]
+        ? {
+            ...payload.history[0],
+            attemptDetails: payload.history[0].attemptDetails.map((attempt, attemptIndex) => attemptIndex === 0
+                ? {
+                    ...attempt,
+                    steps: nestedSteps,
+                }
+                : attempt),
+        }
+        : null
+
+    return {
+        ...payload,
+        latestRun: nestedLatestItem,
+        history: payload.history.map((item, itemIndex) => itemIndex === 0 && nestedLatestItem ? nestedLatestItem : item),
     }
 }
 

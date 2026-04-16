@@ -5,6 +5,13 @@ import { ru } from './i18n/ru'
 const HISTORY_TEXT = ru.testHistory
 type TestHistoryItem = TestHistoryResponse['history'][number]
 type TestHistoryAttachment = TestHistoryItem['attemptDetails'][number]['attachments'][number]
+type TestHistoryAttemptStep = TestHistoryItem['attemptDetails'][number]['steps'][number]
+
+export interface DiagnosticStepTreeNode {
+    step: TestHistoryAttemptStep
+    stepIndex: number
+    children: DiagnosticStepTreeNode[]
+}
 
 export function buildHistoryRowAnchor(runId: string): string {
     const normalizedId = runId
@@ -203,6 +210,31 @@ export function normalizeAnchorLookupValue(value: string | null | undefined): st
 export function buildStepAnchor(runId: string, attemptNumber: number, stepIndex: number): string {
     const runSlug = runId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'run'
     return `step-${runSlug}-a${attemptNumber}-s${stepIndex + 1}`
+}
+
+export function buildDiagnosticStepTree(
+    steps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
+): DiagnosticStepTreeNode[] {
+    const roots: DiagnosticStepTreeNode[] = []
+    let currentDepthOneTestStep: DiagnosticStepTreeNode | null = null
+
+    steps.forEach((step, stepIndex) => {
+        const node: DiagnosticStepTreeNode = {
+            step,
+            stepIndex,
+            children: [],
+        }
+
+        if (step.depth === 2 && currentDepthOneTestStep) {
+            currentDepthOneTestStep.children.push(node)
+            return
+        }
+
+        roots.push(node)
+        currentDepthOneTestStep = step.category === 'test.step' && step.depth === 1 ? node : null
+    })
+
+    return roots
 }
 
 export function findIncidentStepAnchor(

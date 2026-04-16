@@ -9,6 +9,15 @@ import { ingestReporterRun } from './backend/run-ingestion.service'
 import { FileSystemBackendStorage } from './backend/storage'
 import { loadReporterReport } from './dashboard-utils'
 
+const { JSDOM } = require('jsdom') as {
+    JSDOM: new (html?: string, options?: { url?: string }) => {
+        window: Window & typeof globalThis & {
+            document: Document
+            close(): void
+        }
+    }
+}
+
 async function main(): Promise<void> {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aqa-pulse-legacy-html-smoke-'))
     const dataRoot = path.join(tempRoot, 'data')
@@ -77,62 +86,65 @@ async function main(): Promise<void> {
             apiBasePath: '/legacy/api',
             artifactBasePath: '/legacy/artifacts',
         })
+        const nestedSteps: typeof attachmentTestHistoryPayload.history[number]['attemptDetails'][number]['steps'] = [
+            {
+                title: 'Submit payment',
+                category: 'test.step',
+                depth: 1,
+                durationMs: 7200,
+                status: 'failed',
+                errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
+                isFailurePoint: true,
+            },
+            {
+                title: 'Wait for gateway response',
+                category: 'pw:api',
+                depth: 2,
+                durationMs: 3200,
+                status: 'failed',
+                errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
+                isFailurePoint: true,
+            },
+            {
+                title: 'Retry policy applied',
+                category: 'test.step',
+                depth: 2,
+                durationMs: 1800,
+                status: 'failed',
+                errorMessage: null,
+                isFailurePoint: false,
+            },
+            {
+                title: 'Capture timeout diagnostics',
+                category: 'pw:api',
+                depth: 2,
+                durationMs: 900,
+                status: 'passed',
+                errorMessage: null,
+                isFailurePoint: false,
+            },
+        ]
+        const nestedLatestItem = {
+            ...attachmentTestHistoryPayload.history[0],
+            attemptDetails: attachmentTestHistoryPayload.history[0].attemptDetails.map((attempt, attemptIndex) => attemptIndex === 0
+                ? {
+                    ...attempt,
+                    steps: nestedSteps,
+                }
+                : attempt),
+        }
         const nestedStepsPayload = {
             ...attachmentTestHistoryPayload,
-            history: attachmentTestHistoryPayload.history.map((item, itemIndex) => itemIndex === 0
-                ? {
-                    ...item,
-                    attemptDetails: item.attemptDetails.map((attempt, attemptIndex) => attemptIndex === 0
-                        ? {
-                            ...attempt,
-                            steps: [
-                                {
-                                    title: 'Submit payment',
-                                    category: 'test.step',
-                                    depth: 1,
-                                    durationMs: 7200,
-                                    status: 'failed',
-                                    errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
-                                    isFailurePoint: true,
-                                },
-                                {
-                                    title: 'Wait for gateway response',
-                                    category: 'pw:api',
-                                    depth: 2,
-                                    durationMs: 3200,
-                                    status: 'failed',
-                                    errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
-                                    isFailurePoint: true,
-                                },
-                                {
-                                    title: 'Retry policy applied',
-                                    category: 'test.step',
-                                    depth: 2,
-                                    durationMs: 1800,
-                                    status: 'failed',
-                                    errorMessage: null,
-                                    isFailurePoint: false,
-                                },
-                                {
-                                    title: 'Capture timeout diagnostics',
-                                    category: 'pw:api',
-                                    depth: 2,
-                                    durationMs: 900,
-                                    status: 'passed',
-                                    errorMessage: null,
-                                    isFailurePoint: false,
-                                },
-                            ],
-                        }
-                        : attempt),
-                }
-                : item),
+            latestRun: nestedLatestItem,
+            history: attachmentTestHistoryPayload.history.map((item, itemIndex) => itemIndex === 0 ? nestedLatestItem : item),
         }
         const nestedHistoryHtml = legacyRuntime.renderTestHistoryHtml(nestedStepsPayload, attachmentTestTitle, {}, {
             basePath: '/legacy',
             apiBasePath: '/legacy/api',
             artifactBasePath: '/legacy/artifacts',
         })
+        const nestedHistoryDom = new JSDOM(nestedHistoryHtml)
+        const nestedChildrenGroup = nestedHistoryDom.window.document.querySelector('.step-tree-children') as HTMLDivElement | null
         const metricHeadingHtml = legacyRuntime.renderMetricHeading('Smoke heading', 'Smoke tooltip')
 
         assertIncludes(dashboardHtml, 'AQA Pulse — Unified Quality Assurance Platform', 'Legacy dashboard HTML title must be rendered.')
@@ -141,6 +153,14 @@ async function main(): Promise<void> {
         assertIncludes(historyHtml, 'Диагностика последнего запуска', 'Legacy test history HTML should include diagnostics section.')
         assertIncludes(nestedHistoryHtml, 'step-tree-children', 'Legacy test history HTML should preserve nested diagnostics step groups.')
         assertIncludes(nestedHistoryHtml, 'step-item-nested', 'Legacy test history HTML should mark nested diagnostics steps for parity with React UI.')
+        assert(nestedChildrenGroup, 'Legacy nested diagnostics should render a nested children group.')
+        assert.deepEqual(
+            Array.from(nestedChildrenGroup.children)
+                .map((child) => child.querySelector('.step-title')?.textContent?.trim() ?? '')
+                .filter((title) => title.length > 0),
+            ['Wait for gateway response', 'Retry policy applied', 'Capture timeout diagnostics'],
+            'Legacy nested diagnostics should keep all depth-2 steps under a single depth-1 test.step parent group.',
+        )
         assertIncludes(metricHeadingHtml, 'Smoke heading', 'Legacy metric heading helper should still render headings.')
 
         assert.equal(warnMessages.length, 1, `Legacy runtime should warn once, got ${warnMessages.length}: ${warnMessages.join(' | ')}`)

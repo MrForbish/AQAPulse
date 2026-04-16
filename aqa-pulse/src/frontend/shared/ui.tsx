@@ -163,11 +163,15 @@ export interface TraceDisclosureProps {
     dialogTitle?: string
     badgeLabel?: string
     compact?: boolean
+    compactSize?: 'tight' | 'comfortable'
+    variant?: 'default' | 'cluster'
 }
 
 export function TraceDisclosure(props: TraceDisclosureProps): React.JSX.Element {
     const fullText = normalizeDisclosureText(props.text)
     const previewText = buildDisclosurePreview(props.previewText ?? fullText)
+    const compactClassName = props.compact ? (props.compactSize === 'comfortable' ? 'is-compact-roomy' : 'is-compact') : ''
+    const variantClassName = props.variant === 'cluster' ? 'is-cluster' : ''
     const [isOpen, setIsOpen] = React.useState(false)
     const closeRef = React.useRef<HTMLButtonElement | null>(null)
     const previousActiveElementRef = React.useRef<HTMLElement | null>(null)
@@ -246,11 +250,11 @@ export function TraceDisclosure(props: TraceDisclosureProps): React.JSX.Element 
         <>
             <button
                 type="button"
-                className={['trace-disclosure-trigger-react', props.compact ? 'is-compact' : ''].filter(Boolean).join(' ')}
+                className={['trace-disclosure-trigger-react', compactClassName, variantClassName].filter(Boolean).join(' ')}
                 data-trace-disclosure-trigger
                 onClick={() => setIsOpen(true)}
             >
-                <span className={['trace-disclosure-copy-react', 'mono-cell', props.compact ? 'is-compact' : ''].filter(Boolean).join(' ')}>{previewText}</span>
+                <span className={['trace-disclosure-copy-react', 'mono-cell', compactClassName, variantClassName].filter(Boolean).join(' ')}>{previewText}</span>
                 <span className="trace-disclosure-pill-react">{props.badgeLabel ?? 'trace'}</span>
             </button>
             {disclosureDialog}

@@ -2,6 +2,20 @@ import React from 'react'
 import type { DashboardErrorCluster } from '../../../dashboard-utils'
 import { OverflowText, StatusBadge, TraceDisclosure } from '../../shared/ui'
 
+function buildClusterTracePreviewText(cluster: DashboardErrorCluster): string {
+    const source = cluster.sampleMessage ?? cluster.message
+    const previewLine = source
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find(Boolean)
+
+    if (!previewLine) {
+        return 'Открыть пример stack trace'
+    }
+
+    return previewLine.length > 110 ? `${previewLine.slice(0, 107)}...` : previewLine
+}
+
 export function DashboardClusterMetricHint(props: {
     cluster: DashboardErrorCluster | null | undefined
     emptyLabel: string
@@ -14,9 +28,11 @@ export function DashboardClusterMetricHint(props: {
         <div className="cluster-preview-react">
             <OverflowText as="span" text={props.cluster.message} className="cluster-message-react" lines={2} />
             <TraceDisclosure
-                previewText="Показать пример ошибки"
+                previewText={buildClusterTracePreviewText(props.cluster)}
                 text={props.cluster.sampleMessage ?? props.cluster.message}
                 dialogTitle="Пример ошибки из кластера"
+                badgeLabel="sample"
+                variant="cluster"
             />
         </div>
     )
@@ -32,9 +48,11 @@ export function DashboardClusterCard(props: { cluster: DashboardErrorCluster }):
             <OverflowText as="div" text={props.cluster.tests.slice(0, 4).join(' • ')} className="subtle-copy cluster-tests-react" lines={2} />
             <div className="compact-top">
                 <TraceDisclosure
-                    previewText="Показать пример ошибки"
+                    previewText={buildClusterTracePreviewText(props.cluster)}
                     text={props.cluster.sampleMessage ?? props.cluster.message}
                     dialogTitle="Пример ошибки из кластера"
+                    badgeLabel="sample"
+                    variant="cluster"
                 />
             </div>
         </article>

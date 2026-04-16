@@ -106,7 +106,7 @@ export function DashboardCurrentRunTestRow(props: {
             <td><StatusBadge label={formatStatusLabel(props.test.status, props.test.flaky)} tone={getStatusTone(props.test.status, props.test.flaky)} /></td>
             <td>{props.test.flaky ? props.yesLabel : props.noLabel}</td>
             <td>{formatDuration(props.test.durationMs)}</td>
-            <DashboardTraceTableCell preview={props.test.errorMessage} details={props.test.errorDetails ?? props.test.errorMessage} />
+            <DashboardTraceTableCell preview={props.test.errorMessage} details={props.test.errorDetails ?? props.test.errorMessage} compactSize="comfortable" />
         </tr>
     )
 }
@@ -212,10 +212,10 @@ export function DashboardRecentRunCompactRow(props: { run: DashboardSummary['his
     )
 }
 
-function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined }): React.JSX.Element {
+function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined; compactSize?: 'tight' | 'comfortable' }): React.JSX.Element {
     return (
         <td>
-            <TraceDisclosure previewText={props.preview} text={props.details} compact />
+            <TraceDisclosure previewText={props.preview} text={props.details} compact compactSize={props.compactSize} />
         </td>
     )
 }

@@ -1288,6 +1288,21 @@ th {
     gap: 8px;
 }
 
+.trace-disclosure-trigger-react.is-compact-roomy {
+    align-items: center;
+    padding: 8px 10px;
+    gap: 10px;
+}
+
+.trace-disclosure-trigger-react.is-cluster {
+    align-items: stretch;
+    gap: 12px;
+    padding: 10px 12px;
+    border-color: rgba(245, 158, 11, 0.24);
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.28), rgba(68, 12, 12, 0.1));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 .trace-disclosure-copy-react {
     flex: 1 1 auto;
     min-width: 0;
@@ -1299,6 +1314,25 @@ th {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.trace-disclosure-copy-react.is-compact-roomy {
+    display: block;
+    line-height: 1.45;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trace-disclosure-copy-react.is-cluster {
+    display: -webkit-box;
+    line-height: 1.45;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #ffe4c7;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .trace-disclosure-pill-react {
@@ -1320,6 +1354,20 @@ th {
     min-height: 20px;
     padding: 0 6px;
     font-size: 10px;
+}
+
+.trace-disclosure-trigger-react.is-compact-roomy .trace-disclosure-pill-react {
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: 10px;
+}
+
+.trace-disclosure-trigger-react.is-cluster .trace-disclosure-pill-react {
+    align-self: flex-start;
+    min-height: 22px;
+    padding: 0 7px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #ffe7b8;
 }
 
 .trace-disclosure-modal-react[hidden] {
@@ -1396,6 +1444,7 @@ th {
 .cluster-preview-react {
     display: grid;
     gap: 8px;
+    align-items: start;
 }
 
 .cluster-tests-react {

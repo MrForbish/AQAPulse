@@ -384,7 +384,7 @@ function verifyDiagnosticPrimaryFailureHighlight(): void {
                     durationMs: 5000,
                     status: 'failed',
                     errorMessage: null,
-                    isFailurePoint: true,
+                    isFailurePoint: false,
                 },
                 {
                     title: 'Wait for selector',
@@ -404,13 +404,15 @@ function verifyDiagnosticPrimaryFailureHighlight(): void {
                     durationMs: 300,
                     status: 'failed',
                     errorMessage: 'Error: browser.close: Target page, context or browser has been closed',
-                    isFailurePoint: true,
+                    isFailurePoint: false,
                 },
             ],
         }),
     )
 
     renderMarkup('diagnostic primary failure highlight', markup, ['is-primary-failure', 'Основная причина', 'is-failure'])
+    assert(markup.includes('step-node-branch-react is-primary-failure'), 'Top-level branch that contains the primary failure should be highlighted in red.')
+    assert(markup.includes('step-node-leaf-react is-failure'), 'Secondary error leaf inside the primary branch should stay highlighted in yellow.')
 }
 
 function verifyDiagnosticTreeKeepsSecondaryErrorsWithoutFailurePoint(): void {
@@ -470,6 +472,8 @@ function verifyDiagnosticTreeKeepsSecondaryErrorsWithoutFailurePoint(): void {
     assert(failedStepBadgeOccurrences === 1, `Only the actionable step should keep the failure-point badge for duplicated errors. Actual badges: ${failedStepBadgeOccurrences}`)
     assert(secondaryErrorBadgeOccurrences === 1, `Secondary duplicate errors should render a non-primary badge. Actual badges: ${secondaryErrorBadgeOccurrences}`)
     assert(markup.includes('Worker Cleanup'), 'Worker Cleanup step should still be rendered in diagnostics.')
+    assert(markup.includes('step-node-branch-react is-primary-failure'), 'Top-level branch with the primary failure should remain red even with secondary child errors.')
+    assert(markup.includes('step-node-leaf-react is-failure'), 'Top-level secondary-only branch should be highlighted in yellow.')
 }
 
 /**

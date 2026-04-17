@@ -40,7 +40,6 @@ export function AttemptDiagnostics(props: {
                 <details key={attempt.attempt} className="attempt-card diagnostics-attempt-card-react" data-attempt-status={attempt.status} open={attempt.attempt === props.attempts[0]?.attempt}>
                     <summary>
                         <div className="diagnostics-attempt-head-react">
-                            <span className="diagnostics-attempt-kicker-react">Попытка {attempt.attempt}</span>
                             <strong>{HISTORY_TEXT.diagnostics.attemptTitle.replace('{attempt}', String(attempt.attempt))}</strong>
                             <div className="subtle-copy diagnostics-attempt-meta-react">{formatDuration(attempt.durationMs)} • {attempt.steps.length} steps • {attempt.attachments.length} attachments</div>
                         </div>

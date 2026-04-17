@@ -60,8 +60,11 @@ function DiagnosticStepCard(props: {
     const isPrimaryFailure = isPrimaryFailureStep(node.step, props.runId, props.attemptNumber, props.primaryFailure)
     const hasOwnFailureSignal = isPrimaryFailure || node.step.isFailurePoint
     const hasOwnDiagnosticError = Boolean(node.step.errorMessage) || isUnstableDiagnosticStatus(node.step.status)
-    const hasFailureInSubtree = hasOwnFailureSignal
-        || node.children.some((childNode) => nodeHasFailure(childNode, props.runId, props.attemptNumber, props.allSteps, props.primaryFailure))
+    const hasPrimaryFailureInSubtree = hasOwnFailureSignal
+        || node.children.some((childNode) => nodeHasPrimaryFailure(childNode, props.runId, props.attemptNumber, props.allSteps, props.primaryFailure))
+    const hasOwnSecondaryDiagnostic = hasOwnDiagnosticError && !hasOwnFailureSignal
+    const hasSecondaryDiagnosticInSubtree = hasOwnSecondaryDiagnostic
+        || node.children.some((childNode) => nodeHasSecondaryDiagnostic(childNode, props.runId, props.attemptNumber, props.allSteps, props.primaryFailure))
     const hasDiagnosticErrorInSubtree = hasOwnDiagnosticError
         || node.children.some((childNode) => nodeHasDiagnosticError(childNode))
     const metaBadges = [
@@ -72,10 +75,20 @@ function DiagnosticStepCard(props: {
     const title = <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />
     const statusBadge = node.step.status ? <StatusBadge label={formatStatusLabel(node.step.status, false)} tone={getStatusTone(node.step.status, false)} /> : null
     const primaryCauseBadge = <span className="step-primary-cause-badge-react">Основная причина</span>
+    const branchToneClassName = hasPrimaryFailureInSubtree
+        ? ' is-primary-failure'
+        : hasSecondaryDiagnosticInSubtree
+            ? ' is-failure'
+            : ''
+    const leafToneClassName = hasOwnFailureSignal
+        ? ' is-primary-failure'
+        : hasOwnSecondaryDiagnostic
+            ? ' is-failure'
+            : ''
 
     if (hasChildren) {
         return (
-            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${isPrimaryFailure ? ' is-primary-failure' : hasFailureInSubtree ? ' is-failure' : ''}`} data-step-depth={node.step.depth} open={hasDiagnosticErrorInSubtree || node.step.depth === 0}>
+            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${branchToneClassName}`} data-step-depth={node.step.depth} open={hasDiagnosticErrorInSubtree || node.step.depth === 0}>
                 <summary className="step-node-summary-react">
                     <div className="step-node-summary-main-react">
                         <div className="step-node-title-row-react">
@@ -117,7 +130,7 @@ function DiagnosticStepCard(props: {
     }
 
     return (
-        <article id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-card step-node-leaf-react${isPrimaryFailure ? ' is-primary-failure' : node.step.isFailurePoint ? ' is-failure' : ''}`} data-step-depth={node.step.depth}>
+        <article id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-card step-node-leaf-react${leafToneClassName}`} data-step-depth={node.step.depth}>
             <div className="step-tree-body-react">
                 <div className="step-node-summary-react is-leaf">
                     <div className="step-node-summary-main-react">
@@ -152,7 +165,7 @@ function DiagnosticStepCard(props: {
     )
 }
 
-function nodeHasFailure(
+function nodeHasPrimaryFailure(
     node: ReturnType<typeof buildDiagnosticStepTree>[number],
     runId: string,
     attemptNumber: number,
@@ -167,7 +180,27 @@ function nodeHasFailure(
 ): boolean {
     return isPrimaryFailureStep(node.step, runId, attemptNumber, primaryFailure)
         || node.step.isFailurePoint
-        || node.children.some((childNode) => nodeHasFailure(childNode, runId, attemptNumber, allSteps, primaryFailure))
+        || node.children.some((childNode) => nodeHasPrimaryFailure(childNode, runId, attemptNumber, allSteps, primaryFailure))
+}
+
+function nodeHasSecondaryDiagnostic(
+    node: ReturnType<typeof buildDiagnosticStepTree>[number],
+    runId: string,
+    attemptNumber: number,
+    allSteps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
+    primaryFailure: {
+        runId: string | null
+        attemptNumber: number | null
+        offsetMs: number | null
+        title: string | null
+        errorMessage: string | null
+    } | null,
+): boolean {
+    const hasOwnPrimaryFailure = isPrimaryFailureStep(node.step, runId, attemptNumber, primaryFailure) || node.step.isFailurePoint
+    const hasOwnDiagnosticError = Boolean(node.step.errorMessage) || isUnstableDiagnosticStatus(node.step.status)
+
+    return (hasOwnDiagnosticError && !hasOwnPrimaryFailure)
+        || node.children.some((childNode) => nodeHasSecondaryDiagnostic(childNode, runId, attemptNumber, allSteps, primaryFailure))
 }
 
 function nodeHasDiagnosticError(

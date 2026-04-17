@@ -5,7 +5,7 @@ import * as path from 'node:path'
 import { loadReporterReport } from '../dashboard-utils'
 import { getErrorMessage } from '../shared/error-utils'
 import { createSaasApp } from './app'
-import { type AdminAuditRecord, type AdminIngestionHealthReport, type ServerSettingsRecord, type WorkspaceDescriptor, type WorkspaceProvisioningResult, type WorkspaceShareLinkProvisioningResult, type WorkspaceUpdateResult, type WorkspaceUserProvisioningResult } from './contracts'
+import { type AdminAuditPage, type AdminAuditRecord, type AdminIngestionHealthReport, type ServerSettingsRecord, type WorkspaceDescriptor, type WorkspaceProvisioningResult, type WorkspaceShareLinkProvisioningResult, type WorkspaceUpdateResult, type WorkspaceUserProvisioningResult } from './contracts'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 
 interface JsonLoginResponse {
@@ -199,6 +199,8 @@ export async function runAdminControlPlaneSmoke(configOverrides: Partial<SaasApp
             body: JSON.stringify({ ttlMinutes: 5 }),
         })
         assert(shareLinkResult.shareSession.ttlMinutes === 5, 'Share link должен выдаваться на запрошенный TTL.')
+        assert(shareLinkResult.shareSession.activatedAt === null, 'Новая share link не должна активироваться до первого открытия.')
+        assert(shareLinkResult.shareSession.expiresAt === null, 'До первого открытия share link не должна иметь фиксированный expiresAt.')
         assert(shareLinkResult.shareLinkUrl.startsWith(`${baseUrl}/s/`), 'Share link должна возвращаться как короткий абсолютный URL на основной домен.')
         assert(!shareLinkResult.shareLinkUrl.includes('token='), 'Короткая share link не должна раскрывать длинный JWT в query string.')
 
@@ -253,18 +255,30 @@ export async function runAdminControlPlaneSmoke(configOverrides: Partial<SaasApp
         assert(Boolean(healthItem), 'Ingestion health должен содержать переименованный workspace.')
         assert((healthItem?.runCount ?? 0) > 0, 'Ingestion health должен отражать загруженный run.')
 
-        const auditLog = await fetchJson<{ entries: AdminAuditRecord[] }>(`${baseUrl}/api/admin/audit`, {
+        const auditLogFirstPage = await fetchJson<AdminAuditPage>(`${baseUrl}/api/admin/audit?page=1&pageSize=2`, {
             headers: {
                 accept: 'application/json',
                 cookie: adminCookie,
             },
         })
-        assert(auditLog.entries.some((entry) => entry.action === 'workspace-updated' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать workspace update.')
-        assert(auditLog.entries.some((entry) => entry.action === 'workspace-user-role-updated' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать user role update.')
-        assert(auditLog.entries.some((entry) => entry.action === 'workspace-user-deleted' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать user delete.')
-        assert(auditLog.entries.some((entry) => entry.action === 'workspace-api-key-deleted' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать api key delete.')
-        assert(auditLog.entries.some((entry) => entry.action === 'workspace-share-link-created' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать share link creation.')
-        assert(auditLog.entries.some((entry) => entry.action === 'server-settings-updated'), 'Audit log должен содержать settings update.')
+        assert(auditLogFirstPage.page === 1, 'Audit pagination должна возвращать первую страницу по запросу page=1.')
+        assert(auditLogFirstPage.pageSize === 2, 'Audit pagination должна уважать pageSize.')
+        assert(auditLogFirstPage.entries.length === 2, 'Первая audit-страница должна содержать 2 записи при pageSize=2.')
+        assert(auditLogFirstPage.totalPages > 1, 'Для smoke audit log должен разбиваться минимум на две страницы.')
+        assert(auditLogFirstPage.hasNextPage === true, 'У первой audit-страницы должен быть next page.')
+
+        const auditLogFullPage = await fetchJson<AdminAuditPage>(`${baseUrl}/api/admin/audit?page=1&pageSize=50`, {
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+            },
+        })
+        assert(auditLogFullPage.entries.some((entry) => entry.action === 'workspace-updated' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать workspace update.')
+        assert(auditLogFullPage.entries.some((entry) => entry.action === 'workspace-user-role-updated' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать user role update.')
+        assert(auditLogFullPage.entries.some((entry) => entry.action === 'workspace-user-deleted' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать user delete.')
+        assert(auditLogFullPage.entries.some((entry) => entry.action === 'workspace-api-key-deleted' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать api key delete.')
+        assert(auditLogFullPage.entries.some((entry) => entry.action === 'workspace-share-link-created' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать share link creation.')
+        assert(auditLogFullPage.entries.some((entry) => entry.action === 'server-settings-updated'), 'Audit log должен содержать settings update.')
 
         const deletedWorkspace = await fetchJson<{ workspace: WorkspaceDescriptor }>(`${baseUrl}/api/workspaces/${renamedSlug}`, {
             method: 'DELETE',

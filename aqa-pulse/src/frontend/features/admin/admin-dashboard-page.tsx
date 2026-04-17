@@ -23,9 +23,10 @@ export function AdminDashboardPage(): React.JSX.Element {
     const {
         workspaces,
         serverSettings,
-        auditEntries,
+        auditPage,
         ingestionHealth,
         isLoading,
+        isAuditPageLoading,
         errorMessage,
         actionResult,
         dismissActionResult,
@@ -43,6 +44,8 @@ export function AdminDashboardPage(): React.JSX.Element {
         deleteUser,
         revokeSession,
         updateServerSettings,
+        goToPreviousAuditPage,
+        goToNextAuditPage,
         logout,
     } = useAdminDashboardState(initialWorkspaces)
 
@@ -72,7 +75,12 @@ export function AdminDashboardPage(): React.JSX.Element {
                 onDeleteUser={deleteUser}
                 onRevokeSession={revokeSession}
             />
-            <AdminAuditTrailSection entries={auditEntries} />
+            <AdminAuditTrailSection
+                auditPage={auditPage}
+                isLoading={isAuditPageLoading}
+                onPreviousPage={goToPreviousAuditPage}
+                onNextPage={goToNextAuditPage}
+            />
         </PageFrame>
     )
 }

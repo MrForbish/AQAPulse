@@ -2,6 +2,7 @@
  * Назначение: thin frontend API-layer для admin/workspace auth, provisioning и session endpoints.
  */
 import type {
+    AdminAuditPage,
     AdminAuditRecord,
     AdminIngestionHealthReport,
     ServerSettingsRecord,
@@ -184,9 +185,8 @@ export async function updateAdminServerSettings(input: {
     return payload.settings
 }
 
-export async function fetchAdminAuditLog(): Promise<AdminAuditRecord[]> {
-    const payload = await requestJson<{ entries: AdminAuditRecord[] }>('/api/admin/audit')
-    return payload.entries
+export async function fetchAdminAuditLog(page = 1, pageSize = 20): Promise<AdminAuditPage> {
+    return requestJson(`/api/admin/audit?page=${encodeURIComponent(String(page))}&pageSize=${encodeURIComponent(String(pageSize))}`)
 }
 
 export async function fetchAdminIngestionHealth(): Promise<AdminIngestionHealthReport> {

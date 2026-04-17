@@ -55,7 +55,9 @@ export interface WorkspaceSessionRecord {
     scope: 'workspace:read' | 'workspace:ingest'
     role: WorkspaceUserRole | null
     createdAt: string
-    expiresAt: string
+    activatedAt: string | null
+    expiresAt: string | null
+    ttlMinutes: number | null
     lastSeenAt: string
     revokedAt: string | null
 }
@@ -97,6 +99,16 @@ export interface AdminAuditRecord {
     summary: string
     createdAt: string
     details: Record<string, string>
+}
+
+export interface AdminAuditPage {
+    entries: AdminAuditRecord[]
+    page: number
+    pageSize: number
+    totalEntries: number
+    totalPages: number
+    hasPreviousPage: boolean
+    hasNextPage: boolean
 }
 
 export interface PersistedServerSettingsRecord {
@@ -158,7 +170,9 @@ export interface WorkspaceDescriptor {
         scope: 'workspace:read' | 'workspace:ingest'
         role: WorkspaceUserRole | null
         createdAt: string
-        expiresAt: string
+        activatedAt: string | null
+        expiresAt: string | null
+        ttlMinutes: number | null
         lastSeenAt: string
         revokedAt: string | null
     }>
@@ -180,7 +194,8 @@ export interface WorkspaceShareLinkProvisioningResult {
     shareSession: {
         id: string
         label: string
-        expiresAt: string
+        activatedAt: string | null
+        expiresAt: string | null
         ttlMinutes: number
     }
     shareLinkUrl: string

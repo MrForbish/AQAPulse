@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { normalizeOptionalText } from '../shared/text-utils'
 import type {
+    AdminAuditPage,
     AdminSessionRecord,
     AdminAuditAction,
     AdminAuditRecord,
@@ -338,12 +339,15 @@ export class WorkspaceRegistry {
             label: string
             scope: 'workspace:read' | 'workspace:ingest'
             role?: 'owner' | 'viewer'
-            expiresAt: string
+            activatedAt?: string | null
+            expiresAt?: string | null
+            ttlMinutes?: number | null
         },
     ): WorkspaceSessionRecord {
         const registry = this.readRegistry()
         const workspace = findWorkspaceOrThrow(registry, slug)
         const now = new Date().toISOString()
+        const activatedAt = options.activatedAt === undefined ? now : options.activatedAt
         const session: WorkspaceSessionRecord = {
             id: randomBytes(8).toString('hex'),
             kind: options.kind,
@@ -352,7 +356,9 @@ export class WorkspaceRegistry {
             scope: options.scope,
             role: options.scope === 'workspace:read' ? options.role ?? null : null,
             createdAt: now,
-            expiresAt: options.expiresAt,
+            activatedAt,
+            expiresAt: options.expiresAt ?? null,
+            ttlMinutes: normalizeNullablePositiveInteger(options.ttlMinutes ?? undefined) ?? null,
             lastSeenAt: now,
             revokedAt: null,
         }
@@ -380,6 +386,35 @@ export class WorkspaceRegistry {
         }
 
         return null
+    }
+
+    activateWorkspaceShareLink(slug: string, sessionId: string): WorkspaceSessionRecord {
+        const registry = this.readRegistry()
+        const workspace = findWorkspaceOrThrow(registry, slug)
+        const session = workspace.sessions.find((item) => item.id === sessionId)
+
+        if (!session || session.kind !== 'workspace-share-link') {
+            throw new Error(`Share link session "${sessionId}" не найдена в workspace "${slug}".`)
+        }
+
+        if (session.revokedAt) {
+            return session
+        }
+
+        if (session.activatedAt && session.expiresAt) {
+            return session
+        }
+
+        const ttlMinutes = session.ttlMinutes ?? inferShareLinkTtlMinutes(session.label)
+        const now = new Date().toISOString()
+        session.activatedAt = now
+        session.expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString()
+        session.lastSeenAt = now
+        session.ttlMinutes = ttlMinutes
+        workspace.updatedAt = now
+        this.writeRegistry(registry)
+
+        return session
     }
 
     isAdminSessionActive(sessionId: string): boolean {
@@ -441,10 +476,28 @@ export class WorkspaceRegistry {
     }
 
     listAdminAuditLog(limit = MAX_ADMIN_AUDIT_LOG_ENTRIES): AdminAuditRecord[] {
-        return this.readRegistry().adminAuditLog
+        return this.listAdminAuditPage(1, limit).entries
+    }
+
+    listAdminAuditPage(page = 1, pageSize = 20): AdminAuditPage {
+        const normalizedPageSize = Math.min(Math.max(1, Math.trunc(pageSize) || 20), MAX_ADMIN_AUDIT_LOG_ENTRIES)
+        const sortedEntries = this.readRegistry().adminAuditLog
             .slice()
             .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
-            .slice(0, limit)
+        const totalEntries = sortedEntries.length
+        const totalPages = Math.max(1, Math.ceil(totalEntries / normalizedPageSize))
+        const normalizedPage = Math.min(Math.max(1, Math.trunc(page) || 1), totalPages)
+        const startIndex = (normalizedPage - 1) * normalizedPageSize
+
+        return {
+            entries: sortedEntries.slice(startIndex, startIndex + normalizedPageSize),
+            page: normalizedPage,
+            pageSize: normalizedPageSize,
+            totalEntries,
+            totalPages,
+            hasPreviousPage: normalizedPage > 1,
+            hasNextPage: normalizedPage < totalPages,
+        }
     }
 
     recordAdminAudit(input: {
@@ -692,20 +745,32 @@ function normalizeAdminAuditRecord(entry: Partial<AdminAuditRecord>): AdminAudit
 
 function normalizeWorkspaceSessionRecord(session: Partial<WorkspaceSessionRecord>): WorkspaceSessionRecord {
     const createdAt = typeof session.createdAt === 'string' ? session.createdAt : new Date().toISOString()
+    const kind = session.kind === 'workspace-api-key'
+        ? 'workspace-api-key'
+        : session.kind === 'workspace-share-link'
+            ? 'workspace-share-link'
+            : 'workspace-user'
+    const expiresAt = typeof session.expiresAt === 'string' ? session.expiresAt : null
+    const ttlMinutes = kind === 'workspace-share-link'
+        ? normalizeNullablePositiveInteger(session.ttlMinutes ?? undefined) ?? inferShareLinkTtlMinutes(typeof session.label === 'string' ? session.label : '')
+        : null
+    const activatedAt = typeof session.activatedAt === 'string'
+        ? session.activatedAt
+        : kind === 'workspace-share-link'
+            ? (expiresAt ? createdAt : null)
+            : createdAt
 
     return {
         id: typeof session.id === 'string' ? session.id : randomBytes(8).toString('hex'),
-        kind: session.kind === 'workspace-api-key'
-            ? 'workspace-api-key'
-            : session.kind === 'workspace-share-link'
-                ? 'workspace-share-link'
-                : 'workspace-user',
+        kind,
         subjectId: typeof session.subjectId === 'string' ? session.subjectId : randomBytes(8).toString('hex'),
         label: normalizeOptionalText(session.label) ?? 'Session',
         scope: session.scope === 'workspace:ingest' ? 'workspace:ingest' : 'workspace:read',
         role: session.role === 'owner' ? 'owner' : session.role === 'viewer' ? 'viewer' : null,
         createdAt,
-        expiresAt: typeof session.expiresAt === 'string' ? session.expiresAt : createdAt,
+        activatedAt,
+        expiresAt,
+        ttlMinutes,
         lastSeenAt: typeof session.lastSeenAt === 'string' ? session.lastSeenAt : createdAt,
         revokedAt: typeof session.revokedAt === 'string' ? session.revokedAt : null,
     }
@@ -805,7 +870,9 @@ function mapWorkspaceToDescriptor(workspace: WorkspaceRecord): WorkspaceDescript
                 scope: session.scope,
                 role: session.role,
                 createdAt: session.createdAt,
+                activatedAt: session.activatedAt,
                 expiresAt: session.expiresAt,
+                ttlMinutes: session.ttlMinutes,
                 lastSeenAt: session.lastSeenAt,
                 revokedAt: session.revokedAt,
             })),
@@ -923,9 +990,20 @@ function isSessionActive(session: Pick<AdminSessionRecord, 'expiresAt' | 'revoke
         return false
     }
 
+    if (!session.expiresAt) {
+        return false
+    }
+
     const expiresAt = Date.parse(session.expiresAt)
 
     return Number.isFinite(expiresAt) && expiresAt > Date.now()
+}
+
+function inferShareLinkTtlMinutes(label: string): number {
+    const ttlMatch = label.match(/\((\d+)m\)/i)
+    const ttlMinutes = ttlMatch ? Number(ttlMatch[1]) : Number.NaN
+
+    return Number.isInteger(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 10
 }
 
 function shouldRefreshLastSeen(lastSeenAt: string, nowIso: string): boolean {

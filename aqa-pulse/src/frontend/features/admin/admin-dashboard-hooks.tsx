@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type {
+    AdminAuditPage,
     AdminAuditRecord,
     AdminIngestionHealthReport,
     ServerSettingsRecord,
@@ -51,9 +52,10 @@ export interface DashboardCopyItem {
 export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] | null): {
     workspaces: WorkspaceDescriptor[]
     serverSettings: ServerSettingsRecord | null
-    auditEntries: AdminAuditRecord[]
+    auditPage: AdminAuditPage | null
     ingestionHealth: AdminIngestionHealthReport | null
     isLoading: boolean
+    isAuditPageLoading: boolean
     errorMessage: string | null
     actionResult: DashboardActionResult | null
     dismissActionResult: () => void
@@ -71,14 +73,18 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     deleteUser: (slug: string, userId: string) => Promise<void>
     revokeSession: (slug: string, sessionId: string) => Promise<void>
     updateServerSettings: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
+    goToPreviousAuditPage: () => Promise<void>
+    goToNextAuditPage: () => Promise<void>
     logout: () => Promise<void>
 } {
+    const auditPageSize = 20
     const navigate = useNavigate()
     const [workspaces, setWorkspaces] = React.useState<WorkspaceDescriptor[]>(initialWorkspaces ?? [])
     const [serverSettings, setServerSettings] = React.useState<ServerSettingsRecord | null>(null)
-    const [auditEntries, setAuditEntries] = React.useState<AdminAuditRecord[]>([])
+    const [auditPage, setAuditPage] = React.useState<AdminAuditPage | null>(null)
     const [ingestionHealth, setIngestionHealth] = React.useState<AdminIngestionHealthReport | null>(null)
     const [isLoading, setIsLoading] = React.useState(initialWorkspaces === null)
+    const [isAuditPageLoading, setIsAuditPageLoading] = React.useState(false)
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
     const [actionResult, setActionResult] = React.useState<DashboardActionResult | null>(null)
     const [busyKey, setBusyKey] = React.useState<string | null>(null)
@@ -96,16 +102,17 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         return false
     }, [navigate])
 
-    const refreshSupplementaryData = React.useCallback(async (): Promise<void> => {
+    const refreshSupplementaryData = React.useCallback(async (requestedAuditPage?: number): Promise<void> => {
         try {
+            const auditPageToLoad = requestedAuditPage ?? auditPage?.page ?? 1
             const [settings, entries, health] = await Promise.all([
                 fetchAdminServerSettings(),
-                fetchAdminAuditLog(),
+                fetchAdminAuditLog(auditPageToLoad, auditPageSize),
                 fetchAdminIngestionHealth(),
             ])
 
             setServerSettings(settings)
-            setAuditEntries(entries)
+            setAuditPage(entries)
             setIngestionHealth(health)
         } catch (error) {
             if (handleUnauthorized(error)) {
@@ -114,7 +121,24 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
 
             setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin telemetry.'))
         }
-    }, [handleUnauthorized])
+    }, [auditPage?.page, auditPageSize, handleUnauthorized])
+
+    const loadAuditPage = React.useCallback(async (page: number): Promise<void> => {
+        setIsAuditPageLoading(true)
+
+        try {
+            const nextAuditPage = await fetchAdminAuditLog(page, auditPageSize)
+            setAuditPage(nextAuditPage)
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin audit.'))
+        } finally {
+            setIsAuditPageLoading(false)
+        }
+    }, [auditPageSize, handleUnauthorized])
 
     React.useEffect(() => {
         let isMounted = true
@@ -125,7 +149,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                     const [loadedWorkspaces, settings, entries, health] = await Promise.all([
                         fetchAdminWorkspaces(),
                         fetchAdminServerSettings(),
-                        fetchAdminAuditLog(),
+                        fetchAdminAuditLog(1, auditPageSize),
                         fetchAdminIngestionHealth(),
                     ])
 
@@ -135,7 +159,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
 
                     setWorkspaces(loadedWorkspaces)
                     setServerSettings(settings)
-                    setAuditEntries(entries)
+                    setAuditPage(entries)
                     setIngestionHealth(health)
                 } else {
                     setWorkspaces(initialWorkspaces)
@@ -163,7 +187,23 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         return () => {
             isMounted = false
         }
-    }, [handleUnauthorized, initialWorkspaces, refreshSupplementaryData])
+    }, [auditPageSize, handleUnauthorized, initialWorkspaces, refreshSupplementaryData])
+
+    async function goToPreviousAuditPageAction(): Promise<void> {
+        if (!auditPage?.hasPreviousPage) {
+            return
+        }
+
+        await loadAuditPage(auditPage.page - 1)
+    }
+
+    async function goToNextAuditPageAction(): Promise<void> {
+        if (!auditPage?.hasNextPage) {
+            return
+        }
+
+        await loadAuditPage(auditPage.page + 1)
+    }
 
     async function logout(): Promise<void> {
         setBusyKey('logout')
@@ -594,9 +634,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     return {
         workspaces,
         serverSettings,
-        auditEntries,
+        auditPage,
         ingestionHealth,
         isLoading,
+        isAuditPageLoading,
         errorMessage,
         actionResult,
         dismissActionResult,
@@ -614,6 +655,8 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         deleteUser: deleteUserAction,
         revokeSession: revokeSessionAction,
         updateServerSettings: updateServerSettingsAction,
+        goToPreviousAuditPage: goToPreviousAuditPageAction,
+        goToNextAuditPage: goToNextAuditPageAction,
         logout,
     }
 }
@@ -653,7 +696,8 @@ function mapWorkspaceShareLinkDetails(result: WorkspaceShareLinkProvisioningResu
         workspace: result.workspace.slug,
         sessionId: result.shareSession.id,
         ttlMinutes: String(result.shareSession.ttlMinutes),
-        expiresAt: result.shareSession.expiresAt,
+        activation: result.shareSession.activatedAt ? 'Уже активирована' : 'TTL стартует с первого открытия',
+        expiresAt: result.shareSession.expiresAt ?? 'После первого открытия',
         shareLinkUrl: result.shareLinkUrl,
     }
 }

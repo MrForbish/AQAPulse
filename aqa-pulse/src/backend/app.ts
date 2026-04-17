@@ -313,8 +313,11 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             response.json({ settings })
         })
 
-        app.get('/api/admin/audit', adminApiGuard, (_request: Request, response: Response) => {
-            response.json({ entries: registry.listAdminAuditLog() })
+        app.get('/api/admin/audit', adminApiGuard, (request: Request, response: Response) => {
+            const page = normalizePaginationQueryValue(request.query.page, 1, 10_000)
+            const pageSize = normalizePaginationQueryValue(request.query.pageSize, 20, 100)
+
+            response.json(registry.listAdminAuditPage(page, pageSize))
         })
 
         app.get('/api/admin/ingestion-health', adminApiGuard, (_request: Request, response: Response) => {
@@ -502,7 +505,6 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             const workspace = requireWorkspaceFromLocals(response)
             const actor = resolveAdminActor(response, registry)
             const ttlMinutes = normalizeShareLinkTtlMinutes(request.body?.ttlMinutes)
-            const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString()
 
             try {
                 const session = registry.createWorkspaceSession(workspace.slug, {
@@ -510,18 +512,11 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                     subjectId: `share-link:${randomTokenId()}`,
                     label: `Share link (${ttlMinutes}m)`,
                     scope: 'workspace:read',
-                    expiresAt,
+                    activatedAt: null,
+                    expiresAt: null,
+                    ttlMinutes,
                 })
-                const issuedToken = issueJwtToken({
-                    subject: session.subjectId,
-                    kind: 'workspace-share-link',
-                    scope: 'workspace:read',
-                    secret: config.jwtSecret,
-                    ttlSeconds: ttlMinutes * 60,
-                    workspaceSlug: workspace.slug,
-                    sessionId: session.id,
-                })
-                const shareLinkUrl = buildWorkspaceShareLinkUrl(request, config, workspace.slug, issuedToken.token, session.id)
+                const shareLinkUrl = buildWorkspaceShareLinkUrl(request, config, workspace.slug, '', session.id)
 
                 registry.recordAdminAudit({
                     action: 'workspace-share-link-created',
@@ -535,7 +530,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                         workspace: workspace.slug,
                         sessionId: session.id,
                         ttlMinutes,
-                        expiresAt,
+                        activationMode: 'first-open',
                     },
                 })
 
@@ -544,6 +539,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                     shareSession: {
                         id: session.id,
                         label: session.label,
+                        activatedAt: session.activatedAt,
                         expiresAt: session.expiresAt,
                         ttlMinutes,
                     },
@@ -762,8 +758,11 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             }
 
             const workspaceSlug = resolvedShareSession.workspace.slug
+            const shareSession = !resolvedShareSession.session.activatedAt
+                ? registry.activateWorkspaceShareLink(workspaceSlug, resolvedShareSession.session.id)
+                : resolvedShareSession.session
 
-            if (!registry.isWorkspaceSessionActive(workspaceSlug, resolvedShareSession.session.id, 'workspace-share-link')) {
+            if (!registry.isWorkspaceSessionActive(workspaceSlug, shareSession.id, 'workspace-share-link')) {
                 sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspaceSlug, {
                     statusCode: 401,
                     title: 'Ссылка отозвана',
@@ -772,7 +771,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                 return
             }
 
-            const maxAgeSeconds = getSessionRemainingSeconds(resolvedShareSession.session.expiresAt)
+            const maxAgeSeconds = getSessionRemainingSeconds(shareSession.expiresAt)
 
             if (maxAgeSeconds <= 0) {
                 sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspaceSlug, {
@@ -784,13 +783,13 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             }
 
             const issuedToken = issueJwtToken({
-                subject: resolvedShareSession.session.subjectId,
+                subject: shareSession.subjectId,
                 kind: 'workspace-share-link',
                 scope: 'workspace:read',
                 secret: config.jwtSecret,
                 ttlSeconds: maxAgeSeconds,
                 workspaceSlug,
-                sessionId: resolvedShareSession.session.id,
+                sessionId: shareSession.id,
             })
 
             response.setHeader('Set-Cookie', buildCookieHeader({
@@ -799,7 +798,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                 maxAgeSeconds,
                 path: '/',
             }))
-            registry.touchWorkspaceSession(workspaceSlug, resolvedShareSession.session.id)
+            registry.touchWorkspaceSession(workspaceSlug, shareSession.id)
             response.redirect(`/w/${encodeURIComponent(workspaceSlug)}`)
         })
 
@@ -1266,6 +1265,22 @@ function getTestHistoryFiltersFromRequest(request: Request): ApiFilters {
     return getFiltersFromRequest(request)
 }
 
+function normalizePaginationQueryValue(value: unknown, fallback: number, maxValue: number): number {
+    const normalizedValue = Array.isArray(value) ? value[0] : value
+
+    if (typeof normalizedValue !== 'string' || normalizedValue.trim().length === 0) {
+        return fallback
+    }
+
+    const parsedValue = Number(normalizedValue)
+
+    if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+        return fallback
+    }
+
+    return Math.min(parsedValue, maxValue)
+}
+
 function getRouteParam(request: Request, key: string): string {
     const value = request.params[key]
     return Array.isArray(value) ? value[0] : value
@@ -1514,7 +1529,11 @@ function pickForwardedValue(value: string | undefined): string | null {
     return normalizedValue && normalizedValue.length > 0 ? normalizedValue : null
 }
 
-function getSessionRemainingSeconds(expiresAt: string): number {
+function getSessionRemainingSeconds(expiresAt: string | null): number {
+    if (!expiresAt) {
+        return 0
+    }
+
     const expiresAtMs = Date.parse(expiresAt)
 
     if (!Number.isFinite(expiresAtMs)) {

@@ -1,5 +1,5 @@
 import React from 'react'
-import type { AdminAuditRecord, AdminIngestionHealthReport, ServerSettingsRecord, WorkspaceIngestionHealthStatus } from '../../../backend/contracts'
+import type { AdminAuditPage, AdminAuditRecord, AdminIngestionHealthReport, ServerSettingsRecord, WorkspaceIngestionHealthStatus } from '../../../backend/contracts'
 import { LoadingView, Panel } from '../../shared/ui'
 
 export function AdminServerSettingsSection(props: {
@@ -98,12 +98,38 @@ export function AdminIngestionHealthSection(props: {
 }
 
 export function AdminAuditTrailSection(props: {
-    entries: AdminAuditRecord[]
+    auditPage: AdminAuditPage | null
+    isLoading: boolean
+    onPreviousPage: () => Promise<void>
+    onNextPage: () => Promise<void>
 }): React.JSX.Element {
+    if (!props.auditPage) {
+        return (
+            <Panel className="span-2" title="Admin audit" description="Последние админские действия по доступам, настройкам и workspace lifecycle.">
+                <LoadingView label="Загружаем audit log..." />
+            </Panel>
+        )
+    }
+
+    const rangeStart = props.auditPage.totalEntries === 0 ? 0 : (props.auditPage.page - 1) * props.auditPage.pageSize + 1
+    const rangeEnd = props.auditPage.totalEntries === 0 ? 0 : rangeStart + props.auditPage.entries.length - 1
+
     return (
         <Panel className="span-2" title="Admin audit" description="Последние админские действия по доступам, настройкам и workspace lifecycle.">
+            <div className="admin-audit-toolbar">
+                <div className="subtle-copy">Показаны записи {String(rangeStart)}-{String(rangeEnd)} из {String(props.auditPage.totalEntries)}</div>
+                <div className="admin-audit-pagination">
+                    <button type="button" className="secondary-button" disabled={props.isLoading || !props.auditPage.hasPreviousPage} onClick={() => void props.onPreviousPage()}>
+                        Назад
+                    </button>
+                    <span>Страница {String(props.auditPage.page)} из {String(props.auditPage.totalPages)}</span>
+                    <button type="button" className="secondary-button" disabled={props.isLoading || !props.auditPage.hasNextPage} onClick={() => void props.onNextPage()}>
+                        Вперёд
+                    </button>
+                </div>
+            </div>
             <ul className="admin-compact-list admin-audit-list">
-                {props.entries.length > 0 ? props.entries.map((entry) => (
+                {props.auditPage.entries.length > 0 ? props.auditPage.entries.map((entry) => (
                     <li key={entry.id} className="access-list-item">
                         <div className="access-item-head">
                             <strong>{entry.summary}</strong>

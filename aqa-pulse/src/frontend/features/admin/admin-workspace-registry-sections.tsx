@@ -223,19 +223,20 @@ function WorkspaceCard(props: {
                         {workspace.sessions.length > 0 ? workspace.sessions.map((session) => {
                             const isRevoked = Boolean(session.revokedAt)
                             const revokeKey = `session:revoke:${workspace.slug}:${session.id}`
+                            const isPendingShareLink = session.kind === 'workspace-share-link' && !session.activatedAt
 
                             return (
                                 <li key={session.id} className="access-list-item">
                                     <div className="access-item-head">
                                         <strong>{session.label}</strong>
-                                        <span className={`access-state-pill${isRevoked ? ' is-disabled' : ' is-active'}`}>{isRevoked ? 'Отозвана' : 'Активна'}</span>
+                                        <span className={`access-state-pill${isRevoked ? ' is-disabled' : ' is-active'}`}>{isRevoked ? 'Отозвана' : isPendingShareLink ? 'Ожидает открытия' : 'Активна'}</span>
                                     </div>
                                     <div className="access-item-meta access-item-meta-compact">
                                         <span>Тип: {formatSessionKind(session.kind)}</span>
                                         <span>Доступ: {session.scope === 'workspace:ingest' ? 'загрузка' : session.role === 'owner' ? 'владелец' : 'чтение'}</span>
                                         <span>Начало: {formatDateTime(session.createdAt)}</span>
-                                        <span>Последняя активность: {formatDateTime(session.lastSeenAt)}</span>
-                                        <span>Истекает: {formatDateTime(session.expiresAt)}</span>
+                                        <span>Последняя активность: {isPendingShareLink ? 'ещё не было' : formatDateTime(session.lastSeenAt)}</span>
+                                        <span>Истекает: {formatSessionExpiry(session)}</span>
                                         {session.revokedAt ? <span>Отозвана: {formatDateTime(session.revokedAt)}</span> : null}
                                     </div>
                                     <div className="access-item-actions">
@@ -293,4 +294,12 @@ function formatSessionKind(kind: WorkspaceDescriptor['sessions'][number]['kind']
     }
 
     return 'пользователь dashboard'
+}
+
+function formatSessionExpiry(session: WorkspaceDescriptor['sessions'][number]): string {
+    if (session.kind === 'workspace-share-link' && !session.activatedAt) {
+        return `через ${String(session.ttlMinutes ?? 10)} минут после первого открытия`
+    }
+
+    return formatDateTime(session.expiresAt)
 }

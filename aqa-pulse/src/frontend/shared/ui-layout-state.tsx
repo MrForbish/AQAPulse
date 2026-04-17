@@ -8,6 +8,11 @@ export interface PageFrameProps {
 export function PageFrame(props: PageFrameProps): React.JSX.Element {
     return (
         <div className="app-shell">
+            <div className="app-shell-statusbar" aria-hidden="true">
+                <span>LIVE UI</span>
+                <span>ENGINEERING CONSOLE</span>
+                <span>AQA PULSE</span>
+            </div>
             {props.children}
             <footer className="app-shell-footer">© AQA Pulse — developed by Maksim Pecherskiy</footer>
         </div>
@@ -28,6 +33,7 @@ export function Panel(props: PanelProps): React.JSX.Element {
         <section className={['panel', props.className].filter(Boolean).join(' ')}>
             {(props.title || props.description) ? (
                 <header className="panel-header">
+                    <div className="panel-kicker">Console block</div>
                     {props.title ? (
                         <h2>
                             <MetricHeading
@@ -61,6 +67,7 @@ export function MetricCard(props: MetricCardProps): React.JSX.Element {
 
     return (
         <article className={['metric-card', props.className, props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
+            <div className="metric-card-slot">metric node</div>
             <div className="metric-label">
                 <MetricHeading
                     label={props.label}

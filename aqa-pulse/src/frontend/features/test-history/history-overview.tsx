@@ -12,13 +12,12 @@ const DASHBOARD_TEXT = ru.dashboard
 export function TestHistoryHero(props: {
     payload: TestHistoryResponse
     dashboardHref: string
-    apiUrl: string
 }): React.JSX.Element {
     return (
-        <section className="hero-block">
+        <section className="hero-block test-history-hero-react">
             <div>
                 <div className="eyebrow">Test History</div>
-                <h1>{props.payload.test.title}</h1>
+                <h1 className="test-history-title-react">{props.payload.test.title}</h1>
                 <p>
                     React-страница читает ту же API-модель, но уже без server-generated HTML на каждый сценарий.
                     История, инциденты и attempt diagnostics теперь живут как отдельные feature-модули.
@@ -28,9 +27,8 @@ export function TestHistoryHero(props: {
                 <div className="hero-meta-row"><span>{DASHBOARD_TEXT.filters.project}</span><strong>{props.payload.test.project}</strong></div>
                 <div className="hero-meta-row"><span>{DASHBOARD_TEXT.tables.file}</span><strong>{props.payload.test.file}</strong></div>
                 <div className="hero-meta-row"><span>{HISTORY_TEXT.metrics.totalRuns}</span><strong>{props.payload.summary.totalRuns}</strong></div>
-                <div className="hero-actions">
-                    <Link className="primary-link" to={props.dashboardHref}>{HISTORY_TEXT.backToDashboard}</Link>
-                    <a className="ghost-link" href={props.apiUrl}>{HISTORY_TEXT.openJson}</a>
+                <div className="hero-actions test-history-hero-actions-react">
+                    <Link className="primary-link compact-action-link-react" to={props.dashboardHref}>{HISTORY_TEXT.backToDashboard}</Link>
                 </div>
             </div>
         </section>

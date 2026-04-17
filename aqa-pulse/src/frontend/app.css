@@ -96,6 +96,13 @@ input {
     letter-spacing: -0.04em;
 }
 
+.test-history-title-react {
+    font-size: clamp(18px, 2.5vw, 28px);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    max-width: 24ch;
+}
+
 .hero-block p,
 .filters-copy p,
 .panel-header p,
@@ -342,6 +349,10 @@ input {
     flex-wrap: wrap;
 }
 
+.test-history-hero-actions-react {
+    justify-content: flex-start;
+}
+
 .primary-link,
 .ghost-link,
 .secondary-button,
@@ -377,6 +388,14 @@ input {
 .secondary-button:hover,
 .segmented-tabs button:hover {
     transform: translateY(-1px);
+}
+
+.compact-action-link-react {
+    min-height: 24px;
+    padding: 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .filters-block {
@@ -1345,6 +1364,20 @@ th {
     padding: 0 16px 16px;
 }
 
+.diagnostic-step-group-react {
+    border-color: rgba(133, 157, 194, 0.18);
+    border-radius: 22px;
+}
+
+.diagnostic-step-group-react > .attachment-preview-summary-react {
+    padding: 16px 18px;
+}
+
+.diagnostic-step-group-react > .attachment-preview-body-react {
+    gap: 16px;
+    padding: 0 18px 18px;
+}
+
 .attempt-section-title-react {
     color: var(--text-muted);
     font-size: 11px;
@@ -1356,6 +1389,10 @@ th {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.step-meta-row-react.is-primary-cause-row {
+    margin-top: 2px;
 }
 
 .attempt-step-group-react,
@@ -1397,47 +1434,89 @@ th {
     gap: 12px;
 }
 
+.diagnostic-step-tree-react {
+    gap: 16px;
+}
+
 .step-tree-children-react {
-    margin-top: 12px;
-    padding-top: 12px;
-    padding-left: 16px;
-    border-left: 1px solid rgba(133, 157, 194, 0.16);
+    position: relative;
+    margin-top: 14px;
+    padding-top: 14px;
+    padding-left: 24px;
+    gap: 14px;
+    border-left: 2px solid rgba(125, 211, 252, 0.18);
+}
+
+.step-tree-children-react::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -2px;
+    bottom: 10px;
+    width: 2px;
+    background: linear-gradient(180deg, rgba(125, 211, 252, 0.34), rgba(125, 211, 252, 0.06));
 }
 
 .step-node-branch-react,
 .step-node-leaf-react {
+    position: relative;
     border: 1px solid rgba(133, 157, 194, 0.14);
-    border-radius: 18px;
-    background: rgba(10, 21, 38, 0.72);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(9, 18, 34, 0.94), rgba(7, 15, 27, 0.86));
     overflow: hidden;
 }
 
+.step-node-branch-react[data-step-depth='0'],
+.step-node-leaf-react[data-step-depth='0'] {
+    border-color: rgba(125, 211, 252, 0.24);
+}
+
+.step-node-branch-react[data-step-depth='1'],
+.step-node-leaf-react[data-step-depth='1'] {
+    margin-left: 6px;
+}
+
+.step-node-branch-react[data-step-depth='2'],
+.step-node-leaf-react[data-step-depth='2'] {
+    margin-left: 10px;
+}
+
+.step-node-branch-react[data-step-depth='3'],
+.step-node-leaf-react[data-step-depth='3'] {
+    margin-left: 14px;
+}
+
 .step-node-branch-react[open] {
-    border-color: rgba(14, 165, 233, 0.24);
-    background: rgba(11, 24, 43, 0.8);
+    border-color: rgba(125, 211, 252, 0.28);
+    background: linear-gradient(180deg, rgba(13, 26, 46, 0.94), rgba(8, 17, 31, 0.9));
 }
 
 .step-node-branch-react.is-failure,
 .step-node-leaf-react.is-failure {
-    border-color: rgba(245, 158, 11, 0.2);
-    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(10, 21, 38, 0.84));
+    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(10, 21, 38, 0.92));
 }
 
 .step-node-branch-react.is-primary-failure,
 .step-node-leaf-react.is-primary-failure {
-    border-color: rgba(239, 68, 68, 0.34);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.14), rgba(10, 21, 38, 0.88));
-    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.12), 0 0 28px rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.5);
+    background: linear-gradient(180deg, rgba(93, 19, 24, 0.88), rgba(16, 20, 33, 0.96));
+    box-shadow: inset 4px 0 0 #ef4444;
 }
 
 .step-node-summary-react {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 14px;
-    padding: 14px 16px;
+    gap: 18px;
+    padding: 18px 18px 16px;
     cursor: pointer;
     list-style: none;
+}
+
+.step-node-summary-react.is-leaf {
+    cursor: default;
+    padding-bottom: 12px;
 }
 
 .step-node-summary-react::-webkit-details-marker {
@@ -1459,19 +1538,56 @@ th {
 .step-node-title-row-react {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 14px;
     min-width: 0;
 }
 
+.step-node-rail-react {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    min-width: 18px;
+    padding-top: 2px;
+}
+
+.step-node-rail-react::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: 8px;
+    width: 2px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(125, 211, 252, 0.42), rgba(125, 211, 252, 0.1));
+}
+
+.step-node-rail-react.is-leaf::before {
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.34), rgba(148, 163, 184, 0.08));
+}
+
 .step-node-toggle-react {
-    width: 10px;
-    height: 10px;
+    position: relative;
+    z-index: 1;
+    width: 12px;
+    height: 12px;
     flex: 0 0 auto;
-    margin-top: 5px;
-    border-right: 2px solid rgba(148, 163, 184, 0.9);
-    border-bottom: 2px solid rgba(148, 163, 184, 0.9);
+    margin-top: 3px;
+    border-right: 2px solid rgba(148, 163, 184, 0.92);
+    border-bottom: 2px solid rgba(148, 163, 184, 0.92);
     transform: rotate(-45deg);
     transition: transform 120ms ease;
+}
+
+.step-node-toggle-react.is-leaf {
+    width: 8px;
+    height: 8px;
+    margin-top: 5px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.9);
+    transform: none;
 }
 
 .step-node-branch-react[open] > .step-node-summary-react .step-node-toggle-react {
@@ -1485,11 +1601,28 @@ th {
 }
 
 .step-node-panel-react {
-    padding: 0 16px 16px;
+    padding: 0 18px 18px 22px;
+    border-top: 1px solid rgba(133, 157, 194, 0.12);
 }
 
 .step-tree-body-react {
-    gap: 10px;
+    gap: 12px;
+    padding: 0 0 16px;
+}
+
+.step-primary-cause-badge-react {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(254, 202, 202, 0.38);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.24), rgba(127, 29, 29, 0.34));
+    color: #ffe2e2;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .attachment-image-preview-react {
@@ -1958,6 +2091,27 @@ th {
 
     .hero-block h1 {
         font-size: 34px;
+    }
+
+    .test-history-title-react {
+        font-size: 18px;
+    }
+
+    .compact-action-link-react {
+        min-height: 28px;
+        padding: 0 10px;
+    }
+
+    .step-node-summary-react,
+    .step-node-panel-react,
+    .diagnostic-step-group-react > .attachment-preview-summary-react,
+    .diagnostic-step-group-react > .attachment-preview-body-react {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .step-tree-children-react {
+        padding-left: 18px;
     }
 
     .attempt-card summary,

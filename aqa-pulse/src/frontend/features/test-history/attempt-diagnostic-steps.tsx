@@ -26,13 +26,13 @@ export function AttemptStepTree(props: {
     }
 
     return (
-        <details className="attempt-step-group-react" open={props.initiallyOpen}>
+        <details className="attempt-step-group-react diagnostic-step-group-react" open={props.initiallyOpen}>
             <summary className="attachment-preview-summary-react">
                 <span className="attempt-section-title-react">{HISTORY_TEXT.diagnostics.stepsTitle}</span>
                 <span className="meta-badge">{props.steps.length}</span>
             </summary>
             <div className="attachment-preview-body-react">
-                <div className="step-tree-react">
+                <div className="step-tree-react diagnostic-step-tree-react">
                     {buildDiagnosticStepTree(props.steps).map((node) => (
                         <DiagnosticStepCard key={`${props.attemptNumber}-${node.stepIndex}-${node.step.title}`} node={node} runId={props.runId} attemptNumber={props.attemptNumber} primaryFailure={props.primaryFailure ?? null} />
                     ))}
@@ -68,27 +68,30 @@ function DiagnosticStepCard(props: {
     ].filter((value): value is string => Boolean(value))
     const title = <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />
     const statusBadge = node.step.status ? <StatusBadge label={formatStatusLabel(node.step.status, false)} tone={getStatusTone(node.step.status, false)} /> : null
+    const primaryCauseBadge = <span className="step-primary-cause-badge-react">Основная причина</span>
 
     if (hasChildren) {
         return (
-            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${isPrimaryFailure ? ' is-primary-failure' : hasFailureInSubtree ? ' is-failure' : ''}`} open={hasFailureInSubtree || node.step.depth === 0}>
+            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${isPrimaryFailure ? ' is-primary-failure' : hasFailureInSubtree ? ' is-failure' : ''}`} data-step-depth={node.step.depth} open={hasFailureInSubtree || node.step.depth === 0}>
                 <summary className="step-node-summary-react">
                     <div className="step-node-summary-main-react">
                         <div className="step-node-title-row-react">
-                            <span className="step-node-toggle-react" aria-hidden="true" />
+                            <span className="step-node-rail-react" aria-hidden="true">
+                                <span className="step-node-toggle-react" />
+                            </span>
                             {title}
                         </div>
                         <div className="step-node-meta-react">
                             {metaBadges.map((badge) => <span key={badge} className="meta-badge">{badge}</span>)}
-                            <span className="meta-badge">{node.children.length}</span>
+                            <span className="meta-badge">{node.children.length} дочерних шага</span>
                         </div>
                     </div>
                     {statusBadge}
                 </summary>
                 <div className="step-node-panel-react">
                     {isPrimaryFailure ? (
-                        <div className="step-meta-row-react">
-                            <span className="meta-badge is-primary">Основная причина</span>
+                        <div className="step-meta-row-react is-primary-cause-row">
+                            {primaryCauseBadge}
                         </div>
                     ) : node.step.isFailurePoint ? (
                         <div className="step-meta-row-react">
@@ -96,7 +99,7 @@ function DiagnosticStepCard(props: {
                         </div>
                     ) : null}
                     {node.step.errorMessage ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
-                    <div className="step-tree-children-react">
+                    <div className="step-tree-children-react" data-step-children-depth={node.step.depth + 1}>
                         {node.children.map((childNode) => (
                             <DiagnosticStepCard key={`${props.attemptNumber}-${childNode.stepIndex}-${childNode.step.title}`} node={childNode} runId={props.runId} attemptNumber={props.attemptNumber} primaryFailure={props.primaryFailure} />
                         ))}
@@ -109,16 +112,23 @@ function DiagnosticStepCard(props: {
     return (
         <article id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-card step-node-leaf-react${isPrimaryFailure ? ' is-primary-failure' : node.step.isFailurePoint ? ' is-failure' : ''}`} data-step-depth={node.step.depth}>
             <div className="step-tree-body-react">
-                <div className="stack-item-header">
-                    {title}
+                <div className="step-node-summary-react is-leaf">
+                    <div className="step-node-summary-main-react">
+                        <div className="step-node-title-row-react">
+                            <span className="step-node-rail-react is-leaf" aria-hidden="true">
+                                <span className="step-node-toggle-react is-leaf" />
+                            </span>
+                            {title}
+                        </div>
+                        <div className="step-node-meta-react">
+                            {metaBadges.map((badge) => <span key={badge} className="meta-badge">{badge}</span>)}
+                        </div>
+                    </div>
                     {statusBadge}
                 </div>
-                <div className="step-node-meta-react">
-                    {metaBadges.map((badge) => <span key={badge} className="meta-badge">{badge}</span>)}
-                </div>
                 {isPrimaryFailure ? (
-                    <div className="step-meta-row-react compact-top">
-                        <span className="meta-badge is-primary">Основная причина</span>
+                    <div className="step-meta-row-react compact-top is-primary-cause-row">
+                        {primaryCauseBadge}
                     </div>
                 ) : node.step.isFailurePoint ? (
                     <div className="step-meta-row-react compact-top">

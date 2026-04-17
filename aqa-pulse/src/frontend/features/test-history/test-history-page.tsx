@@ -17,7 +17,6 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
     const {
         filters,
         isStaticMode,
-        apiUrl,
         artifactBasePath,
         dashboardHref,
         payload,
@@ -48,7 +47,7 @@ export function TestHistoryPage(props: { workspaceSlug: string | null; requested
 
     return (
         <PageFrame>
-            <TestHistoryHero payload={payload} dashboardHref={dashboardHref} apiUrl={apiUrl} />
+            <TestHistoryHero payload={payload} dashboardHref={dashboardHref} />
             <TestHistorySummaryMetrics summary={payload.summary} />
             <ArchiveGapsNotice missingRuns={payload.missingRuns} />
             {payload.incidentSummary ? <IncidentSummaryPanel incidentSummary={payload.incidentSummary} history={payload.history} /> : null}

@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import type * as TypeScript from 'typescript'
 import {
     applyBusinessAssumptionsToSummary,
     normalizeDashboardBusinessAssumptions,
@@ -241,6 +242,44 @@ export interface DashboardBusinessAutomationRoiMetric {
     source: 'pendingAssumptions'
 }
 
+export interface DashboardCodeQualityRiskDriver {
+    label: string
+    count: number
+    impact: 'low' | 'medium' | 'high'
+    hint: string
+}
+
+export interface DashboardCodeQualityFileMetric {
+    file: string
+    matchedTests: number
+    declaredTests: number
+    smellScore: number | null
+    pomCompliancePercent: number | null
+    assertionDensity: number | null
+    waitStrategyScore: number | null
+    stepGranularity: number | null
+    isolationScore: number | null
+    selectorStabilityPercent: number | null
+    notableSignals: string[]
+    sourceResolved: boolean
+}
+
+export interface DashboardCodeQualityMetrics {
+    analyzedFiles: number
+    matchedTests: number
+    analyzableTests: number
+    sourceCoveragePercent: number
+    testSmellScore: number | null
+    pomCompliancePercent: number | null
+    assertionDensity: number | null
+    waitStrategyScore: number | null
+    stepGranularity: number | null
+    isolationScore: number | null
+    selectorStabilityPercent: number | null
+    drivers: DashboardCodeQualityRiskDriver[]
+    topRiskFiles: DashboardCodeQualityFileMetric[]
+}
+
 export interface DashboardPhaseBreakdownItem {
     label: string
     durationMs: number
@@ -308,6 +347,7 @@ export interface DashboardAdvancedMetrics {
         releaseConfidenceScore: number
         automationRoi: DashboardBusinessAutomationRoiMetric
     }
+    codeQuality: DashboardCodeQualityMetrics
 }
 
 export interface DashboardManagerSignal {
@@ -395,6 +435,7 @@ export interface DashboardSummary {
     performance: DashboardAdvancedMetrics['performance']
     flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics']
     businessMetrics: DashboardAdvancedMetrics['businessMetrics']
+    codeQuality: DashboardAdvancedMetrics['codeQuality']
     managerSummary: DashboardManagerSummary
     currentRunTests: DashboardCurrentRunTests
     topProblematicTests: DashboardProblematicTest[]
@@ -857,6 +898,7 @@ export function readDashboardSummary(summaryPath: string): DashboardSummary {
 
 export function normalizeDashboardSummary(summary: DashboardSummary): DashboardSummary {
     const fallbackBusinessMetrics = buildEmptyBusinessMetrics()
+    const fallbackCodeQuality = buildEmptyCodeQualityMetrics(0)
     const businessMetrics = summary.businessMetrics
     const normalizedBusinessMetrics = {
         ...fallbackBusinessMetrics,
@@ -886,6 +928,13 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
             ...(businessMetrics?.automationRoi ?? {}),
         },
     }
+    const codeQuality = summary.codeQuality ?? recoverCodeQualityMetricsFromSource(summary.sourceFile)
+    const normalizedCodeQuality = {
+        ...fallbackCodeQuality,
+        ...codeQuality,
+        drivers: codeQuality?.drivers ?? fallbackCodeQuality.drivers,
+        topRiskFiles: codeQuality?.topRiskFiles ?? fallbackCodeQuality.topRiskFiles,
+    }
     const currentRunTests = summary.currentRunTests ?? recoverCurrentRunTestsFromSource(summary.sourceFile)
     const topProblematicTests = summary.topProblematicTests ?? []
     const errorClusters = summary.errorClusters ?? []
@@ -900,6 +949,7 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
     return {
         ...summary,
         businessMetrics: normalizedBusinessMetrics,
+        codeQuality: normalizedCodeQuality,
         currentRunTests,
         topProblematicTests,
         errorClusters,
@@ -912,6 +962,7 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
             performance: summary.performance,
             flakyAnalytics: summary.flakyAnalytics,
             businessMetrics: normalizedBusinessMetrics,
+            codeQuality: normalizedCodeQuality,
             topProblematicTests,
             errorClusters,
         }),
@@ -966,7 +1017,7 @@ export function buildDashboardSummary(
     const comparisonBaseline = resolveComparisonBaseline(historyRuns)
     const currentRun = comparisonBaseline.currentRun
     const previousRun = comparisonBaseline.previousRun
-    const resolvedAdvancedMetrics = advancedMetrics ?? buildFallbackAdvancedMetrics(tests, historyRuns, passRate, flakyTests, totalDurationMs)
+    const resolvedAdvancedMetrics = advancedMetrics ?? buildFallbackAdvancedMetrics(report, historyRuns, flakyTests, totalDurationMs, sourceFile)
     const topProblematicTests = collectTopProblematicTests(tests)
     const managerSummary = buildManagerSummary({
         kpis: {
@@ -1001,6 +1052,7 @@ export function buildDashboardSummary(
         performance: resolvedAdvancedMetrics.performance,
         flakyAnalytics: resolvedAdvancedMetrics.flakyAnalytics,
         businessMetrics: resolvedAdvancedMetrics.businessMetrics,
+        codeQuality: resolvedAdvancedMetrics.codeQuality,
         topProblematicTests,
         errorClusters,
     })
@@ -1091,6 +1143,7 @@ export function buildDashboardSummary(
         performance: resolvedAdvancedMetrics.performance,
         flakyAnalytics: resolvedAdvancedMetrics.flakyAnalytics,
         businessMetrics: resolvedAdvancedMetrics.businessMetrics,
+        codeQuality: resolvedAdvancedMetrics.codeQuality,
         managerSummary,
         currentRunTests: collectCurrentRunTests(tests),
         topProblematicTests,
@@ -1102,6 +1155,7 @@ export function buildAdvancedMetrics(
     report: ReporterRoot,
     historyRuns: DashboardHistoryEntry[],
     archiveRootPath: string,
+    sourceFile: string | null = null,
 ): DashboardAdvancedMetrics {
     const archivedRuns = historyRuns
         .map((run) => {
@@ -1120,13 +1174,14 @@ export function buildAdvancedMetrics(
         })
         .filter((value): value is { run: DashboardHistoryEntry; report: ReporterRoot } => value !== null)
 
-    return buildAdvancedMetricsFromArchivedRuns(report, historyRuns, archivedRuns)
+    return buildAdvancedMetricsFromArchivedRuns(report, historyRuns, archivedRuns, sourceFile)
 }
 
 export function buildAdvancedMetricsFromArchivedRuns(
     report: ReporterRoot,
     historyRuns: DashboardHistoryEntry[],
     archivedRuns: Array<{ run: DashboardHistoryEntry; report: ReporterRoot }>,
+    sourceFile: string | null = null,
 ): DashboardAdvancedMetrics {
     const tests = report.tests ?? []
     const durationValues = tests
@@ -1183,6 +1238,7 @@ export function buildAdvancedMetricsFromArchivedRuns(
             },
         },
         businessMetrics: buildBusinessMetrics(report, historyRuns, archivedRuns),
+        codeQuality: buildCodeQualityMetrics(report, sourceFile),
     }
 }
 
@@ -1518,6 +1574,808 @@ function buildDurationPerBrowser(tests: ReporterTest[], totalDurationMs: number)
     return buildDurationBreakdownItems(durationsByBrowser, totalDurationMs)
 }
 
+interface ParsedSourceTestMetric {
+    startLine: number
+    endLine: number
+    title: string | null
+    assertionCount: number
+    smartWaitCount: number
+    hardWaitCount: number
+    stepCount: number
+    directLocatorCount: number
+    stableSelectorCount: number
+    textSelectorCount: number
+    fragileSelectorCount: number
+    usesPom: boolean
+}
+
+interface ParsedSourceFileAnalysis {
+    tests: ParsedSourceTestMetric[]
+    hasPomImports: boolean
+    beforeAllCount: number
+    serialModeCount: number
+    topLevelMutableStateCount: number
+}
+
+interface CodeQualityAggregateResult {
+    testCount: number
+    testsWithoutPom: number
+    testsWithoutSteps: number
+    lowAssertionTests: number
+    totalAssertions: number
+    totalSmartWaits: number
+    totalHardWaits: number
+    totalSteps: number
+    totalDirectLocators: number
+    totalStableSelectors: number
+    totalTextSelectors: number
+    totalFragileSelectors: number
+    smellScore: number | null
+    pomCompliancePercent: number | null
+    assertionDensity: number | null
+    waitStrategyScore: number | null
+    stepGranularity: number | null
+    isolationScore: number | null
+    selectorStabilityPercent: number | null
+}
+
+const DIRECT_LOCATOR_METHODS = new Set([
+    'locator',
+    'getByRole',
+    'getByLabel',
+    'getByTestId',
+    'getByText',
+    'getByPlaceholder',
+    'getByAltText',
+    'getByTitle',
+    '$',
+    '$$',
+])
+
+const STABLE_LOCATOR_METHODS = new Set(['getByRole', 'getByLabel', 'getByTestId'])
+const TEXT_LOCATOR_METHODS = new Set(['getByText', 'getByPlaceholder', 'getByAltText', 'getByTitle'])
+const SMART_WAIT_METHODS = new Set(['waitForSelector', 'waitForResponse', 'waitForNavigation', 'waitForURL', 'waitForLoadState'])
+
+let cachedTypeScriptModule: typeof TypeScript | null | undefined
+
+function getTypeScriptModule(): typeof TypeScript | null {
+    if (cachedTypeScriptModule !== undefined) {
+        return cachedTypeScriptModule
+    }
+
+    try {
+        cachedTypeScriptModule = require('typescript') as typeof TypeScript
+    } catch {
+        cachedTypeScriptModule = null
+    }
+
+    return cachedTypeScriptModule
+}
+
+function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string | null): DashboardCodeQualityMetrics {
+    const tests = report.tests ?? []
+    const analyzableTests = tests.filter((test) => typeof test.location?.file === 'string' && test.location.file.trim().length > 0).length
+
+    if (analyzableTests === 0) {
+        return buildEmptyCodeQualityMetrics(0)
+    }
+
+    const typeScriptModule = getTypeScriptModule()
+
+    if (!typeScriptModule) {
+        return buildEmptyCodeQualityMetrics(analyzableTests)
+    }
+
+    const testsByFile = new Map<string, ReporterTest[]>()
+
+    for (const test of tests) {
+        const filePath = typeof test.location?.file === 'string' ? test.location.file.trim() : ''
+
+        if (!filePath) {
+            continue
+        }
+
+        const fileTests = testsByFile.get(filePath) ?? []
+        fileTests.push(test)
+        testsByFile.set(filePath, fileTests)
+    }
+
+    const weightedTotals = {
+        smellScore: 0,
+        pomCompliancePercent: 0,
+        assertionDensity: 0,
+        waitStrategyScore: 0,
+        stepGranularity: 0,
+        isolationScore: 0,
+        selectorStabilityPercent: 0,
+    }
+    const driverCounts = {
+        hardWaits: 0,
+        directLocators: 0,
+        testsWithoutPom: 0,
+        testsWithoutSteps: 0,
+        fragileSelectors: 0,
+        lowAssertionTests: 0,
+        sharedStateSignals: 0,
+    }
+
+    let analyzedFiles = 0
+    let matchedTests = 0
+
+    const topRiskFiles: DashboardCodeQualityFileMetric[] = [...testsByFile.entries()]
+        .map(([file, fileTests]) => {
+            const resolvedPath = resolveTestSourcePath(file, reportSourceFile)
+
+            if (!resolvedPath) {
+                return null
+            }
+
+            const parsedAnalysis = analyzeSourceFile(resolvedPath, typeScriptModule)
+
+            if (!parsedAnalysis || parsedAnalysis.tests.length === 0) {
+                return null
+            }
+
+            analyzedFiles += 1
+
+            const matchedSourceTests = matchReportTestsToSourceMetrics(fileTests, parsedAnalysis.tests)
+
+            if (matchedSourceTests.length === 0) {
+                return null
+            }
+
+            matchedTests += matchedSourceTests.length
+
+            const aggregate = buildCodeQualityAggregate(matchedSourceTests, parsedAnalysis)
+
+            driverCounts.hardWaits += aggregate.totalHardWaits
+            driverCounts.directLocators += aggregate.totalDirectLocators
+            driverCounts.testsWithoutPom += aggregate.testsWithoutPom
+            driverCounts.testsWithoutSteps += aggregate.testsWithoutSteps
+            driverCounts.fragileSelectors += aggregate.totalFragileSelectors
+            driverCounts.lowAssertionTests += aggregate.lowAssertionTests
+            driverCounts.sharedStateSignals += parsedAnalysis.beforeAllCount + parsedAnalysis.serialModeCount + parsedAnalysis.topLevelMutableStateCount
+
+            weightedTotals.smellScore += (aggregate.smellScore ?? 0) * matchedSourceTests.length
+            weightedTotals.pomCompliancePercent += (aggregate.pomCompliancePercent ?? 0) * matchedSourceTests.length
+            weightedTotals.assertionDensity += (aggregate.assertionDensity ?? 0) * matchedSourceTests.length
+            weightedTotals.waitStrategyScore += (aggregate.waitStrategyScore ?? 0) * matchedSourceTests.length
+            weightedTotals.stepGranularity += (aggregate.stepGranularity ?? 0) * matchedSourceTests.length
+            weightedTotals.isolationScore += (aggregate.isolationScore ?? 0) * matchedSourceTests.length
+            weightedTotals.selectorStabilityPercent += (aggregate.selectorStabilityPercent ?? 0) * matchedSourceTests.length
+
+            return {
+                file,
+                matchedTests: matchedSourceTests.length,
+                declaredTests: parsedAnalysis.tests.length,
+                smellScore: aggregate.smellScore,
+                pomCompliancePercent: aggregate.pomCompliancePercent,
+                assertionDensity: aggregate.assertionDensity,
+                waitStrategyScore: aggregate.waitStrategyScore,
+                stepGranularity: aggregate.stepGranularity,
+                isolationScore: aggregate.isolationScore,
+                selectorStabilityPercent: aggregate.selectorStabilityPercent,
+                notableSignals: buildCodeQualityNotableSignals(aggregate, parsedAnalysis),
+                sourceResolved: true,
+            }
+        })
+        .filter((value): value is NonNullable<typeof value> => value !== null)
+        .sort((left, right) => {
+            const leftScore = left.smellScore ?? 101
+            const rightScore = right.smellScore ?? 101
+
+            if (leftScore !== rightScore) {
+                return leftScore - rightScore
+            }
+
+            return right.matchedTests - left.matchedTests
+        })
+        .slice(0, 6)
+
+    if (matchedTests === 0) {
+        return buildEmptyCodeQualityMetrics(analyzableTests)
+    }
+
+    return {
+        analyzedFiles,
+        matchedTests,
+        analyzableTests,
+        sourceCoveragePercent: analyzableTests === 0 ? 0 : roundToOneDigit((matchedTests / analyzableTests) * 100),
+        testSmellScore: roundToOneDigit(weightedTotals.smellScore / matchedTests),
+        pomCompliancePercent: roundToOneDigit(weightedTotals.pomCompliancePercent / matchedTests),
+        assertionDensity: roundToTwoDigits(weightedTotals.assertionDensity / matchedTests),
+        waitStrategyScore: roundToOneDigit(weightedTotals.waitStrategyScore / matchedTests),
+        stepGranularity: roundToTwoDigits(weightedTotals.stepGranularity / matchedTests),
+        isolationScore: roundToOneDigit(weightedTotals.isolationScore / matchedTests),
+        selectorStabilityPercent: roundToOneDigit(weightedTotals.selectorStabilityPercent / matchedTests),
+        drivers: buildCodeQualityDrivers(driverCounts, matchedTests),
+        topRiskFiles,
+    }
+}
+
+function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript): ParsedSourceFileAnalysis | null {
+    try {
+        const sourceText = fs.readFileSync(filePath, 'utf8')
+        const sourceFile = typeScriptModule.createSourceFile(
+            filePath,
+            sourceText,
+            typeScriptModule.ScriptTarget.Latest,
+            true,
+            filePath.endsWith('.tsx') ? typeScriptModule.ScriptKind.TSX : typeScriptModule.ScriptKind.TS,
+        )
+
+        let hasPomImports = false
+        let beforeAllCount = 0
+        let serialModeCount = 0
+        let topLevelMutableStateCount = 0
+        const tests: ParsedSourceTestMetric[] = []
+
+        for (const statement of sourceFile.statements) {
+            if (typeScriptModule.isImportDeclaration(statement)) {
+                const importPath = statement.moduleSpecifier.getText(sourceFile).slice(1, -1)
+
+                if (isPomImportPath(importPath)) {
+                    hasPomImports = true
+                }
+
+                continue
+            }
+
+            if (typeScriptModule.isVariableStatement(statement)) {
+                const declarationFlags = statement.declarationList.flags
+                const isConst = (declarationFlags & typeScriptModule.NodeFlags.Const) !== 0
+
+                if (!isConst) {
+                    topLevelMutableStateCount += statement.declarationList.declarations.length
+                }
+            }
+        }
+
+        visitCallExpressions(sourceFile, typeScriptModule, (callExpression) => {
+            if (getCallExpressionName(callExpression, typeScriptModule) === 'beforeAll') {
+                beforeAllCount += 1
+            }
+
+            if (isSerialConfigureCall(callExpression, sourceFile, typeScriptModule)) {
+                serialModeCount += 1
+            }
+
+            if (!isTestDeclarationCall(callExpression, typeScriptModule)) {
+                return
+            }
+
+            const callback = getTestCallback(callExpression, typeScriptModule)
+
+            if (!callback) {
+                return
+            }
+
+            tests.push(collectSourceTestMetric(callback, sourceFile, typeScriptModule, hasPomImports))
+        })
+
+        return {
+            tests,
+            hasPomImports,
+            beforeAllCount,
+            serialModeCount,
+            topLevelMutableStateCount,
+        }
+    } catch {
+        return null
+    }
+}
+
+function collectSourceTestMetric(
+    callback: TypeScript.FunctionExpression | TypeScript.ArrowFunction,
+    sourceFile: TypeScript.SourceFile,
+    typeScriptModule: typeof TypeScript,
+    hasPomImports: boolean,
+): ParsedSourceTestMetric {
+    let assertionCount = 0
+    let smartWaitCount = 0
+    let hardWaitCount = 0
+    let stepCount = 0
+    let directLocatorCount = 0
+    let stableSelectorCount = 0
+    let textSelectorCount = 0
+    let fragileSelectorCount = 0
+
+    visitCallExpressions(callback.body, typeScriptModule, (callExpression) => {
+        if (isExpectCall(callExpression, typeScriptModule)) {
+            assertionCount += 1
+            smartWaitCount += 1
+            return
+        }
+
+        if (isTestStepCall(callExpression, typeScriptModule)) {
+            stepCount += 1
+            return
+        }
+
+        const callName = getCallExpressionName(callExpression, typeScriptModule)
+
+        if (!callName) {
+            return
+        }
+
+        if (callName === 'waitForTimeout') {
+            hardWaitCount += 1
+            return
+        }
+
+        if (SMART_WAIT_METHODS.has(callName)) {
+            smartWaitCount += 1
+        }
+
+        if (DIRECT_LOCATOR_METHODS.has(callName)) {
+            directLocatorCount += 1
+
+            if (STABLE_LOCATOR_METHODS.has(callName)) {
+                stableSelectorCount += 1
+                return
+            }
+
+            if (TEXT_LOCATOR_METHODS.has(callName)) {
+                textSelectorCount += 1
+                return
+            }
+
+            const selectorKind = classifySelectorLiteral(readFirstStringArgument(callExpression, sourceFile, typeScriptModule))
+
+            if (selectorKind === 'stable') {
+                stableSelectorCount += 1
+            } else if (selectorKind === 'text') {
+                textSelectorCount += 1
+            } else {
+                fragileSelectorCount += 1
+            }
+        }
+    })
+
+    const startLine = sourceFile.getLineAndCharacterOfPosition(callback.getStart(sourceFile)).line + 1
+    const endLine = sourceFile.getLineAndCharacterOfPosition(callback.getEnd()).line + 1
+
+    return {
+        startLine,
+        endLine,
+        title: null,
+        assertionCount,
+        smartWaitCount,
+        hardWaitCount,
+        stepCount,
+        directLocatorCount,
+        stableSelectorCount,
+        textSelectorCount,
+        fragileSelectorCount,
+        usesPom: hasPomImports && directLocatorCount <= 1,
+    }
+}
+
+function visitCallExpressions(node: TypeScript.Node, typeScriptModule: typeof TypeScript, callback: (callExpression: TypeScript.CallExpression) => void): void {
+    const visit = (currentNode: TypeScript.Node): void => {
+        if (typeScriptModule.isCallExpression(currentNode)) {
+            callback(currentNode)
+        }
+
+        typeScriptModule.forEachChild(currentNode, visit)
+    }
+
+    visit(node)
+}
+
+function isPomImportPath(importPath: string): boolean {
+    return /(^|\/)(pages?|page-objects?|pageobjects?|pom|screen-objects?|page-models?)(\/|$)/i.test(importPath)
+}
+
+function isTestDeclarationCall(callExpression: TypeScript.CallExpression, typeScriptModule: typeof TypeScript): boolean {
+    const expression = callExpression.expression
+
+    if (typeScriptModule.isIdentifier(expression)) {
+        return expression.text === 'test' || expression.text === 'it'
+    }
+
+    if (typeScriptModule.isPropertyAccessExpression(expression) && typeScriptModule.isIdentifier(expression.expression)) {
+        return (expression.expression.text === 'test' || expression.expression.text === 'it')
+            && ['only', 'skip', 'fixme', 'fail'].includes(expression.name.text)
+    }
+
+    return false
+}
+
+function getTestCallback(
+    callExpression: TypeScript.CallExpression,
+    typeScriptModule: typeof TypeScript,
+): TypeScript.FunctionExpression | TypeScript.ArrowFunction | null {
+    const callbackCandidate = [...callExpression.arguments]
+        .reverse()
+        .find((argument) => typeScriptModule.isArrowFunction(argument) || typeScriptModule.isFunctionExpression(argument))
+
+    if (!callbackCandidate) {
+        return null
+    }
+
+    return callbackCandidate as TypeScript.FunctionExpression | TypeScript.ArrowFunction
+}
+
+function isTestStepCall(callExpression: TypeScript.CallExpression, typeScriptModule: typeof TypeScript): boolean {
+    return typeScriptModule.isPropertyAccessExpression(callExpression.expression)
+        && typeScriptModule.isIdentifier(callExpression.expression.expression)
+        && callExpression.expression.expression.text === 'test'
+        && callExpression.expression.name.text === 'step'
+}
+
+function isExpectCall(callExpression: TypeScript.CallExpression, typeScriptModule: typeof TypeScript): boolean {
+    if (typeScriptModule.isIdentifier(callExpression.expression)) {
+        return callExpression.expression.text === 'expect'
+    }
+
+    return typeScriptModule.isPropertyAccessExpression(callExpression.expression)
+        && typeScriptModule.isIdentifier(callExpression.expression.expression)
+        && callExpression.expression.expression.text === 'expect'
+        && ['soft', 'poll'].includes(callExpression.expression.name.text)
+}
+
+function isSerialConfigureCall(
+    callExpression: TypeScript.CallExpression,
+    sourceFile: TypeScript.SourceFile,
+    typeScriptModule: typeof TypeScript,
+): boolean {
+    if (!typeScriptModule.isPropertyAccessExpression(callExpression.expression)) {
+        return false
+    }
+
+    const objectExpression = callExpression.expression.expression
+
+    if (!typeScriptModule.isIdentifier(objectExpression) || objectExpression.text !== 'test' || callExpression.expression.name.text !== 'describe') {
+        return false
+    }
+
+    return callExpression.arguments.some((argument) => argument.getText(sourceFile).includes('serial'))
+}
+
+function getCallExpressionName(callExpression: TypeScript.CallExpression, typeScriptModule: typeof TypeScript): string | null {
+    const expression = callExpression.expression
+
+    if (typeScriptModule.isIdentifier(expression)) {
+        return expression.text
+    }
+
+    if (typeScriptModule.isPropertyAccessExpression(expression)) {
+        return expression.name.text
+    }
+
+    return null
+}
+
+function readFirstStringArgument(
+    callExpression: TypeScript.CallExpression,
+    sourceFile: TypeScript.SourceFile,
+    typeScriptModule: typeof TypeScript,
+): string | null {
+    const firstArgument = callExpression.arguments[0]
+
+    if (!firstArgument) {
+        return null
+    }
+
+    if (typeScriptModule.isStringLiteral(firstArgument) || typeScriptModule.isNoSubstitutionTemplateLiteral(firstArgument)) {
+        return firstArgument.text
+    }
+
+    const rawText = firstArgument.getText(sourceFile)
+    return rawText.length > 0 ? rawText : null
+}
+
+function classifySelectorLiteral(selector: string | null): 'stable' | 'text' | 'fragile' {
+    if (!selector) {
+        return 'fragile'
+    }
+
+    const normalizedSelector = selector.trim().toLowerCase()
+
+    if (/data-testid|data-test|qa-id|testid/.test(normalizedSelector)) {
+        return 'stable'
+    }
+
+    if (/text=|has-text|:text|\btext\(/.test(normalizedSelector)) {
+        return 'text'
+    }
+
+    if (/^\/\/|^xpath=|nth-child|:nth|\s>\s|\.[a-z0-9_-]+\.[a-z0-9_.-]+|\[class|\.filter-option|\.btn|\.button/.test(normalizedSelector)) {
+        return 'fragile'
+    }
+
+    return normalizedSelector.includes('#') ? 'stable' : 'fragile'
+}
+
+function resolveTestSourcePath(filePath: string, reportSourceFile: string | null): string | null {
+    const normalizedPath = filePath.trim()
+
+    if (!normalizedPath) {
+        return null
+    }
+
+    const candidatePaths = new Set<string>()
+    const baseDirectories = new Set<string>()
+    const packageRoot = path.resolve(__dirname, '..')
+    const workingDirectory = process.cwd()
+
+    if (reportSourceFile) {
+        baseDirectories.add(path.dirname(reportSourceFile))
+        baseDirectories.add(path.resolve(path.dirname(reportSourceFile), '..'))
+        baseDirectories.add(path.resolve(path.dirname(reportSourceFile), '../..'))
+    }
+
+    baseDirectories.add(workingDirectory)
+    baseDirectories.add(path.resolve(workingDirectory, '..'))
+    baseDirectories.add(path.resolve(workingDirectory, '../..'))
+    baseDirectories.add(packageRoot)
+    baseDirectories.add(path.resolve(packageRoot, '..'))
+    baseDirectories.add(path.resolve(packageRoot, '../..'))
+
+    if (path.isAbsolute(normalizedPath)) {
+        candidatePaths.add(normalizedPath)
+    }
+
+    for (const baseDirectory of baseDirectories) {
+        candidatePaths.add(path.resolve(baseDirectory, normalizedPath))
+    }
+
+    for (const candidatePath of candidatePaths) {
+        if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile()) {
+            return candidatePath
+        }
+    }
+
+    return null
+}
+
+function matchReportTestsToSourceMetrics(
+    reporterTests: ReporterTest[],
+    sourceTests: ParsedSourceTestMetric[],
+): ParsedSourceTestMetric[] {
+    if (sourceTests.length === 0) {
+        return []
+    }
+
+    return reporterTests.map((test, index) => sourceTests[findBestSourceMetricIndex(test, index, sourceTests)] ?? sourceTests[Math.min(index, sourceTests.length - 1)])
+}
+
+function findBestSourceMetricIndex(test: ReporterTest, fallbackIndex: number, sourceTests: ParsedSourceTestMetric[]): number {
+    const lineNumber = typeof test.location?.line === 'number' && Number.isFinite(test.location.line)
+        ? Math.max(1, Math.trunc(test.location.line))
+        : null
+
+    if (lineNumber === null) {
+        return Math.min(fallbackIndex, sourceTests.length - 1)
+    }
+
+    const containingIndex = sourceTests.findIndex((sourceTest) => lineNumber >= sourceTest.startLine && lineNumber <= sourceTest.endLine)
+
+    if (containingIndex >= 0) {
+        return containingIndex
+    }
+
+    let bestIndex = 0
+    let bestDistance = Number.POSITIVE_INFINITY
+
+    sourceTests.forEach((sourceTest, index) => {
+        const distance = Math.abs(sourceTest.startLine - lineNumber)
+
+        if (distance < bestDistance) {
+            bestDistance = distance
+            bestIndex = index
+        }
+    })
+
+    return bestIndex
+}
+
+function buildCodeQualityAggregate(
+    tests: ParsedSourceTestMetric[],
+    analysis: ParsedSourceFileAnalysis,
+): CodeQualityAggregateResult {
+    const testCount = tests.length
+
+    if (testCount === 0) {
+        return {
+            testCount: 0,
+            testsWithoutPom: 0,
+            testsWithoutSteps: 0,
+            lowAssertionTests: 0,
+            totalAssertions: 0,
+            totalSmartWaits: 0,
+            totalHardWaits: 0,
+            totalSteps: 0,
+            totalDirectLocators: 0,
+            totalStableSelectors: 0,
+            totalTextSelectors: 0,
+            totalFragileSelectors: 0,
+            smellScore: null,
+            pomCompliancePercent: null,
+            assertionDensity: null,
+            waitStrategyScore: null,
+            stepGranularity: null,
+            isolationScore: null,
+            selectorStabilityPercent: null,
+        }
+    }
+
+    const testsWithoutPom = tests.filter((test) => !test.usesPom).length
+    const testsWithoutSteps = tests.filter((test) => test.stepCount === 0).length
+    const lowAssertionTests = tests.filter((test) => test.assertionCount < 2).length
+    const totalAssertions = sum(tests.map((test) => test.assertionCount))
+    const totalSmartWaits = sum(tests.map((test) => test.smartWaitCount))
+    const totalHardWaits = sum(tests.map((test) => test.hardWaitCount))
+    const totalSteps = sum(tests.map((test) => test.stepCount))
+    const totalDirectLocators = sum(tests.map((test) => test.directLocatorCount))
+    const totalStableSelectors = sum(tests.map((test) => test.stableSelectorCount))
+    const totalTextSelectors = sum(tests.map((test) => test.textSelectorCount))
+    const totalFragileSelectors = sum(tests.map((test) => test.fragileSelectorCount))
+    const pomCompliancePercent = roundToOneDigit(((testCount - testsWithoutPom) / testCount) * 100)
+    const assertionDensity = roundToTwoDigits(totalAssertions / testCount)
+    const totalWaitSignals = totalSmartWaits + totalHardWaits
+    const waitStrategyScore = totalWaitSignals === 0 ? 100 : roundToOneDigit((totalSmartWaits / totalWaitSignals) * 100)
+    const stepGranularity = roundToTwoDigits(totalSteps / testCount)
+    const totalSelectorSignals = totalStableSelectors + totalTextSelectors + totalFragileSelectors
+    const selectorStabilityPercent = totalSelectorSignals === 0
+        ? 100
+        : roundToOneDigit((((totalStableSelectors * 1) + (totalTextSelectors * 0.65) + (totalFragileSelectors * 0.2)) / totalSelectorSignals) * 100)
+    const hardWaitRatio = totalWaitSignals === 0 ? 0 : totalHardWaits / totalWaitSignals
+    const directLocatorDensity = Math.min(totalDirectLocators / Math.max(testCount * 4, 1), 1)
+    const noPomRatio = testsWithoutPom / testCount
+    const noStepRatio = testsWithoutSteps / testCount
+    const lowAssertionRatio = lowAssertionTests / testCount
+    const fragileSelectorRatio = totalSelectorSignals === 0 ? 0 : totalFragileSelectors / totalSelectorSignals
+    const sharedStatePenalty = Math.min(analysis.beforeAllCount * 15 + analysis.serialModeCount * 20 + analysis.topLevelMutableStateCount * 12, 60)
+    const smellScore = roundToOneDigit(clampScore(
+        100
+        - (hardWaitRatio * 28 * 100)
+        - (directLocatorDensity * 18 * 100)
+        - (noPomRatio * 18 * 100)
+        - (noStepRatio * 12 * 100)
+        - (lowAssertionRatio * 12 * 100)
+        - (fragileSelectorRatio * 12 * 100)
+        - sharedStatePenalty,
+    ))
+    const isolationScore = roundToOneDigit(clampScore(100 - sharedStatePenalty))
+
+    return {
+        testCount,
+        testsWithoutPom,
+        testsWithoutSteps,
+        lowAssertionTests,
+        totalAssertions,
+        totalSmartWaits,
+        totalHardWaits,
+        totalSteps,
+        totalDirectLocators,
+        totalStableSelectors,
+        totalTextSelectors,
+        totalFragileSelectors,
+        smellScore,
+        pomCompliancePercent,
+        assertionDensity,
+        waitStrategyScore,
+        stepGranularity,
+        isolationScore,
+        selectorStabilityPercent,
+    }
+}
+
+function buildCodeQualityNotableSignals(
+    aggregate: CodeQualityAggregateResult,
+    analysis: ParsedSourceFileAnalysis,
+): string[] {
+    const signals: Array<{ label: string; count: number }> = [
+        { label: 'waitForTimeout', count: aggregate.totalHardWaits },
+        { label: 'direct locators', count: aggregate.totalDirectLocators },
+        { label: 'fragile selectors', count: aggregate.totalFragileSelectors },
+        { label: 'tests without test.step', count: aggregate.testsWithoutSteps },
+        { label: 'tests without POM', count: aggregate.testsWithoutPom },
+        { label: 'shared state / beforeAll', count: analysis.beforeAllCount + analysis.serialModeCount + analysis.topLevelMutableStateCount },
+    ]
+
+    return signals
+        .filter((signal) => signal.count > 0)
+        .sort((left, right) => right.count - left.count)
+        .slice(0, 3)
+        .map((signal) => `${signal.label} × ${signal.count}`)
+}
+
+function buildCodeQualityDrivers(
+    driverCounts: {
+        hardWaits: number
+        directLocators: number
+        testsWithoutPom: number
+        testsWithoutSteps: number
+        fragileSelectors: number
+        lowAssertionTests: number
+        sharedStateSignals: number
+    },
+    matchedTests: number,
+): DashboardCodeQualityRiskDriver[] {
+    const buildImpact = (count: number): DashboardCodeQualityRiskDriver['impact'] => {
+        const ratio = matchedTests === 0 ? 0 : count / matchedTests
+
+        if (ratio >= 1 || count >= 8) {
+            return 'high'
+        }
+
+        if (ratio >= 0.35 || count >= 3) {
+            return 'medium'
+        }
+
+        return 'low'
+    }
+
+    return [
+        {
+            label: 'waitForTimeout и жёсткие паузы',
+            count: driverCounts.hardWaits,
+            impact: buildImpact(driverCounts.hardWaits),
+            hint: 'Жёсткие ожидания хуже переживают колебания UI и чаще приводят к flaky-поведению.',
+        },
+        {
+            label: 'Прямые locator-вызовы в spec',
+            count: driverCounts.directLocators,
+            impact: buildImpact(driverCounts.directLocators),
+            hint: 'Большой объём locator-логики прямо в тестах обычно указывает на низкую переиспользуемость и слабую изоляцию.',
+        },
+        {
+            label: 'Тесты без POM-сигнала',
+            count: driverCounts.testsWithoutPom,
+            impact: buildImpact(driverCounts.testsWithoutPom),
+            hint: 'Если сценарий не проходит через page object / screen-model слой, поддержка и миграции UI обычно дорожают.',
+        },
+        {
+            label: 'Тесты без test.step',
+            count: driverCounts.testsWithoutSteps,
+            impact: buildImpact(driverCounts.testsWithoutSteps),
+            hint: 'Без явной step-структуры сложнее читать отчёты и локализовать первичную точку сбоя.',
+        },
+        {
+            label: 'Хрупкие CSS/XPath селекторы',
+            count: driverCounts.fragileSelectors,
+            impact: buildImpact(driverCounts.fragileSelectors),
+            hint: 'Длинные CSS-цепочки, XPath и nth-child дают высокий риск ложных падений при изменении верстки.',
+        },
+        {
+            label: 'Слабая assertion coverage',
+            count: driverCounts.lowAssertionTests,
+            impact: buildImpact(driverCounts.lowAssertionTests),
+            hint: 'Низкая плотность expect() часто означает, что сценарий делает действия, но слабо проверяет результат.',
+        },
+        {
+            label: 'Shared state / beforeAll',
+            count: driverCounts.sharedStateSignals,
+            impact: buildImpact(driverCounts.sharedStateSignals),
+            hint: 'Общий mutable state, serial-режим и heavy beforeAll снижают изоляцию тестов и усложняют параллельный запуск.',
+        },
+    ]
+        .filter((driver) => driver.count > 0)
+        .sort((left, right) => right.count - left.count)
+        .slice(0, 4)
+}
+
+function buildEmptyCodeQualityMetrics(analyzableTests: number): DashboardCodeQualityMetrics {
+    return {
+        analyzedFiles: 0,
+        matchedTests: 0,
+        analyzableTests,
+        sourceCoveragePercent: 0,
+        testSmellScore: null,
+        pomCompliancePercent: null,
+        assertionDensity: null,
+        waitStrategyScore: null,
+        stepGranularity: null,
+        isolationScore: null,
+        selectorStabilityPercent: null,
+        drivers: [],
+        topRiskFiles: [],
+    }
+}
+
 function buildDurationBreakdownItems(
     source: Map<string, { durationMs: number; tests: number }>,
     totalDurationMs: number,
@@ -1803,13 +2661,14 @@ function getObservationTime(timestamp: string | null): number {
 }
 
 function buildFallbackAdvancedMetrics(
-    tests: ReporterTest[],
+    report: ReporterRoot,
     historyRuns: DashboardHistoryEntry[],
-    passRate: number,
     flakyTests: number,
     totalDurationMs: number,
+    sourceFile: string,
 ): DashboardAdvancedMetrics {
     const previousRun = resolveComparisonBaseline(historyRuns).previousRun
+    const tests = report.tests ?? []
     const performanceMetrics = buildPerformanceMetrics({ tests, durationMs: totalDurationMs }, historyRuns)
 
     return {
@@ -1851,6 +2710,7 @@ function buildFallbackAdvancedMetrics(
             historyRuns,
             [],
         ),
+        codeQuality: buildCodeQualityMetrics(report, sourceFile),
     }
 }
 
@@ -1958,6 +2818,19 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
     }
 }
 
+function recoverCodeQualityMetricsFromSource(sourceFile: string): DashboardCodeQualityMetrics {
+    try {
+        if (!sourceFile || !fs.existsSync(sourceFile)) {
+            return buildEmptyCodeQualityMetrics(0)
+        }
+
+        const report = loadReporterReport(sourceFile)
+        return buildCodeQualityMetrics(report, sourceFile)
+    } catch {
+        return buildEmptyCodeQualityMetrics(0)
+    }
+}
+
 export function collectCurrentRunTests(tests: ReporterTest[]): DashboardCurrentRunTests {
     const normalizedTests = tests
         .map((test) => {
@@ -2020,6 +2893,7 @@ function buildManagerSummary(input: {
     performance: DashboardAdvancedMetrics['performance']
     flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics']
     businessMetrics: DashboardAdvancedMetrics['businessMetrics']
+    codeQuality: DashboardAdvancedMetrics['codeQuality']
     topProblematicTests: DashboardProblematicTest[]
     errorClusters: DashboardErrorCluster[]
 }): DashboardManagerSummary {

@@ -12,6 +12,7 @@ import {
     formatNullableDays,
     formatNullableMinutes,
     formatNullablePercent,
+    formatRunsPerHundred,
     formatScore,
     getBusinessDriverInsightBody,
     getBusinessDriverInsightTitle,
@@ -29,15 +30,16 @@ const DASHBOARD_TEXT = ru.dashboard
 
 export function DashboardBusinessOverviewMetrics(props: { summary: DashboardSummary }): React.JSX.Element {
     const costMetrics = props.summary.businessMetrics.costOfFlakiness
+    const frictionMetrics = props.summary.businessMetrics.developerFriction
 
     return (
         <>
-            <MetricCard label={DASHBOARD_TEXT.metrics.timeToDetect} labelMetricKey="timeToDetect" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToDetect} value={formatNullableMinutes(props.summary.businessMetrics.timeToDetect.minutes)} hint={DASHBOARD_TEXT.business.timeToDetectHint} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={formatNullableDays(props.summary.businessMetrics.timeToFixFlaky.averageDays)} hint={`${DASHBOARD_TEXT.business.timeToFixHintPrefix}: ${props.summary.businessMetrics.timeToFixFlaky.resolvedIncidents}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={formatNullableDays(props.summary.businessMetrics.timeToFixFlaky.medianDays)} hint={`${DASHBOARD_TEXT.business.timeToFixHintPrefix}: ${props.summary.businessMetrics.timeToFixFlaky.resolvedIncidents}`} />
             <MetricCard label={DASHBOARD_TEXT.metrics.costOfFlakiness} labelMetricKey="costOfFlakiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness} value={formatCurrency(costMetrics.totalRub)} tone={getCostTone(costMetrics.totalRub)} hint={`${DASHBOARD_TEXT.business.costPerActiveDay}: ${formatCurrency(costMetrics.costPerActiveDayRub)}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} labelMetricKey="developerFriction" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.developerFriction} value={formatDailyRatio(props.summary.businessMetrics.developerFriction.rerunProxyPerActiveDay)} tone={props.summary.businessMetrics.developerFriction.rerunProxyPerActiveDay > 1 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${props.summary.businessMetrics.developerFriction.extraRetries}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.ciWasteTime} labelMetricKey="ciWasteTime" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.ciWasteTime} value={formatMinutes(costMetrics.extraRetryMinutes)} tone={costMetrics.extraRetryMinutes >= 60 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${costMetrics.extraRetries}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.investigationCost} labelMetricKey="investigationCost" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.investigationCost} value={formatCurrency(costMetrics.developerCostRub)} tone={getCostTone(costMetrics.developerCostRub)} hint={`${DASHBOARD_TEXT.business.unstableRuns}: ${costMetrics.unstableRuns}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} labelMetricKey="developerFriction" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.developerFriction} value={formatRunsPerHundred(frictionMetrics.rerunBurdenPer100Runs)} tone={frictionMetrics.rerunBurdenPer100Runs >= 25 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${frictionMetrics.extraRetries} • ${DASHBOARD_TEXT.business.observedRuns}: ${frictionMetrics.observedRuns}`} />
             <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={DASHBOARD_TEXT.business.releaseConfidenceHint} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.automationRoi} labelMetricKey="automationRoi" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.automationRoi} value={formatNullablePercent(props.summary.businessMetrics.automationRoi.percent)} hint={DASHBOARD_TEXT.business.automationRoiHint} />
         </>
     )
 }
@@ -56,8 +58,8 @@ export function DashboardBusinessSummarySection(props: { summary: DashboardSumma
                 <div className="subtle-copy">{getBusinessScenarioStatusHint(costMetrics.assumptions)}</div>
             </div>
             <div className="signal-grid compact-top">
-                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.timeToDetect} value={formatNullableMinutes(props.summary.businessMetrics.timeToDetect.minutes)} hint={DASHBOARD_TEXT.business.timeToDetectPending} />
-                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} value={formatNullableDays(props.summary.businessMetrics.timeToFixFlaky.averageDays)} hint={props.summary.businessMetrics.timeToFixFlaky.averageDays === null ? DASHBOARD_TEXT.business.timeToFixPending : 'Среднее по восстановленным flaky-инцидентам из истории.'} />
+                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.ciWasteTime} value={formatMinutes(costMetrics.extraRetryMinutes)} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${costMetrics.extraRetries}`} />
+                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} value={formatNullableDays(props.summary.businessMetrics.timeToFixFlaky.medianDays)} hint={props.summary.businessMetrics.timeToFixFlaky.medianDays === null ? DASHBOARD_TEXT.business.timeToFixPending : DASHBOARD_TEXT.business.timeToFixMedianHint} />
                 <SignalSummaryCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} hint={DASHBOARD_TEXT.business.releaseConfidenceDetails} />
                 <SignalSummaryCard label={DASHBOARD_TEXT.business.costPerActiveDay} value={formatCurrency(costMetrics.costPerActiveDayRub)} hint={DASHBOARD_TEXT.business.costScenarioDescription} />
             </div>

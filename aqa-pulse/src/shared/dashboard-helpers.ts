@@ -26,6 +26,10 @@ export function formatDailyRatio(value: number): string {
     return `${value.toFixed(2)} / день`
 }
 
+export function formatRunsPerHundred(value: number): string {
+    return `${value.toFixed(1)} / 100 запусков`
+}
+
 export function formatScore(value: number): string {
     return `${roundOne(value)} / 100`
 }
@@ -240,7 +244,7 @@ export function buildBusinessMetricReadiness(summary: DashboardSummary): Array<{
 }> {
     const costAssumptionsState = getBusinessAssumptionsState(summary.businessMetrics.costOfFlakiness.assumptions)
     const costStatus = costAssumptionsState === 'empty' ? 'pending' : costAssumptionsState
-    const timeToFixStatus = summary.businessMetrics.timeToFixFlaky.averageDays === null ? 'pending' : 'ready'
+    const timeToFixStatus = summary.businessMetrics.timeToFixFlaky.medianDays === null ? 'pending' : 'ready'
 
     return [
         {

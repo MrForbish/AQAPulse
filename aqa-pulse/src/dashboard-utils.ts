@@ -220,6 +220,7 @@ export interface DashboardBusinessTimeToDetectMetric {
 }
 
 export interface DashboardBusinessTimeToFixMetric {
+    medianDays: number | null
     averageDays: number | null
     resolvedIncidents: number
 }
@@ -291,9 +292,11 @@ export interface DashboardAdvancedMetrics {
         }
         developerFriction: {
             rerunProxyPerActiveDay: number
+            rerunBurdenPer100Runs: number
             extraRetries: number
             unstableRuns: number
             activeDays: number
+            observedRuns: number
         }
         releaseConfidenceScore: number
         automationRoi: DashboardBusinessAutomationRoiMetric
@@ -1667,9 +1670,11 @@ function buildBusinessMetrics(
         : roundToTwoDigits(totalRub / activeDays)
     const developerFriction = {
         rerunProxyPerActiveDay: activeDays === 0 ? roundToTwoDigits(extraRetries + unstableRuns) : roundToTwoDigits((extraRetries + unstableRuns) / activeDays),
+        rerunBurdenPer100Runs: observedTests.length === 0 ? 0 : roundToTwoDigits(((extraRetries + unstableRuns) / observedTests.length) * 100),
         extraRetries,
         unstableRuns,
         activeDays,
+        observedRuns: observedTests.length,
     }
     const currentTests = report.tests ?? []
     const currentTotalTests = currentTests.length
@@ -1689,6 +1694,9 @@ function buildBusinessMetrics(
             source: 'pendingIntegration',
         },
         timeToFixFlaky: {
+            medianDays: resolvedFixMetrics.length > 0
+                ? roundToTwoDigits(getMedian(resolvedFixMetrics.map((metric) => metric.days)))
+                : null,
             averageDays: resolvedFixMetrics.length > 0
                 ? roundToTwoDigits(average(resolvedFixMetrics.map((metric) => metric.days)))
                 : null,
@@ -1725,6 +1733,7 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
             source: 'pendingIntegration',
         },
         timeToFixFlaky: {
+            medianDays: null,
             averageDays: null,
             resolvedIncidents: 0,
         },
@@ -1745,9 +1754,11 @@ function buildEmptyBusinessMetrics(): DashboardAdvancedMetrics['businessMetrics'
         },
         developerFriction: {
             rerunProxyPerActiveDay: 0,
+            rerunBurdenPer100Runs: 0,
             extraRetries: 0,
             unstableRuns: 0,
             activeDays: 0,
+            observedRuns: 0,
         },
         releaseConfidenceScore: 0,
         automationRoi: {

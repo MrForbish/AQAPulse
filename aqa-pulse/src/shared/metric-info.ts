@@ -131,8 +131,10 @@ const METRIC_ICON_BY_KEY: Record<string, MetricIconId> = {
     lastStatus: 'flag',
     timeToDetect: 'bell',
     timeToFixFlaky: 'wrench',
+    ciWasteTime: 'hourglass',
     costSection: 'coins',
     costOfFlakiness: 'coins',
+    investigationCost: 'coins',
     developerFriction: 'brain',
     releaseConfidenceScore: 'shield',
     releaseReadiness: 'shield',
@@ -218,8 +220,10 @@ function createMetricIconLabelMap(): Map<string, MetricIconDefinition> {
     register(ru.dashboard.metrics.lastStatus, 'lastStatus')
     register(ru.dashboard.metrics.timeToDetect, 'timeToDetect')
     register(ru.dashboard.metrics.timeToFixFlaky, 'timeToFixFlaky')
+    register(ru.dashboard.metrics.ciWasteTime, 'ciWasteTime')
     register(ru.dashboard.metrics.costSection, 'costSection')
     register(ru.dashboard.metrics.costOfFlakiness, 'costOfFlakiness')
+    register(ru.dashboard.metrics.investigationCost, 'investigationCost')
     register(ru.dashboard.metrics.developerFriction, 'developerFriction')
     register(ru.dashboard.metrics.releaseConfidenceScore, 'releaseConfidenceScore')
     register(ru.dashboard.metrics.automationRoi, 'automationRoi')

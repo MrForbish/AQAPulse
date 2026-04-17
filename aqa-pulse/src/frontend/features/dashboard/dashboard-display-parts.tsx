@@ -65,6 +65,14 @@ function resolveDashboardMetricDescription(label: string): string | undefined {
         return DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky
     }
 
+    if (label === DASHBOARD_TEXT.metrics.ciWasteTime) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.ciWasteTime
+    }
+
+    if (label === DASHBOARD_TEXT.metrics.investigationCost) {
+        return DASHBOARD_METRIC_DESCRIPTIONS.investigationCost
+    }
+
     if (label === DASHBOARD_TEXT.metrics.releaseConfidenceScore) {
         return DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore
     }

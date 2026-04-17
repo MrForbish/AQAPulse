@@ -10,7 +10,7 @@ import {
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
-import { MetricCard, NarrativeList, OverflowText, Panel, SummaryStrip } from '../../shared/ui'
+import { EmptyState, OverflowText, Panel, SummaryStrip } from '../../shared/ui'
 import { mapChangeTone, mapManagerTone } from './dashboard-manager-helpers'
 import {
     DashboardCurrentRunTestRow,
@@ -22,41 +22,105 @@ import {
 const DASHBOARD_TEXT = ru.dashboard
 
 export function DashboardManagerOverviewSection(props: { summary: DashboardSummary }): React.JSX.Element {
+    const { managerSummary } = props.summary
+
     return (
         <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription} className="span-2">
-            <div className="signal-grid compact-top overview-signals-grid">
-                <MetricCard label={DASHBOARD_TEXT.manager.releaseReadiness} labelMetricKey="releaseReadiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseReadiness} value={formatScore(props.summary.managerSummary.releaseReadiness.score)} tone={mapManagerTone(props.summary.managerSummary.releaseReadiness.level)} hint={getManagerReadinessLabel(props.summary.managerSummary.releaseReadiness.level)} />
-                <MetricCard label={DASHBOARD_TEXT.manager.qualityRisk} labelMetricKey="qualityRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.qualityRisk} value={formatScore(props.summary.managerSummary.qualityRisk.score)} tone={mapManagerTone(props.summary.managerSummary.qualityRisk.level)} hint={getManagerRiskLabel(props.summary.managerSummary.qualityRisk.level)} />
-                <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelMetricKey="deliveryRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(props.summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(props.summary.managerSummary.deliveryRisk.level)} hint={getManagerRiskLabel(props.summary.managerSummary.deliveryRisk.level)} />
+            <div className="overview-signal-board compact-top">
+                <article className={`overview-signal-hero is-${mapManagerTone(managerSummary.releaseReadiness.level)}`}>
+                    <div className="overview-signal-hero-head">
+                        <span className="overview-signal-kicker">Главный сигнал</span>
+                        <span className={`module-pill is-${mapManagerTone(managerSummary.releaseReadiness.level)}`}>{getManagerReadinessLabel(managerSummary.releaseReadiness.level)}</span>
+                    </div>
+                    <div className="overview-signal-hero-label">{DASHBOARD_TEXT.manager.releaseReadiness}</div>
+                    <div className="overview-signal-hero-score">{formatScore(managerSummary.releaseReadiness.score)}</div>
+                    <p className="overview-signal-hero-copy">{getManagerReadinessLabel(managerSummary.releaseReadiness.level)}</p>
+                </article>
+                <div className="overview-signal-side-rail">
+                    <OverviewSignalStatCard
+                        label={DASHBOARD_TEXT.manager.qualityRisk}
+                        score={managerSummary.qualityRisk.score}
+                        tone={mapManagerTone(managerSummary.qualityRisk.level)}
+                        hint={getManagerRiskLabel(managerSummary.qualityRisk.level)}
+                    />
+                    <OverviewSignalStatCard
+                        label={DASHBOARD_TEXT.manager.deliveryRisk}
+                        score={managerSummary.deliveryRisk.score}
+                        tone={mapManagerTone(managerSummary.deliveryRisk.level)}
+                        hint={getManagerRiskLabel(managerSummary.deliveryRisk.level)}
+                    />
+                </div>
             </div>
-            <div className="split-grid compact-top">
-                <NarrativeList
-                    className="overview-summary-list"
-                    items={props.summary.managerSummary.blockers.map((blocker, index) => ({
-                        id: `${blocker.kind}-${index}`,
-                        title: blocker.title,
-                        pillLabel: blocker.value,
-                        pillTone: blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent',
-                        body: blocker.details,
-                        meta: blocker.testTitle,
-                    }))}
-                    emptyState={{ title: 'Блокеров нет', message: DASHBOARD_TEXT.manager.noBlockers }}
-                />
-                <NarrativeList
-                    className="overview-summary-list"
-                    items={props.summary.managerSummary.changes.map((change) => ({
-                        id: `${change.label}-${change.value}`,
-                        title: change.label,
-                        pillLabel: getManagerChangeLabel(change.direction),
-                        pillTone: mapChangeTone(change.direction),
-                        pillStyle: 'module-pill' as const,
-                        value: change.value,
-                        body: change.details,
-                    }))}
-                    emptyState={{ title: 'Изменений нет', message: DASHBOARD_TEXT.manager.noChanges }}
-                />
+            <div className="overview-signal-columns compact-top">
+                <section className="overview-signal-column">
+                    <div className="overview-signal-column-head">
+                        <div>
+                            <h3>Что тормозит релиз</h3>
+                            <p>Самые сильные текущие причины просадки качества и готовности.</p>
+                        </div>
+                        <span className="overview-signal-column-count">{managerSummary.blockers.length}</span>
+                    </div>
+                    {managerSummary.blockers.length > 0 ? (
+                        <div className="overview-signal-list">
+                            {managerSummary.blockers.map((blocker, index) => (
+                                <article key={`${blocker.kind}-${index}`} className={`overview-signal-entry is-${blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'}`}>
+                                    <div className="overview-signal-entry-head">
+                                        <OverflowText as="strong" text={blocker.title} lines={2} className="overview-signal-entry-title" />
+                                        <span className={`module-pill is-${blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'}`}>{blocker.value}</span>
+                                    </div>
+                                    <p>{blocker.details}</p>
+                                    {blocker.testTitle ? <div className="overview-signal-entry-meta" title={blocker.testTitle}>{blocker.testTitle}</div> : null}
+                                </article>
+                            ))}
+                        </div>
+                    ) : (
+                        <EmptyState title="Блокеров нет" message={DASHBOARD_TEXT.manager.noBlockers} />
+                    )}
+                </section>
+                <section className="overview-signal-column">
+                    <div className="overview-signal-column-head">
+                        <div>
+                            <h3>Что меняется</h3>
+                            <p>Главные сдвиги относительно предыдущего сопоставимого прогона.</p>
+                        </div>
+                        <span className="overview-signal-column-count">{managerSummary.changes.length}</span>
+                    </div>
+                    {managerSummary.changes.length > 0 ? (
+                        <div className="overview-signal-list">
+                            {managerSummary.changes.map((change) => (
+                                <article key={`${change.label}-${change.value}`} className={`overview-signal-entry is-${mapChangeTone(change.direction)}`}>
+                                    <div className="overview-signal-entry-head">
+                                        <OverflowText as="strong" text={change.label} lines={2} className="overview-signal-entry-title" />
+                                        <span className={`module-pill is-${mapChangeTone(change.direction)}`}>{getManagerChangeLabel(change.direction)}</span>
+                                    </div>
+                                    <div className="overview-signal-entry-value">{change.value}</div>
+                                    <p>{change.details}</p>
+                                </article>
+                            ))}
+                        </div>
+                    ) : (
+                        <EmptyState title="Изменений нет" message={DASHBOARD_TEXT.manager.noChanges} />
+                    )}
+                </section>
             </div>
         </Panel>
+    )
+}
+
+function OverviewSignalStatCard(props: {
+    label: string
+    score: number
+    tone: 'good' | 'warn' | 'danger'
+    hint: string
+}): React.JSX.Element {
+    return (
+        <article className={`overview-signal-stat is-${props.tone}`}>
+            <div className="overview-signal-stat-head">
+                <span>{props.label}</span>
+                <span className={`module-pill is-${props.tone}`}>{formatScore(props.score)}</span>
+            </div>
+            <p>{props.hint}</p>
+        </article>
     )
 }
 

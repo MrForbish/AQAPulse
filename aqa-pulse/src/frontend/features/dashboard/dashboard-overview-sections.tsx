@@ -31,6 +31,7 @@ export function DashboardManagerOverviewSection(props: { summary: DashboardSumma
             </div>
             <div className="split-grid compact-top">
                 <NarrativeList
+                    className="overview-summary-list"
                     items={props.summary.managerSummary.blockers.map((blocker, index) => ({
                         id: `${blocker.kind}-${index}`,
                         title: blocker.title,
@@ -42,6 +43,7 @@ export function DashboardManagerOverviewSection(props: { summary: DashboardSumma
                     emptyState={{ title: 'Блокеров нет', message: DASHBOARD_TEXT.manager.noBlockers }}
                 />
                 <NarrativeList
+                    className="overview-summary-list"
                     items={props.summary.managerSummary.changes.map((change) => ({
                         id: `${change.label}-${change.value}`,
                         title: change.label,

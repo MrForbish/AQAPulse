@@ -36,6 +36,7 @@ try {
             updatedAt: new Date().toISOString(),
             apiKeys: [],
             users: [],
+            sessions: [],
         },
         storage: backendStorage.createWorkspaceStorage('local-cli', {
             summaryPath: outputPath,

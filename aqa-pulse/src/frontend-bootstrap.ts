@@ -14,6 +14,11 @@ export interface FrontendSessionStatus {
     workspaceSlug: string | null
 }
 
+export interface FrontendServiceUrls {
+    adminBaseUrl: string | null
+    runtimeBaseUrl: string | null
+}
+
 export type FrontendRouteDescriptor =
     | { kind: 'dashboard'; workspaceSlug: string | null }
     | { kind: 'test-history'; workspaceSlug: string | null; testName: string }
@@ -26,6 +31,7 @@ export type FrontendRouteDescriptor =
 export interface FrontendBootstrapData {
     route: FrontendRouteDescriptor
     initialRequestUrl: string
+    serviceUrls: FrontendServiceUrls
     initialDashboardSummary: DashboardSummary | null
     initialTestHistoryPayload: TestHistoryResponse | TestHistoryConflict | null
     initialAdminWorkspaces: WorkspaceDescriptor[] | null
@@ -39,6 +45,7 @@ export function createEmptyFrontendBootstrap(): FrontendBootstrapData {
     return {
         route: { kind: 'dashboard', workspaceSlug: null },
         initialRequestUrl: '/',
+        serviceUrls: { adminBaseUrl: null, runtimeBaseUrl: null },
         initialDashboardSummary: null,
         initialTestHistoryPayload: null,
         initialAdminWorkspaces: null,
@@ -62,6 +69,7 @@ export function parseFrontendBootstrap(rawValue: string | null | undefined): Fro
             initialRequestUrl: typeof parsedValue.initialRequestUrl === 'string' && parsedValue.initialRequestUrl.length > 0
                 ? parsedValue.initialRequestUrl
                 : '/',
+            serviceUrls: normalizeServiceUrls(parsedValue.serviceUrls),
             initialDashboardSummary: parsedValue.initialDashboardSummary ?? null,
             initialTestHistoryPayload: parsedValue.initialTestHistoryPayload ?? null,
             initialAdminWorkspaces: Array.isArray(parsedValue.initialAdminWorkspaces) ? parsedValue.initialAdminWorkspaces : null,
@@ -148,4 +156,15 @@ function serializeInlineBootstrap(value: FrontendBootstrapData): string {
         .replace(/&/g, '\\u0026')
         .replace(/\u2028/g, '\\u2028')
         .replace(/\u2029/g, '\\u2029')
+}
+
+function normalizeServiceUrls(value: Partial<FrontendServiceUrls> | null | undefined): FrontendServiceUrls {
+    if (!value || typeof value !== 'object') {
+        return { adminBaseUrl: null, runtimeBaseUrl: null }
+    }
+
+    return {
+        adminBaseUrl: normalizeWorkspaceSlug(value.adminBaseUrl),
+        runtimeBaseUrl: normalizeWorkspaceSlug(value.runtimeBaseUrl),
+    }
 }

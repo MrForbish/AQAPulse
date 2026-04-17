@@ -67,6 +67,7 @@ async function main(): Promise<void> {
         updatedAt: new Date().toISOString(),
         apiKeys: [],
         users: [],
+        sessions: [],
     }
     const workspaceStorage = backendStorage.createWorkspaceStorage(workspaceSlug)
     const previousFixturePath = path.resolve(__dirname, '../fixtures/sample-llm-report-previous.json')

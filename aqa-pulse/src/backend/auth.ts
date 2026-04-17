@@ -18,7 +18,7 @@ interface GuardOptions {
     unauthorizedResponseMode?: UnauthorizedResponseMode
 }
 
-export function createAdminGuard(config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
+export function createAdminGuard(registry: WorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
     const unauthorizedResponseMode = options.unauthorizedResponseMode ?? 'json'
 
     return (request: Request, response: Response, next: NextFunction) => {
@@ -41,7 +41,8 @@ export function createAdminGuard(config: SaasAppConfig, options: GuardOptions = 
 
         const claims = verifyJwtToken(token, config.jwtSecret)
 
-        if (claims?.scope === 'admin' && claims.kind === 'admin') {
+        if (claims?.scope === 'admin' && claims.kind === 'admin' && registry.isAdminSessionActive(claims.sessionId ?? '')) {
+            registry.touchAdminSession(claims.sessionId ?? '')
             setAuthClaimsToLocals(response, claims)
             next()
             return
@@ -70,7 +71,7 @@ export function createWorkspaceResolver(registry: WorkspaceRegistry): RequestHan
     }
 }
 
-export function createWorkspaceApiKeyGuard(_registry: WorkspaceRegistry, config: SaasAppConfig): RequestHandler {
+export function createWorkspaceApiKeyGuard(registry: WorkspaceRegistry, config: SaasAppConfig): RequestHandler {
     return (request: Request, response: Response, next: NextFunction) => {
         const workspace = getWorkspaceFromLocals(response)
 
@@ -98,6 +99,21 @@ export function createWorkspaceApiKeyGuard(_registry: WorkspaceRegistry, config:
             return
         }
 
+        if (!registry.isWorkspaceSessionActive(workspace.slug, claims.sessionId ?? '', 'workspace-api-key')) {
+            response.status(401).json({ error: 'Ingestion JWT отозван, истёк или больше не активен.' })
+            return
+        }
+
+        const workspaceRecord = registry.getWorkspaceRecord(workspace.slug)
+        const apiKey = workspaceRecord?.apiKeys.find((item) => item.id === claims.sub && !item.disabledAt)
+
+        if (!workspaceRecord || !apiKey) {
+            response.status(401).json({ error: 'Ключ загрузки больше не активен.' })
+            return
+        }
+
+        registry.touchWorkspaceSession(workspace.slug, claims.sessionId ?? '')
+        setWorkspaceAuthToLocals(response, { workspace: workspaceRecord, apiKey })
         setAuthClaimsToLocals(response, claims)
         next()
     }
@@ -124,7 +140,8 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
 
         const adminClaims = adminToken ? verifyJwtToken(adminToken, config.jwtSecret) : null
 
-        if (adminClaims?.scope === 'admin' && adminClaims.kind === 'admin') {
+        if (adminClaims?.scope === 'admin' && adminClaims.kind === 'admin' && registry.isAdminSessionActive(adminClaims.sessionId ?? '')) {
+            registry.touchAdminSession(adminClaims.sessionId ?? '')
             setAuthClaimsToLocals(response, adminClaims)
             next()
             return
@@ -158,12 +175,29 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
             return
         }
 
-        const authResult = registry.authenticateWorkspaceUser(token)
-
-        if (authResult) {
-            setWorkspaceUserAuthToLocals(response, authResult)
+        if (!registry.isWorkspaceSessionActive(workspace.slug, claims.sessionId ?? '', 'workspace-user')) {
+            handleUnauthorized(request, response, {
+                responseMode: unauthorizedResponseMode,
+                redirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
+                jsonMessage: 'Workspace session отозвана, истекла или больше не активна.',
+            })
+            return
         }
 
+        const workspaceRecord = registry.getWorkspaceRecord(workspace.slug)
+        const user = workspaceRecord?.users.find((item) => item.id === claims.sub && !item.disabledAt)
+
+        if (!workspaceRecord || !user) {
+            handleUnauthorized(request, response, {
+                responseMode: unauthorizedResponseMode,
+                redirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
+                jsonMessage: 'Workspace user больше не активен.',
+            })
+            return
+        }
+
+        registry.touchWorkspaceSession(workspace.slug, claims.sessionId ?? '')
+        setWorkspaceUserAuthToLocals(response, { workspace: workspaceRecord, user })
         setAuthClaimsToLocals(response, claims)
         next()
     }

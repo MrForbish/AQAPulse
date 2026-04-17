@@ -206,6 +206,28 @@ http://127.0.0.1:3000/w/demo
 http://127.0.0.1:3000/api/workspaces/demo/summary
 ```
 
+### Split mode: admin и runtime как отдельные сервисы
+
+Если нужно вынести админку в отдельный процесс раньше полноценного service decomposition, теперь можно запускать два HTTP entrypoint-а поверх общего storage и общей domain-логики:
+
+```bash
+# runtime service
+export AQA_PULSE_RUNTIME_PORT="3000"
+npm run api:runtime
+
+# admin service
+export AQA_PULSE_ADMIN_PORT="3100"
+export AQA_PULSE_RUNTIME_BASE_URL="http://127.0.0.1:3000"
+npm run api:admin
+```
+
+По умолчанию:
+
+- `api:runtime` поднимает workspace/dashboard/API service;
+- `api:admin` поднимает admin UI и admin API;
+- ссылки из `/admin` на `/w/:slug`, `/w/:slug/login` и exchange для ingestion key строятся через `AQA_PULSE_RUNTIME_BASE_URL`;
+- старый `npm run api` остаётся monolith entrypoint-ом для обратной совместимости.
+
 ### Bootstrap workspace через HTTP
 
 ```bash
@@ -296,6 +318,8 @@ npm run api
 - `AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS` — TTL JWT/cookie в секундах;
 - `AQA_PULSE_ENABLE_DEV_BOOTSTRAP=false` — отключение `POST /api/dev/bootstrap`;
 - `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true` — обязательный workspace user token для чтения `/w/:slug` и `/api/workspaces/:slug/*`.
+- `AQA_PULSE_ADMIN_BASE_URL` — публичный base URL admin service для split deployment;
+- `AQA_PULSE_RUNTIME_BASE_URL` — публичный base URL runtime/workspace service для split deployment.
 
 Если `AQA_PULSE_ADMIN_TOKEN` не задан, admin routes остаются открытыми — это удобно локально, но не подходит для прод-окружения.
 

@@ -9,6 +9,8 @@ import { resolveWorkspaceDataRoot } from './workspace-paths'
 
 export interface SaasAppConfig {
     port: number
+    adminBaseUrl: string | null
+    runtimeBaseUrl: string | null
     dataRoot: string
     storageDriver: StorageDriver
     sqlitePath: string | null
@@ -28,6 +30,8 @@ export interface SaasAppConfig {
 
 export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): SaasAppConfig {
     const configuredPort = normalizePort(overrides.port ?? process.env.PORT)
+    const configuredAdminBaseUrl = normalizeOptionalText(overrides.adminBaseUrl ?? process.env.AQA_PULSE_ADMIN_BASE_URL)
+    const configuredRuntimeBaseUrl = normalizeOptionalText(overrides.runtimeBaseUrl ?? process.env.AQA_PULSE_RUNTIME_BASE_URL)
     const configuredAdminToken = normalizeOptionalText(overrides.adminToken ?? process.env.AQA_PULSE_ADMIN_TOKEN)
     const configuredDistPath = normalizeOptionalText(overrides.distPath ?? process.env.AQA_PULSE_DIST_PATH)
     const configuredArchiveRootPath = normalizeOptionalText(overrides.archiveRootPath ?? process.env.AQA_PULSE_ARCHIVE_PATH)
@@ -47,6 +51,8 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
 
     return {
         port: configuredPort ?? 3000,
+        adminBaseUrl: configuredAdminBaseUrl,
+        runtimeBaseUrl: configuredRuntimeBaseUrl,
         dataRoot: resolveWorkspaceDataRoot(overrides.dataRoot),
         storageDriver: normalizeStorageDriver(overrides.storageDriver ?? process.env.AQA_PULSE_STORAGE_DRIVER),
         sqlitePath: configuredSqlitePath ? path.resolve(configuredSqlitePath) : null,

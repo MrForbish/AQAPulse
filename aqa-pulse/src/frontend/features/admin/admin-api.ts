@@ -84,6 +84,30 @@ export async function createWorkspaceUser(slug: string, input: {
     })
 }
 
+export async function disableWorkspaceApiKey(slug: string, apiKeyId: string): Promise<WorkspaceDescriptor> {
+    const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/api-keys/${encodeURIComponent(apiKeyId)}/disable`, {
+        method: 'POST',
+    })
+
+    return payload.workspace
+}
+
+export async function disableWorkspaceUser(slug: string, userId: string): Promise<WorkspaceDescriptor> {
+    const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/users/${encodeURIComponent(userId)}/disable`, {
+        method: 'POST',
+    })
+
+    return payload.workspace
+}
+
+export async function revokeWorkspaceSession(slug: string, sessionId: string): Promise<WorkspaceDescriptor> {
+    const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/sessions/${encodeURIComponent(sessionId)}/revoke`, {
+        method: 'POST',
+    })
+
+    return payload.workspace
+}
+
 export async function loginToWorkspace(slug: string, token: string): Promise<WorkspaceLoginResponse> {
     return requestJson(`/auth/workspaces/${encodeURIComponent(slug)}/users/login`, {
         method: 'POST',

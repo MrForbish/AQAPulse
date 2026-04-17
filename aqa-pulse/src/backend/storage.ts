@@ -26,7 +26,7 @@ import { getWorkspacePathsFromDataRoot, getWorkspaceRegistryPathFromDataRoot, re
 export { PostgresBackendStorage, PostgresWorkspaceRegistryStorage, PostgresWorkspaceRunStorage } from './postgres-storage'
 export { SqliteBackendStorage, SqliteWorkspaceRegistryStorage, SqliteWorkspaceRunStorage } from './sqlite-storage'
 
-const REGISTRY_SCHEMA_VERSION = 1
+const REGISTRY_SCHEMA_VERSION = 2
 
 export interface DashboardStoragePaths {
     summaryPath: string
@@ -129,6 +129,7 @@ export class FileSystemWorkspaceRegistryStorage implements WorkspaceRegistryStor
         return {
             schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : REGISTRY_SCHEMA_VERSION,
             updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+            adminSessions: Array.isArray(parsed.adminSessions) ? parsed.adminSessions : [],
             workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces : [],
         }
     }
@@ -197,6 +198,7 @@ function createEmptyRegistry(): WorkspaceRegistrySnapshot {
     return {
         schemaVersion: REGISTRY_SCHEMA_VERSION,
         updatedAt: new Date().toISOString(),
+        adminSessions: [],
         workspaces: [],
     }
 }

@@ -26,6 +26,7 @@ try {
 	const html = injectFrontendBootstrap(htmlTemplate, {
 		route: { kind: 'static-dashboard', workspaceSlug: null },
 		initialRequestUrl: '/',
+		serviceUrls: { adminBaseUrl: null, runtimeBaseUrl: null },
 		initialDashboardSummary: summary,
 		initialTestHistoryPayload: null,
 		initialAdminWorkspaces: null,

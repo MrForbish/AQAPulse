@@ -14,7 +14,7 @@ import type { WorkspacePaths, WorkspaceRegistrySnapshot } from './contracts'
 import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './storage'
 import { getWorkspacePathsFromDataRoot, resolveWorkspaceDataRoot } from './workspace-paths'
 
-const REGISTRY_SCHEMA_VERSION = 1
+const REGISTRY_SCHEMA_VERSION = 2
 
 type SqliteDatabase = NodeSqliteDatabaseSync
 
@@ -41,6 +41,7 @@ export class SqliteWorkspaceRegistryStorage implements WorkspaceRegistryStorage 
         return {
             schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : REGISTRY_SCHEMA_VERSION,
             updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+            adminSessions: Array.isArray(parsed.adminSessions) ? parsed.adminSessions : [],
             workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces : [],
         }
     }
@@ -228,6 +229,7 @@ function createEmptyRegistry(): WorkspaceRegistrySnapshot {
     return {
         schemaVersion: REGISTRY_SCHEMA_VERSION,
         updatedAt: new Date().toISOString(),
+        adminSessions: [],
         workspaces: [],
     }
 }

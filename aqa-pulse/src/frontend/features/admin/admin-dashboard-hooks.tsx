@@ -10,8 +10,11 @@ import {
     createWorkspace,
     createWorkspaceApiKey,
     createWorkspaceUser,
+    disableWorkspaceApiKey,
+    disableWorkspaceUser,
     fetchAdminWorkspaces,
     logoutAdmin,
+    revokeWorkspaceSession,
 } from './admin-api'
 
 export interface DashboardActionResult {
@@ -32,6 +35,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     createWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
     createApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     createUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    disableApiKey: (slug: string, apiKeyId: string) => Promise<void>
+    disableUser: (slug: string, userId: string) => Promise<void>
+    revokeSession: (slug: string, sessionId: string) => Promise<void>
     logout: () => Promise<void>
 } {
     const navigate = useNavigate()
@@ -204,6 +210,69 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         }
     }
 
+    async function disableApiKeyAction(slug: string, apiKeyId: string): Promise<void> {
+        const submitKey = `api-key:disable:${slug}:${apiKeyId}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const workspace = await disableWorkspaceApiKey(slug, apiKeyId)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
+            setActionResult({ title: 'Ключ загрузки отключён', tone: 'info', details: { workspace: slug, apiKeyId } })
+        } catch (error) {
+            if (isUnauthorizedError(error)) {
+                navigate('/admin/login', { replace: true })
+                return
+            }
+
+            setActionResult({ title: 'Ошибка отключения ключа', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отключить ключ загрузки.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
+    async function disableUserAction(slug: string, userId: string): Promise<void> {
+        const submitKey = `user:disable:${slug}:${userId}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const workspace = await disableWorkspaceUser(slug, userId)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
+            setActionResult({ title: 'Доступ пользователя отключён', tone: 'info', details: { workspace: slug, userId } })
+        } catch (error) {
+            if (isUnauthorizedError(error)) {
+                navigate('/admin/login', { replace: true })
+                return
+            }
+
+            setActionResult({ title: 'Ошибка отключения пользователя', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отключить пользователя.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
+    async function revokeSessionAction(slug: string, sessionId: string): Promise<void> {
+        const submitKey = `session:revoke:${slug}:${sessionId}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const workspace = await revokeWorkspaceSession(slug, sessionId)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
+            setActionResult({ title: 'Сессия отозвана', tone: 'info', details: { workspace: slug, sessionId } })
+        } catch (error) {
+            if (isUnauthorizedError(error)) {
+                navigate('/admin/login', { replace: true })
+                return
+            }
+
+            setActionResult({ title: 'Ошибка отзыва сессии', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отозвать сессию.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
     return {
         workspaces,
         isLoading,
@@ -213,6 +282,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         createWorkspace: createWorkspaceAction,
         createApiKey: createApiKeyAction,
         createUser: createUserAction,
+        disableApiKey: disableApiKeyAction,
+        disableUser: disableUserAction,
+        revokeSession: revokeSessionAction,
         logout,
     }
 }

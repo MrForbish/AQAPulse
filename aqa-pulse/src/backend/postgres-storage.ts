@@ -13,7 +13,7 @@ import type { WorkspacePaths, WorkspaceRegistrySnapshot } from './contracts'
 import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './storage'
 import { getWorkspacePathsFromDataRoot, resolveWorkspaceDataRoot } from './workspace-paths'
 
-const REGISTRY_SCHEMA_VERSION = 1
+const REGISTRY_SCHEMA_VERSION = 2
 
 export class PostgresWorkspaceRegistryStorage implements WorkspaceRegistryStorage {
     readonly registryPath: string
@@ -33,6 +33,7 @@ export class PostgresWorkspaceRegistryStorage implements WorkspaceRegistryStorag
         return {
             schemaVersion: typeof row.schemaVersion === 'number' ? row.schemaVersion : REGISTRY_SCHEMA_VERSION,
             updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : new Date().toISOString(),
+            adminSessions: Array.isArray(row.adminSessions) ? row.adminSessions : [],
             workspaces: Array.isArray(row.workspaces) ? row.workspaces : [],
         }
     }
@@ -258,6 +259,7 @@ function createEmptyRegistry(): WorkspaceRegistrySnapshot {
     return {
         schemaVersion: REGISTRY_SCHEMA_VERSION,
         updatedAt: new Date().toISOString(),
+        adminSessions: [],
         workspaces: [],
     }
 }

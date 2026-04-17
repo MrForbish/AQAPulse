@@ -10,6 +10,7 @@ export interface WorkspaceRecord {
     updatedAt: string
     apiKeys: WorkspaceApiKeyRecord[]
     users: WorkspaceUserRecord[]
+    sessions: WorkspaceSessionRecord[]
 }
 
 export interface WorkspaceApiKeyRecord {
@@ -19,6 +20,7 @@ export interface WorkspaceApiKeyRecord {
     tokenHash: string
     createdAt: string
     lastUsedAt: string | null
+    disabledAt: string | null
 }
 
 export type WorkspaceUserRole = 'owner' | 'viewer'
@@ -31,11 +33,37 @@ export interface WorkspaceUserRecord {
     tokenHash: string
     createdAt: string
     lastUsedAt: string | null
+    disabledAt: string | null
+}
+
+export interface AdminSessionRecord {
+    id: string
+    label: string
+    createdAt: string
+    expiresAt: string
+    lastSeenAt: string
+    revokedAt: string | null
+}
+
+export type WorkspaceSessionKind = 'workspace-user' | 'workspace-api-key'
+
+export interface WorkspaceSessionRecord {
+    id: string
+    kind: WorkspaceSessionKind
+    subjectId: string
+    label: string
+    scope: 'workspace:read' | 'workspace:ingest'
+    role: WorkspaceUserRole | null
+    createdAt: string
+    expiresAt: string
+    lastSeenAt: string
+    revokedAt: string | null
 }
 
 export interface WorkspaceRegistrySnapshot {
     schemaVersion: number
     updatedAt: string
+    adminSessions: AdminSessionRecord[]
     workspaces: WorkspaceRecord[]
 }
 
@@ -50,6 +78,7 @@ export interface WorkspaceDescriptor {
         tokenPreview: string
         createdAt: string
         lastUsedAt: string | null
+        disabledAt: string | null
     }>
     users: Array<{
         id: string
@@ -58,6 +87,18 @@ export interface WorkspaceDescriptor {
         tokenPreview: string
         createdAt: string
         lastUsedAt: string | null
+        disabledAt: string | null
+    }>
+    sessions: Array<{
+        id: string
+        kind: WorkspaceSessionKind
+        label: string
+        scope: 'workspace:read' | 'workspace:ingest'
+        role: WorkspaceUserRole | null
+        createdAt: string
+        expiresAt: string
+        lastSeenAt: string
+        revokedAt: string | null
     }>
 }
 

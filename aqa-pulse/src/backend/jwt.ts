@@ -12,6 +12,7 @@ export interface AuthTokenClaims {
     scope: AuthScope
     workspaceSlug?: string
     role?: string
+    sessionId?: string
     iat: number
     exp: number
 }
@@ -24,6 +25,7 @@ export function issueJwtToken(options: {
     ttlSeconds: number
     workspaceSlug?: string
     role?: string
+    sessionId?: string
 }): { token: string; claims: AuthTokenClaims } {
     const header = { alg: 'HS256', typ: 'JWT' }
     const issuedAt = Math.floor(Date.now() / 1000)
@@ -33,6 +35,7 @@ export function issueJwtToken(options: {
         scope: options.scope,
         workspaceSlug: options.workspaceSlug,
         role: options.role,
+        sessionId: options.sessionId,
         iat: issuedAt,
         exp: issuedAt + options.ttlSeconds,
     }
@@ -84,6 +87,7 @@ export function verifyJwtToken(token: string, secret: string): AuthTokenClaims |
             scope: claims.scope as AuthScope,
             workspaceSlug: typeof claims.workspaceSlug === 'string' ? claims.workspaceSlug : undefined,
             role: typeof claims.role === 'string' ? claims.role : undefined,
+            sessionId: typeof claims.sessionId === 'string' ? claims.sessionId : undefined,
             iat: claims.iat,
             exp: claims.exp,
         }

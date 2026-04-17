@@ -31,7 +31,7 @@ export {
     type DashboardHistoryEntry,
     writeDashboardHistory,
 } from '../history-utils'
-export { createSaasApp } from './app'
+export { createAdminApp, createRuntimeApp, createSaasApp } from './app'
 export {
     createAdminGuard,
     createWorkspaceApiKeyGuard,

@@ -26,6 +26,9 @@ export function AdminDashboardPage(): React.JSX.Element {
         createWorkspace,
         createApiKey,
         createUser,
+        disableApiKey,
+        disableUser,
+        revokeSession,
         logout,
     } = useAdminDashboardState(initialWorkspaces)
 
@@ -37,7 +40,16 @@ export function AdminDashboardPage(): React.JSX.Element {
             {errorMessage ? <ErrorView title="Admin API недоступен" message={errorMessage} /> : null}
 
             <AdminProvisioningIntro isCreatingWorkspace={busyKey === 'workspace:create'} onCreateWorkspace={createWorkspace} />
-            <AdminWorkspaceRegistry workspaces={workspaces} isLoading={isLoading} busyKey={busyKey} onCreateApiKey={createApiKey} onCreateUser={createUser} />
+            <AdminWorkspaceRegistry
+                workspaces={workspaces}
+                isLoading={isLoading}
+                busyKey={busyKey}
+                onCreateApiKey={createApiKey}
+                onCreateUser={createUser}
+                onDisableApiKey={disableApiKey}
+                onDisableUser={disableUser}
+                onRevokeSession={revokeSession}
+            />
         </PageFrame>
     )
 }

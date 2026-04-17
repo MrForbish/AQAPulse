@@ -56,3 +56,11 @@ export function readWorkspaceBootstrapSession(runtime: FrontendBootstrapData, wo
         ? runtime.initialSessionStatus
         : null
 }
+
+export function readRuntimeBaseUrl(runtime: FrontendBootstrapData): string | null {
+    return runtime.serviceUrls.runtimeBaseUrl
+}
+
+export function readAdminBaseUrl(runtime: FrontendBootstrapData): string | null {
+    return runtime.serviceUrls.adminBaseUrl
+}

@@ -2,8 +2,10 @@ import { useRuntime } from './runtime'
 import {
     isStaticDashboardRuntime,
     readAdminBootstrapSession,
+    readAdminBaseUrl,
     readDashboardRuntimeBootstrap,
     readInitialAdminWorkspaces,
+    readRuntimeBaseUrl,
     readTestHistoryRuntimeBootstrap,
     readWorkspaceBootstrapSession,
 } from './runtime-selectors'
@@ -30,4 +32,12 @@ export function useAdminBootstrapSession() {
 
 export function useWorkspaceBootstrapSession(workspaceSlug: string) {
     return readWorkspaceBootstrapSession(useRuntime(), workspaceSlug)
+}
+
+export function useRuntimeBaseUrl() {
+    return readRuntimeBaseUrl(useRuntime())
+}
+
+export function useAdminBaseUrl() {
+    return readAdminBaseUrl(useRuntime())
 }

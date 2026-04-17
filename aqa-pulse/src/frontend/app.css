@@ -979,6 +979,51 @@ th {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.incident-evidence-block {
+    display: grid;
+    gap: 10px;
+}
+
+.section-kicker {
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.incident-evidence-primary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.incident-evidence-card {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(133, 157, 194, 0.14);
+    background: rgba(10, 21, 38, 0.72);
+}
+
+.incident-evidence-card.is-primary {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.1), rgba(10, 21, 38, 0.86));
+}
+
+.incident-evidence-card.is-supporting {
+    border-color: rgba(245, 158, 11, 0.18);
+}
+
+.incident-evidence-card.is-context {
+    border-color: rgba(133, 157, 194, 0.14);
+    color: var(--text-muted);
+}
+
+.incident-evidence-value {
+    margin-top: 6px;
+    color: var(--text-main);
+    line-height: 1.45;
+}
+
 .incident-panel .signal-grid > *,
 .incident-panel .incident-grid-react > * {
     min-width: 0;
@@ -1753,17 +1798,6 @@ th {
     color: #9ddcff;
 }
 
-.evidence-chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 34px;
-    padding: 0 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    background: rgba(239, 68, 68, 0.08);
-    color: #ffd3d3;
-}
-
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -1790,6 +1824,10 @@ th {
     .signal-grid,
     .incident-grid-react {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .incident-evidence-primary-grid {
+        grid-template-columns: 1fr;
     }
 
     .incident-panel .incident-grid-react {

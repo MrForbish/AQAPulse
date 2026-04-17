@@ -92,12 +92,20 @@ export type TestHistoryIncidentSeverity = 'active' | 'monitoring' | 'resolved'
 
 export type TestHistoryIncidentConfidence = 'high' | 'medium' | 'low'
 
+export type TestHistoryIncidentEvidenceTone = 'primary' | 'supporting' | 'context'
+
+export interface TestHistoryIncidentEvidenceItem {
+    label: string
+    value: string
+    tone: TestHistoryIncidentEvidenceTone
+}
+
 export interface TestHistoryIncidentSummary {
     severity: TestHistoryIncidentSeverity
     category: TestHistoryIncidentCategory
     confidence: TestHistoryIncidentConfidence
     summary: string
-    evidence: string[]
+    evidence: TestHistoryIncidentEvidenceItem[]
     unstableRuns: number
     matchingRuns: number
     affectedAttempts: number
@@ -966,12 +974,12 @@ function buildIncidentNarrative(
 ): string {
     const categoryLabel = getIncidentCategoryLabel(category)
     const statePrefix = severity === 'active'
-        ? 'Проблема остаётся активной.'
+        ? 'Сбой активен.'
         : severity === 'monitoring'
-            ? 'Инцидент пока не выглядит полностью закрытым.'
-            : 'Последний похожий инцидент уже восстановился.'
+            ? 'Нужно наблюдать.'
+            : 'Сбой не повторяется.'
     const recurrence = matchingRunsCount > 1
-        ? ` Паттерн повторялся ${matchingRunsCount} раза.`
+        ? ` Повторялся ${matchingRunsCount} раза.`
         : ' Пока это выглядит как единичный эпизод.'
     const primaryFailureStepTitle = primaryFailureStep?.title ?? latestSignals.failureStepTitles[0] ?? null
     const failingStepPart = primaryFailureStepTitle
@@ -996,45 +1004,60 @@ function buildIncidentEvidence(input: {
     latestSignals: IncidentSignalBundle
     affectedAttempts: number
     primaryFailureStep: TestHistoryStep | null
-}): string[] {
-    const evidence: string[] = []
+}): TestHistoryIncidentEvidenceItem[] {
+    const evidence: TestHistoryIncidentEvidenceItem[] = []
 
-    if (input.latestSignals.normalizedErrorMessages[0]) {
-        evidence.push(`Последний сигнал: ${input.latestSignals.normalizedErrorMessages[0]}`)
+    const pushEvidence = (
+        label: string,
+        value: string | null,
+        tone: TestHistoryIncidentEvidenceTone,
+    ): void => {
+        if (!(value?.trim())) {
+            return
+        }
+
+        evidence.push({ label, value: value.trim(), tone })
     }
 
     const primaryFailureStepTitle = input.primaryFailureStep?.title ?? input.latestSignals.failureStepTitles[0] ?? null
     const primaryFailureStepCategory = input.primaryFailureStep?.category ?? input.latestSignals.failureStepCategories[0] ?? null
+    const primaryStepError = input.primaryFailureStep?.errorMessage ?? input.latestSignals.failureStepErrorMessages[0] ?? null
 
     if (primaryFailureStepTitle) {
         const categorySuffix = primaryFailureStepCategory ? ` (${primaryFailureStepCategory})` : ''
-        evidence.push(`Точная точка падения: ${primaryFailureStepTitle}${categorySuffix}.`)
+        pushEvidence('Главный шаг', `${primaryFailureStepTitle}${categorySuffix}`, 'primary')
     }
 
-    if (input.primaryFailureStep?.errorMessage ?? input.latestSignals.failureStepErrorMessages[0]) {
-        evidence.push(`Ошибка на шаге: ${input.primaryFailureStep?.errorMessage ?? input.latestSignals.failureStepErrorMessages[0]}`)
+    if (primaryStepError) {
+        pushEvidence('Ключевая ошибка', primaryStepError, 'primary')
+    } else {
+        pushEvidence('Последний сигнал', input.latestSignals.normalizedErrorMessages[0] ?? null, 'primary')
     }
 
-    evidence.push(`В последнем нестабильном запуске задеты попытки: ${input.affectedAttempts} из ${input.latestUnstable.attempts}.`)
-
-    if (input.latestSignals.stepCategories.length > 0) {
-        evidence.push(`Шаги вокруг инцидента: ${input.latestSignals.stepCategories.slice(0, 3).join(', ')}.`)
-    }
+    pushEvidence(
+        'Проблемные попытки',
+        `${input.affectedAttempts} из ${input.latestUnstable.attempts} в последнем нестабильном запуске`,
+        'supporting',
+    )
 
     if (input.latestSignals.attachmentHints.length > 0) {
-        evidence.push(`Артефакты для разбора: ${input.latestSignals.attachmentHints.slice(0, 3).join(', ')}.`)
-    }
-
-    if (input.latestSignals.hasContextAttachment) {
-        evidence.push('Есть error-context.md: у инцидента уже сохранён текстовый контекст падения.')
+        pushEvidence('Артефакты', input.latestSignals.attachmentHints.slice(0, 3).join(', '), 'supporting')
     }
 
     if (input.matchingRuns.length > 1) {
-        evidence.push(`Похожий сбой встречался в ${input.matchingRuns.length} нестабильных прогонах.`)
+        pushEvidence('Повторяемость', `Похожий сбой был в ${input.matchingRuns.length} нестабильных прогонах`, 'supporting')
     }
 
     if (input.latestRecovery) {
-        evidence.push(`После инцидента был зафиксирован стабильный запуск: ${input.latestRecovery.reportTimestamp ?? input.latestRecovery.generatedAt}.`)
+        pushEvidence(
+            'Последнее восстановление',
+            input.latestRecovery.reportTimestamp ?? input.latestRecovery.generatedAt,
+            'context',
+        )
+    }
+
+    if (input.latestSignals.hasContextAttachment) {
+        pushEvidence('Текстовый контекст', 'Есть error-context.md с деталями падения', 'context')
     }
 
     return evidence

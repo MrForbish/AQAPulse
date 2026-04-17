@@ -24,6 +24,7 @@ import { loadStaticTestHistoryPayload, resetStaticTestHistoryIndexCache } from '
 import { RuntimeProvider as FrontendRuntimeProvider } from './frontend/runtime'
 import { DashboardPage as FrontendDashboardPage } from './frontend/features/dashboard/dashboard-page'
 import { TestHistoryPage as FrontendTestHistoryPage } from './frontend/features/test-history/test-history-page'
+import { IncidentSummaryPanel } from './frontend/features/test-history/history-incident-panels'
 import { WorkspaceLoginPage as FrontendWorkspaceLoginPage } from './frontend/features/admin/workspace-login-page'
 
 const { JSDOM } = require('jsdom') as {
@@ -249,6 +250,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryNestedDiagnosticsStructure(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
+    verifyIncidentEvidenceRendering()
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
     verifyIncidentAnchorUsesFailureMetadata()
@@ -281,6 +283,78 @@ function createBootstrap(overrides: Partial<FrontendBootstrapData> & { route: Fr
         initialAdminWorkspaces: overrides.initialAdminWorkspaces ?? null,
         initialSessionStatus: overrides.initialSessionStatus ?? { scope: 'public', authenticated: true, authRequired: false, workspaceSlug: null },
     }
+}
+
+function verifyIncidentEvidenceRendering(): void {
+    const markup = renderToStaticMarkup(
+        React.createElement(IncidentSummaryPanel, {
+            incidentSummary: {
+                severity: 'active',
+                category: 'timeout',
+                confidence: 'high',
+                summary: 'Сбой активен. Повторялся 3 раза. Точка падения: Wait for selector.',
+                evidence: [
+                    { label: 'Главный шаг', value: 'Wait for selector (pw:api)', tone: 'primary' },
+                    { label: 'Ключевая ошибка', value: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.', tone: 'primary' },
+                    { label: 'Проблемные попытки', value: '1 из 2 в последнем нестабильном запуске', tone: 'supporting' },
+                    { label: 'Артефакты', value: 'error-context.md, trace.zip', tone: 'supporting' },
+                ],
+                unstableRuns: 3,
+                matchingRuns: 3,
+                affectedAttempts: 1,
+                firstSeenAt: '2026-04-13T12:10:00.000Z',
+                latestSeenAt: '2026-04-14T15:34:00.000Z',
+                latestRecoveryAt: null,
+                latestErrorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+                failureStepRunId: 'run-1',
+                failureStepAttempt: 1,
+                failureStepOffsetMs: 14694,
+                failureStepTitle: 'Wait for selector',
+                failureStepCategory: 'pw:api',
+                failureStepErrorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+            },
+            history: [
+                {
+                    runId: 'run-1',
+                    reportTimestamp: '2026-04-14T15:34:00.000Z',
+                    generatedAt: '2026-04-14T15:34:00.000Z',
+                    branch: 'main',
+                    commit: 'abc1234',
+                    author: 'Smoke Bot',
+                    status: 'failed',
+                    flaky: false,
+                    durationMs: 1000,
+                    retries: 1,
+                    attempts: 2,
+                    errorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+                    attemptDetails: [
+                        {
+                            attempt: 1,
+                            status: 'failed',
+                            durationMs: 1000,
+                            startTime: null,
+                            errorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+                            attachments: [],
+                            steps: [
+                                {
+                                    title: 'Wait for selector',
+                                    category: 'pw:api',
+                                    depth: 2,
+                                    offsetMs: 14694,
+                                    durationMs: 800,
+                                    status: 'failed',
+                                    errorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+                                    isFailurePoint: true,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }),
+    )
+
+    renderMarkup('incident evidence panel', markup, ['Факты и подтверждения', 'Главный шаг', 'Ключевая ошибка', 'Проблемные попытки'])
 }
 
 /**

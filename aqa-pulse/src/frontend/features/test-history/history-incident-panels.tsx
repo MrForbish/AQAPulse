@@ -27,6 +27,8 @@ export function IncidentSummaryPanel(props: {
         failureStepAttempt: props.incidentSummary.failureStepAttempt,
         failureStepOffsetMs: props.incidentSummary.failureStepOffsetMs,
     })
+    const primaryEvidence = props.incidentSummary.evidence.filter((item) => item.tone === 'primary')
+    const secondaryEvidence = props.incidentSummary.evidence.filter((item) => item.tone !== 'primary')
 
     return (
         <Panel
@@ -71,8 +73,28 @@ export function IncidentSummaryPanel(props: {
                 <span className="meta-badge">{HISTORY_TEXT.incident.attemptsLabel}: {props.incidentSummary.affectedAttempts}</span>
             </div>
             {props.incidentSummary.evidence.length > 0 ? (
-                <div className="evidence-list">
-                    {props.incidentSummary.evidence.map((item) => <div key={item} className="evidence-chip">{item}</div>)}
+                <div className="incident-evidence-block compact-top">
+                    <div className="section-kicker">{HISTORY_TEXT.incident.evidenceTitle}</div>
+                    {primaryEvidence.length > 0 ? (
+                        <div className="incident-evidence-primary-grid compact-top">
+                            {primaryEvidence.map((item) => (
+                                <div key={`${item.label}:${item.value}`} className="detail-card-react incident-evidence-card is-primary">
+                                    <span className="metric-label">{item.label}</span>
+                                    <TraceDisclosure text={item.value} emptyLabel={HISTORY_TEXT.incident.notCaptured} badgeLabel="focus" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
+                    {secondaryEvidence.length > 0 ? (
+                        <div className="evidence-list compact-top">
+                            {secondaryEvidence.map((item) => (
+                                <div key={`${item.label}:${item.value}`} className={`incident-evidence-card is-${item.tone}`}>
+                                    <span className="metric-label">{item.label}</span>
+                                    <div className="incident-evidence-value">{item.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             ) : null}
         </Panel>

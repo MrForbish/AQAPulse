@@ -4,7 +4,7 @@ export const DASHBOARD_METRIC_DESCRIPTIONS = {
     ...ru.dashboard.tooltips,
     releaseConfidenceBreakdownTitle: ru.dashboard.tooltips.releaseConfidenceScore,
     managerSummary: ru.dashboard.manager.summaryDescription,
-    releaseReadiness: 'Позитивный сводный сигнал: показывает, насколько текущий pass rate, flaky ratio и история прогонов позволяют опираться на автотесты перед релизом.',
+    releaseReadiness: 'Позитивный сводный сигнал: показывает, насколько текущий pass rate, flaky ratio и история прогонов дают опору для решения о релизе.',
     qualityRisk: 'Сводная оценка риска дефектов и нестабильности: чем выше показатель, тем больше вероятность, что текущее качество требует дополнительной проверки.',
     deliveryRisk: 'Сводный сигнал показывает, насколько текущая нестабильность и блокеры влияют на скорость поставки изменений.',
     currentRunTests: ru.dashboard.testsBrowser.description,

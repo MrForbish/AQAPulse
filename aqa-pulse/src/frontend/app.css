@@ -547,6 +547,27 @@ input {
     gap: 18px;
 }
 
+.business-track-intro {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    padding-top: 2px;
+}
+
+.business-track-intro h2 {
+    margin: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+}
+
+.business-track-intro p {
+    margin: 0;
+    max-width: 920px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
 .auth-layout {
     display: grid;
     place-items: center;

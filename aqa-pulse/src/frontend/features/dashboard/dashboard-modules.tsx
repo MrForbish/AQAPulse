@@ -3,13 +3,17 @@
  */
 import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
+import { ru } from '../../../shared/i18n/ru'
 import {
     DashboardBusinessConfigAssumptionsSection,
     DashboardBusinessCostSection,
-    DashboardBusinessOverviewMetrics,
+    DashboardBusinessOpsOverviewMetrics,
+    DashboardBusinessProductRiskOverviewMetrics,
     DashboardBusinessReadinessSection,
     DashboardBusinessReleaseConfidenceSection,
+    DashboardBusinessScenarioOverviewMetrics,
     DashboardBusinessSummarySection,
+    DashboardBusinessTrackIntro,
 } from './dashboard-business-sections'
 import {
     DashboardAiClustersSection,
@@ -32,17 +36,26 @@ import {
 } from './dashboard-manager-sections'
 import { DashboardTeamOverviewMetrics, DashboardTeamRecentRunsSection } from './dashboard-team-sections'
 
+const DASHBOARD_TEXT = ru.dashboard
+
 export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
     const { summary } = props
 
     return (
         <div className="page-grid">
-            <DashboardBusinessOverviewMetrics summary={summary} />
+            <DashboardBusinessTrackIntro eyebrow={DASHBOARD_TEXT.business.opsEyebrow} title={DASHBOARD_TEXT.business.opsTitle} description={DASHBOARD_TEXT.business.opsDescription} />
+            <DashboardBusinessOpsOverviewMetrics summary={summary} />
+
+            <DashboardBusinessTrackIntro eyebrow={DASHBOARD_TEXT.business.scenarioEyebrow} title={DASHBOARD_TEXT.business.scenarioTitle} description={DASHBOARD_TEXT.business.scenarioDescription} />
+            <DashboardBusinessScenarioOverviewMetrics summary={summary} />
             <DashboardBusinessSummarySection summary={summary} />
-            <DashboardBusinessReleaseConfidenceSection summary={summary} />
-            <DashboardBusinessReadinessSection summary={summary} />
             <DashboardBusinessCostSection summary={summary} />
             <DashboardBusinessConfigAssumptionsSection summary={summary} />
+            <DashboardBusinessReadinessSection summary={summary} />
+
+            <DashboardBusinessTrackIntro eyebrow={DASHBOARD_TEXT.business.productRiskEyebrow} title={DASHBOARD_TEXT.business.productRiskTitle} description={DASHBOARD_TEXT.business.productRiskDescription} />
+            <DashboardBusinessProductRiskOverviewMetrics summary={summary} />
+            <DashboardBusinessReleaseConfidenceSection summary={summary} />
 
             <DashboardManagerSummarySection summary={summary} mapTone={mapManagerTone} />
             <DashboardManagerBlockersSection summary={summary} />

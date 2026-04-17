@@ -7,11 +7,8 @@ import {
     formatCostShare,
     formatCostShareWidth,
     formatCurrency,
-    formatDailyRatio,
     formatMinutes,
     formatNullableDays,
-    formatNullableMinutes,
-    formatNullablePercent,
     formatRunsPerHundred,
     formatScore,
     getBusinessDriverInsightBody,
@@ -28,19 +25,51 @@ import { CostBreakdownItem, DetailRow, FormulaCard, ReadinessCard, SignalSummary
 
 const DASHBOARD_TEXT = ru.dashboard
 
-export function DashboardBusinessOverviewMetrics(props: { summary: DashboardSummary }): React.JSX.Element {
-    const costMetrics = props.summary.businessMetrics.costOfFlakiness
+export function DashboardBusinessTrackIntro(props: { eyebrow: string; title: string; description: string }): React.JSX.Element {
+    return (
+        <section className="business-track-intro span-2">
+            <div className="eyebrow">{props.eyebrow}</div>
+            <h2>{props.title}</h2>
+            <p>{props.description}</p>
+        </section>
+    )
+}
+
+export function DashboardBusinessOpsOverviewMetrics(props: { summary: DashboardSummary }): React.JSX.Element {
     const frictionMetrics = props.summary.businessMetrics.developerFriction
+    const costMetrics = props.summary.businessMetrics.costOfFlakiness
 
     return (
         <>
             <MetricCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={formatNullableDays(props.summary.businessMetrics.timeToFixFlaky.medianDays)} hint={`${DASHBOARD_TEXT.business.timeToFixHintPrefix}: ${props.summary.businessMetrics.timeToFixFlaky.resolvedIncidents}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.costOfFlakiness} labelMetricKey="costOfFlakiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness} value={formatCurrency(costMetrics.totalRub)} tone={getCostTone(costMetrics.totalRub)} hint={`${DASHBOARD_TEXT.business.costPerActiveDay}: ${formatCurrency(costMetrics.costPerActiveDayRub)}`} />
             <MetricCard label={DASHBOARD_TEXT.metrics.ciWasteTime} labelMetricKey="ciWasteTime" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.ciWasteTime} value={formatMinutes(costMetrics.extraRetryMinutes)} tone={costMetrics.extraRetryMinutes >= 60 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${costMetrics.extraRetries}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.investigationCost} labelMetricKey="investigationCost" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.investigationCost} value={formatCurrency(costMetrics.developerCostRub)} tone={getCostTone(costMetrics.developerCostRub)} hint={`${DASHBOARD_TEXT.business.unstableRuns}: ${costMetrics.unstableRuns}`} />
             <MetricCard label={DASHBOARD_TEXT.metrics.developerFriction} labelMetricKey="developerFriction" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.developerFriction} value={formatRunsPerHundred(frictionMetrics.rerunBurdenPer100Runs)} tone={frictionMetrics.rerunBurdenPer100Runs >= 25 ? 'warn' : 'good'} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${frictionMetrics.extraRetries} • ${DASHBOARD_TEXT.business.observedRuns}: ${frictionMetrics.observedRuns}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={DASHBOARD_TEXT.business.releaseConfidenceHint} />
         </>
+    )
+}
+
+export function DashboardBusinessScenarioOverviewMetrics(props: { summary: DashboardSummary }): React.JSX.Element {
+    const costMetrics = props.summary.businessMetrics.costOfFlakiness
+
+    return (
+        <>
+            <MetricCard label={DASHBOARD_TEXT.metrics.costOfFlakiness} labelMetricKey="costOfFlakiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.costOfFlakiness} value={formatCurrency(costMetrics.totalRub)} tone={getCostTone(costMetrics.totalRub)} hint={`${DASHBOARD_TEXT.business.costPerActiveDay}: ${formatCurrency(costMetrics.costPerActiveDayRub)}`} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.investigationCost} labelMetricKey="investigationCost" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.investigationCost} value={formatCurrency(costMetrics.developerCostRub)} tone={getCostTone(costMetrics.developerCostRub)} hint={`${DASHBOARD_TEXT.business.unstableRuns}: ${costMetrics.unstableRuns}`} />
+        </>
+    )
+}
+
+export function DashboardBusinessProductRiskOverviewMetrics(props: { summary: DashboardSummary }): React.JSX.Element {
+    return (
+        <MetricCard
+            label={DASHBOARD_TEXT.metrics.releaseConfidenceScore}
+            labelMetricKey="releaseConfidenceScore"
+            labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore}
+            value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)}
+            tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)}
+            hint={DASHBOARD_TEXT.business.releaseConfidenceHint}
+            className="span-2"
+        />
     )
 }
 
@@ -58,9 +87,9 @@ export function DashboardBusinessSummarySection(props: { summary: DashboardSumma
                 <div className="subtle-copy">{getBusinessScenarioStatusHint(costMetrics.assumptions)}</div>
             </div>
             <div className="signal-grid compact-top">
+                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.costOfFlakiness} value={formatCurrency(costMetrics.totalRub)} hint={DASHBOARD_TEXT.business.totalCostHint} />
+                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.investigationCost} value={formatCurrency(costMetrics.developerCostRub)} hint={`${DASHBOARD_TEXT.business.developmentCostHintPrefix}: ${costMetrics.unstableRuns}`} />
                 <SignalSummaryCard label={DASHBOARD_TEXT.metrics.ciWasteTime} value={formatMinutes(costMetrics.extraRetryMinutes)} hint={`${DASHBOARD_TEXT.business.extraRetries}: ${costMetrics.extraRetries}`} />
-                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.timeToFixFlaky} value={formatNullableDays(props.summary.businessMetrics.timeToFixFlaky.medianDays)} hint={props.summary.businessMetrics.timeToFixFlaky.medianDays === null ? DASHBOARD_TEXT.business.timeToFixPending : DASHBOARD_TEXT.business.timeToFixMedianHint} />
-                <SignalSummaryCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} hint={DASHBOARD_TEXT.business.releaseConfidenceDetails} />
                 <SignalSummaryCard label={DASHBOARD_TEXT.business.costPerActiveDay} value={formatCurrency(costMetrics.costPerActiveDayRub)} hint={DASHBOARD_TEXT.business.costScenarioDescription} />
             </div>
             <div className={`callout-card compact-top is-${costImpactTone}`}>

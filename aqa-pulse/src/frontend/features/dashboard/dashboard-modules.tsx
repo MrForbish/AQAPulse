@@ -28,7 +28,6 @@ import {
     DashboardCodeQualityFailureHotspotsSection,
     DashboardCodeQualityOverviewMetrics,
     DashboardCodeQualitySlowTestsSection,
-    DashboardCodeQualitySuiteDurationSection,
 } from './dashboard-code-quality-sections'
 import { mapChangeTone, mapManagerTone } from './dashboard-manager-helpers'
 import {
@@ -259,7 +258,6 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
         <div className="page-grid">
             <DashboardCodeQualityOverviewMetrics summary={summary} />
             <DashboardCodeQualityFailureHotspotsSection summary={summary} workspaceSlug={props.workspaceSlug} />
-            <DashboardCodeQualitySuiteDurationSection summary={summary} />
             <DashboardCodeQualitySlowTestsSection summary={summary} workspaceSlug={props.workspaceSlug} />
         </div>
     )

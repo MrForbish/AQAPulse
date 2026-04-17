@@ -44,7 +44,19 @@ export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug
                 <DashboardBreakdownTable labelColumn={DASHBOARD_TEXT.filters.project} items={props.summary.performance.durationPerBrowser} emptyMessage={DASHBOARD_TEXT.states.performanceBreakdownEmpty} />
             </Panel>
             <Panel title={DASHBOARD_TEXT.metrics.suiteDuration} titleMetricKey="suiteDuration" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription}>
-                <DashboardBreakdownTable labelColumn={DASHBOARD_TEXT.tables.group} items={props.summary.performance.suiteDuration} emptyMessage={DASHBOARD_TEXT.states.performanceBreakdownEmpty} />
+                <div className="stacked-bars compact-top">
+                    {props.summary.performance.suiteDuration.map((item) => (
+                        <div key={item.label} className="stacked-bar-item">
+                            <div className="stacked-bar-copy stacked-bar-copy-spread">
+                                <span>{item.label}</span>
+                                <strong>{formatDuration(item.durationMs)} • {item.tests}</strong>
+                            </div>
+                            <div className="stacked-bar-track">
+                                <div className="stacked-bar-fill is-warn" style={{ width: `${Math.max(8, item.sharePercent)}%` }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </Panel>
 
             <DashboardTablePanel

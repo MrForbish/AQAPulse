@@ -80,26 +80,6 @@ export function DashboardCodeQualityPhaseBreakdownSection(props: { summary: Dash
     )
 }
 
-export function DashboardCodeQualitySuiteDurationSection(props: { summary: DashboardSummary }): React.JSX.Element {
-    return (
-        <Panel title={DASHBOARD_TEXT.metrics.suiteDuration} titleMetricKey="suiteDuration" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration} description={DASHBOARD_TEXT.performance.suiteDurationDescription}>
-            <div className="stacked-bars compact-top">
-                {props.summary.performance.suiteDuration.map((item) => (
-                    <div key={item.label} className="stacked-bar-item">
-                        <div className="stacked-bar-copy stacked-bar-copy-spread">
-                            <span>{item.label}</span>
-                            <strong>{formatDuration(item.durationMs)} • {item.tests}</strong>
-                        </div>
-                        <div className="stacked-bar-track">
-                            <div className="stacked-bar-fill is-warn" style={{ width: `${Math.max(8, item.sharePercent)}%` }} />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </Panel>
-    )
-}
-
 export function DashboardCodeQualitySlowTestsSection(props: {
     summary: DashboardSummary
     workspaceSlug: string | null

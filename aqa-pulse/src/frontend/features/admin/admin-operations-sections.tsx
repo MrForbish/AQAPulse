@@ -59,16 +59,16 @@ export function AdminIngestionHealthSection(props: {
     health: AdminIngestionHealthReport | null
 }): React.JSX.Element {
     return (
-        <Panel className="span-2" title="Ingestion / job health" description="Сводка по последним ingestion-циклам по каждому workspace.">
-            {!props.health ? <LoadingView label="Собираем ingestion health..." /> : (
+        <Panel className="span-2" title="Состояние загрузок и прогонов" description="Сводка по последним циклам загрузки отчётов и состоянию последних прогонов в каждом workspace.">
+            {!props.health ? <LoadingView label="Собираем сводку по загрузкам и прогонам..." /> : (
                 <>
                     <div className="detail-pairs compact-pairs admin-health-summary-grid">
-                        <div className="detail-row"><span>Total workspaces</span><code>{String(props.health.totals.total)}</code></div>
-                        <div className="detail-row"><span>Healthy</span><code>{String(props.health.totals.healthy)}</code></div>
-                        <div className="detail-row"><span>Warning</span><code>{String(props.health.totals.warning)}</code></div>
-                        <div className="detail-row"><span>Critical</span><code>{String(props.health.totals.critical)}</code></div>
-                        <div className="detail-row"><span>Stale</span><code>{String(props.health.totals.stale)}</code></div>
-                        <div className="detail-row"><span>Idle</span><code>{String(props.health.totals.idle)}</code></div>
+                        <div className="detail-row"><span>Всего workspace</span><code>{String(props.health.totals.total)}</code></div>
+                        <div className="detail-row"><span>Здоровые</span><code>{String(props.health.totals.healthy)}</code></div>
+                        <div className="detail-row"><span>С предупреждениями</span><code>{String(props.health.totals.warning)}</code></div>
+                        <div className="detail-row"><span>Критичные</span><code>{String(props.health.totals.critical)}</code></div>
+                        <div className="detail-row"><span>Устаревшие</span><code>{String(props.health.totals.stale)}</code></div>
+                        <div className="detail-row"><span>Без запусков</span><code>{String(props.health.totals.idle)}</code></div>
                     </div>
                     <ul className="admin-compact-list admin-health-list">
                         {props.health.items.map((item) => (
@@ -79,14 +79,14 @@ export function AdminIngestionHealthSection(props: {
                                 </div>
                                 <div className="access-item-meta access-item-meta-compact">
                                     <span>Workspace: {item.slug}</span>
-                                    <span>Runs: {String(item.runCount)}</span>
+                                    <span>Прогонов: {String(item.runCount)}</span>
                                     <span>Последний ingestion: {formatDateTime(item.lastIngestionAt)}</span>
-                                    <span>Stale, ч: {item.staleHours === null ? 'n/a' : String(item.staleHours)}</span>
-                                    <span>Pass rate: {formatPercent(item.latestPassRate)}</span>
-                                    <span>Failed: {formatNullableNumber(item.latestFailedTests)}</span>
-                                    <span>Flaky: {formatNullableNumber(item.latestFlakyTests)}</span>
-                                    <span>Duration: {formatDuration(item.latestDurationMs)}</span>
-                                    <span>Source: {item.latestSourceFile ?? 'n/a'}</span>
+                                    <span>Устарело, ч: {item.staleHours === null ? 'н/д' : String(item.staleHours)}</span>
+                                    <span>Успешность: {formatPercent(item.latestPassRate)}</span>
+                                    <span>Провалено: {formatNullableNumber(item.latestFailedTests)}</span>
+                                    <span>Флаки: {formatNullableNumber(item.latestFlakyTests)}</span>
+                                    <span>Длительность: {formatDuration(item.latestDurationMs)}</span>
+                                    <span>Источник: {item.latestSourceFile ?? 'н/д'}</span>
                                 </div>
                             </li>
                         ))}
@@ -162,15 +162,15 @@ export function AdminAuditTrailSection(props: {
 function labelHealthStatus(status: WorkspaceIngestionHealthStatus): string {
     switch (status) {
         case 'healthy':
-            return 'Healthy'
+            return 'Здоров'
         case 'warning':
-            return 'Warning'
+            return 'Предупреждение'
         case 'critical':
-            return 'Critical'
+            return 'Критично'
         case 'stale':
-            return 'Stale'
+            return 'Устарело'
         default:
-            return 'Idle'
+            return 'Нет запусков'
     }
 }
 
@@ -192,12 +192,12 @@ function formatDateTime(value: string | null): string {
 }
 
 function formatPercent(value: number | null): string {
-    return typeof value === 'number' ? `${value.toFixed(1)}%` : 'n/a'
+    return typeof value === 'number' ? `${value.toFixed(1)}%` : 'н/д'
 }
 
 function formatDuration(value: number | null): string {
     if (typeof value !== 'number') {
-        return 'n/a'
+        return 'н/д'
     }
 
     if (value >= 60_000) {
@@ -212,7 +212,7 @@ function formatDuration(value: number | null): string {
 }
 
 function formatNullableNumber(value: number | null): string {
-    return typeof value === 'number' ? String(value) : 'n/a'
+    return typeof value === 'number' ? String(value) : 'н/д'
 }
 
 function stringifyNullableNumber(value: number | null): string {

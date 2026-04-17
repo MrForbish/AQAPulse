@@ -29,11 +29,12 @@ export function OverviewTab(props: { summary: DashboardSummary; workspaceSlug: s
     return (
         <div className="page-grid">
             <DashboardManagerOverviewSection summary={props.summary} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.passRateTrend} titleMetricKey="passRateTrend" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.passRateTrend} type="line" data={buildDashboardLineChart(props.summary.charts.passRateTrend.labels, props.summary.charts.passRateTrend.values, '#0f766e')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.passRateTrend} titleMetricKey="passRateTrend" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.passRateTrend} valueHint="проценты успешных тестов" type="line" data={buildDashboardLineChart(props.summary.charts.passRateTrend.labels, props.summary.charts.passRateTrend.values, '#0f766e')} />
             <ChartCard
                 title={DASHBOARD_TEXT.metrics.statusDistribution}
                 titleMetricKey="statusDistribution"
                 titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.statusDistribution}
+                valueHint="количество тестов"
                 type="doughnut"
                 data={buildDashboardDoughnutChart(props.summary.charts.statusDistribution.labels, props.summary.charts.statusDistribution.values)}
                 showLegend={false}

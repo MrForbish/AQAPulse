@@ -20,7 +20,7 @@ export declare const ru: {
             readonly description: "Фильтрация работает через query-параметры и сразу влияет на сводку, историю и ссылки детализации.";
             readonly branch: "Ветка";
             readonly project: "Проект";
-            readonly file: "Файл";
+            readonly file: "Spec-файл";
             readonly apply: "Применить";
             readonly reset: "Сбросить";
             readonly all: "Все";

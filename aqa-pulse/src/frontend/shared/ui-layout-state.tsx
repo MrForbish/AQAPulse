@@ -53,13 +53,14 @@ export interface MetricCardProps {
     labelTooltip?: string
     labelMetricKey?: string
     tone?: 'default' | 'good' | 'warn' | 'danger'
+    className?: string
 }
 
 export function MetricCard(props: MetricCardProps): React.JSX.Element {
     const hintTitle = typeof props.hint === 'string' ? props.hint : undefined
 
     return (
-        <article className={['metric-card', props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
+        <article className={['metric-card', props.className, props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
             <div className="metric-label">
                 <MetricHeading
                     label={props.label}
@@ -110,8 +111,9 @@ export function StatusBadge(props: StatusBadgeProps): React.JSX.Element {
 
 export interface SummaryStripItemProps {
     label: string
-    value: string
+    value: React.ReactNode
     muted?: boolean
+    meta?: React.ReactNode
 }
 
 export interface SummaryStripProps {
@@ -124,10 +126,11 @@ export function SummaryStrip(props: SummaryStripProps): React.JSX.Element {
 
     return (
         <div className={className}>
-            {props.items.map((item) => (
-                <article key={`${item.label}-${item.value}`} className="summary-strip-item">
+            {props.items.map((item, index) => (
+                <article key={`${item.label}-${index}`} className="summary-strip-item">
                     <span title={item.label}>{item.label}</span>
-                    <strong className={item.muted ? 'summary-strip-text' : ''} title={item.value}>{item.value}</strong>
+                    <strong className={item.muted ? 'summary-strip-text' : ''}>{item.value}</strong>
+                    {item.meta ? <div className="summary-strip-item-meta">{item.meta}</div> : null}
                 </article>
             ))}
         </div>

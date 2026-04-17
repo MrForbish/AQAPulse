@@ -25,6 +25,7 @@ export interface ChartCardProps {
     description?: string
     titleTooltip?: string
     titleMetricKey?: string
+    valueHint?: string
     type: FrontendChartType
     data: FrontendChartData
     showLegend?: boolean
@@ -132,6 +133,7 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
 
     return (
         <Panel title={props.title} description={props.description} titleTooltip={props.titleTooltip} titleMetricKey={props.titleMetricKey} className={['chart-panel', props.className].filter(Boolean).join(' ')}>
+            {props.valueHint ? <div className="chart-value-hint">Значения: {props.valueHint}</div> : null}
             <div className={['chart-layout', props.aside ? 'has-aside' : ''].filter(Boolean).join(' ')}>
                 <div className="chart-frame">
                     <canvas ref={canvasRef} />

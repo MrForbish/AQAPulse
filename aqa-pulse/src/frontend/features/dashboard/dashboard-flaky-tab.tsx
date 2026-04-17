@@ -31,8 +31,8 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
             <MetricCard label="First Flake to Fix" labelMetricKey="timeToFixFlaky" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.timeToFixFlaky} value={props.summary.flakyAnalytics.firstFlakeToFix ? `${props.summary.flakyAnalytics.firstFlakeToFix.days.toFixed(1)} дн` : '—'} />
             <MetricCard label="Исторических flaky" labelMetricKey="topFlakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests} value={String(props.summary.flakyAnalytics.topFlakyTests.length)} hint={formatDelta(props.summary.flakyAnalytics.flakyTrend.delta, 'к прошлому прогону')} />
 
-            <ChartCard title={DASHBOARD_TEXT.metrics.flakyTrend} titleMetricKey="flakyTrend" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTrend} type="bar" data={buildDashboardBarChart(props.summary.charts.flakyTrend.labels, props.summary.charts.flakyTrend.values, '#d97706')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.clusterDistribution} titleMetricKey="clusterDistribution" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} type="bar" data={buildDashboardBarChart(props.summary.charts.errorClusters.labels, props.summary.charts.errorClusters.values, '#ef4444')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.flakyTrend} titleMetricKey="flakyTrend" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTrend} valueHint="количество flaky-тестов" type="bar" data={buildDashboardBarChart(props.summary.charts.flakyTrend.labels, props.summary.charts.flakyTrend.values, '#d97706')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.clusterDistribution} titleMetricKey="clusterDistribution" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.clusterList} valueHint="количество падений в кластере" type="bar" data={buildDashboardBarChart(props.summary.charts.errorClusters.labels, props.summary.charts.errorClusters.values, '#ef4444')} />
 
             <DashboardTablePanel
                 title={DASHBOARD_TEXT.metrics.problematicTests}

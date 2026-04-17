@@ -10,7 +10,7 @@ import {
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
-import { MetricCard, NarrativeList, Panel, SummaryStrip } from '../../shared/ui'
+import { MetricCard, NarrativeList, OverflowText, Panel, SummaryStrip } from '../../shared/ui'
 import { mapChangeTone, mapManagerTone } from './dashboard-manager-helpers'
 import {
     DashboardCurrentRunTestRow,
@@ -107,10 +107,10 @@ export function DashboardLatestRunsSection(props: { summary: DashboardSummary })
             <SummaryStrip
                 className="compact-top"
                 items={[
-                    { label: DASHBOARD_TEXT.history.totalRuns, value: String(props.summary.history.totalRuns) },
-                    { label: DASHBOARD_TEXT.history.previousRun, value: previousRunLabel },
-                    { label: DASHBOARD_TEXT.history.latestSource, value: props.summary.sourceFile, muted: true },
-                    { label: DASHBOARD_TEXT.history.currentBranch, value: `${props.summary.runMetadata.branch ?? '—'} • ${DASHBOARD_TEXT.commitMeta}: ${formatCommit(props.summary.runMetadata.commit)} • ${DASHBOARD_TEXT.authorMeta}: ${props.summary.runMetadata.author ?? '—'}`, muted: true },
+                    { label: DASHBOARD_TEXT.history.totalRuns, value: String(props.summary.history.totalRuns), meta: 'архивных запусков доступно для сравнения' },
+                    { label: DASHBOARD_TEXT.history.previousRun, value: previousRunLabel, meta: props.summary.comparison.previousRun ? `${props.summary.comparison.previousRun.branch ?? '—'} • ${formatCommit(props.summary.comparison.previousRun.commit)}` : DASHBOARD_TEXT.states.noPreviousRun },
+                    { label: DASHBOARD_TEXT.history.latestSource, value: <OverflowText as="span" text={props.summary.sourceFile} lines={2} className="summary-strip-text" />, meta: 'источник свежего dashboard snapshot', muted: true },
+                    { label: DASHBOARD_TEXT.history.currentBranch, value: props.summary.runMetadata.branch ?? '—', meta: `${DASHBOARD_TEXT.commitMeta}: ${formatCommit(props.summary.runMetadata.commit)} • ${DASHBOARD_TEXT.authorMeta}: ${props.summary.runMetadata.author ?? '—'}` },
                 ]}
             />
             <DashboardTable

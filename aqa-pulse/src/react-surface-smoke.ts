@@ -254,7 +254,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     verifyIncidentEvidenceRendering()
     verifyDiagnosticPrimaryFailureHighlight()
-    verifyDiagnosticTreeSuppressesDuplicatedTeardownError()
+    verifyDiagnosticTreeKeepsSecondaryErrorsWithoutFailurePoint()
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
     verifyIncidentAnchorUsesFailureMetadata()
@@ -412,7 +412,7 @@ function verifyDiagnosticPrimaryFailureHighlight(): void {
     renderMarkup('diagnostic primary failure highlight', markup, ['is-primary-failure', 'Основная причина', 'is-failure'])
 }
 
-function verifyDiagnosticTreeSuppressesDuplicatedTeardownError(): void {
+function verifyDiagnosticTreeKeepsSecondaryErrorsWithoutFailurePoint(): void {
     const duplicatedError = 'Error: expect(locator).toBeVisible() failed Locator: getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })'
     const markup = renderToStaticMarkup(
         React.createElement(AttemptStepTree, {
@@ -455,14 +455,19 @@ function verifyDiagnosticTreeSuppressesDuplicatedTeardownError(): void {
                     durationMs: 40,
                     status: 'failed',
                     errorMessage: duplicatedError,
-                    isFailurePoint: true,
+                    isFailurePoint: false,
                 },
             ],
         }),
     )
 
     const traceDisclosureOccurrences = markup.split('data-trace-disclosure-trigger').length - 1
-    assert(traceDisclosureOccurrences === 1, `Duplicated teardown assertion error should produce only one rendered step trace disclosure. Actual disclosures: ${traceDisclosureOccurrences}`)
+    const failedStepBadgeOccurrences = markup.split('Падение на этом шаге').length - 1
+    const secondaryErrorBadgeOccurrences = markup.split('Сопутствующая ошибка').length - 1
+
+    assert(traceDisclosureOccurrences === 2, `Duplicated secondary step errors should stay visible in diagnostics. Actual disclosures: ${traceDisclosureOccurrences}`)
+    assert(failedStepBadgeOccurrences === 1, `Only the actionable step should keep the failure-point badge for duplicated errors. Actual badges: ${failedStepBadgeOccurrences}`)
+    assert(secondaryErrorBadgeOccurrences === 1, `Secondary duplicate errors should render a non-primary badge. Actual badges: ${secondaryErrorBadgeOccurrences}`)
     assert(markup.includes('Worker Cleanup'), 'Worker Cleanup step should still be rendered in diagnostics.')
 }
 

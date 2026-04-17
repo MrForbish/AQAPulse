@@ -831,19 +831,17 @@ function normalizeAttemptSteps(
         ? failedStepTitle.trim().toLowerCase()
         : null
 
-    return steps
+    const normalizedSteps = steps
         .map((step, index) => {
             const title = typeof step.title === 'string' && step.title.trim().length > 0 ? step.title.trim() : 'step'
-            const errorMessage = getReporterErrorMessage(step.error)
+            const rawErrorMessage = getReporterErrorMessage(step.error)
             const depth = typeof step.depth === 'number' && Number.isFinite(step.depth)
                 ? Math.max(0, Math.trunc(step.depth))
                 : 0
             const normalizedStatus = typeof step.status === 'string' && step.status.trim().length > 0
                 ? normalizeStatus(step.status)
                 : null
-            const isFailurePoint = step.failed === true
-                || Boolean(errorMessage)
-                || (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex === index)
+            const isExplicitFailurePoint = (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex === index)
                 || (normalizedFailedTitle !== null && title.toLowerCase() === normalizedFailedTitle)
 
             return {
@@ -853,10 +851,80 @@ function normalizeAttemptSteps(
                 offsetMs: typeof step.offsetMs === 'number' && Number.isFinite(step.offsetMs) ? Math.max(0, step.offsetMs) : null,
                 durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
                 status: normalizedStatus,
-                errorMessage,
-                isFailurePoint,
+                errorMessage: rawErrorMessage,
+                isFailurePoint: step.failed === true || Boolean(rawErrorMessage) || isExplicitFailurePoint,
             }
         })
+
+    return normalizedSteps.map((step, index, allSteps) => {
+        if (!shouldDemoteDuplicatedFailurePoint(step, index, allSteps, failedStepIndex, normalizedFailedTitle)) {
+            return step
+        }
+
+        return {
+            ...step,
+            isFailurePoint: false,
+        }
+    })
+}
+
+function shouldDemoteDuplicatedFailurePoint(
+    step: TestHistoryStep,
+    stepIndex: number,
+    allSteps: TestHistoryStep[],
+    failedStepIndex?: number,
+    normalizedFailedTitle?: string | null,
+): boolean {
+    const normalizedError = step.errorMessage ? normalizeIncidentMessage(step.errorMessage) : null
+    const isExplicitFailurePoint = (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex === stepIndex)
+        || (normalizedFailedTitle !== null && step.title.toLowerCase() === normalizedFailedTitle)
+
+    if (!normalizedError || isExplicitFailurePoint) {
+        return false
+    }
+
+    return allSteps.slice(0, stepIndex).some((candidate, candidateIndex) => {
+        if (!candidate.errorMessage) {
+            return false
+        }
+
+        if (normalizeIncidentMessage(candidate.errorMessage) !== normalizedError) {
+            return false
+        }
+
+        return shouldPreferEarlierDuplicateErrorCandidate(candidate, candidateIndex, step, stepIndex)
+    })
+}
+
+function shouldPreferEarlierDuplicateErrorCandidate(
+    candidate: TestHistoryStep,
+    candidateIndex: number,
+    current: TestHistoryStep,
+    currentIndex: number,
+): boolean {
+    const candidateScore = getComparableDuplicateSignalPriority(candidate, candidateIndex)
+    const currentScore = getComparableDuplicateSignalPriority(current, currentIndex)
+
+    if (candidateScore <= currentScore) {
+        return false
+    }
+
+    if (candidate.title === current.title && candidate.category === current.category && candidate.depth === current.depth) {
+        return false
+    }
+
+    return isGenericLifecycleStep(current)
+        || isGenericTeardownFailureStep(current)
+        || current.category === 'test.step'
+        || current.category === 'hook'
+        || current.depth < candidate.depth
+}
+
+function getComparableDuplicateSignalPriority(step: TestHistoryStep, stepIndex: number): number {
+    return getDiagnosticStepPriority({
+        ...step,
+        isFailurePoint: false,
+    }, stepIndex)
 }
 
 function buildCandidateIdentity(test: ReporterTest): { title: string; file: string; project: string } | null {
@@ -1393,7 +1461,11 @@ function isGenericTeardownFailureStep(step: TestHistoryStep): boolean {
 
 function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {
     const normalizedErrorMessages = unique(
-        [item.errorMessage, ...item.attemptDetails.map((attempt) => attempt.errorMessage)]
+        [
+            item.errorMessage,
+            ...item.attemptDetails.map((attempt) => attempt.errorMessage),
+            ...item.attemptDetails.flatMap((attempt) => attempt.steps.map((step) => step.errorMessage)),
+        ]
             .filter((message): message is string => typeof message === 'string' && message.trim().length > 0)
             .map(normalizeIncidentMessage),
     )

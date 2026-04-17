@@ -1519,25 +1519,25 @@ th {
 
 .diagnostic-step-group-react {
     border-color: rgba(133, 157, 194, 0.16);
-    border-radius: 18px;
+    border-radius: 16px;
     background: rgba(10, 21, 38, 0.74);
 }
 
 .diagnostic-step-group-react > .attachment-preview-summary-react {
-    padding: 16px 18px;
+    padding: 12px 14px;
     border-bottom: 1px solid rgba(133, 157, 194, 0.12);
     background: rgba(12, 23, 41, 0.68);
 }
 
 .diagnostic-step-group-react > .attachment-preview-body-react {
-    gap: 16px;
-    padding: 0 18px 18px;
+    gap: 10px;
+    padding: 0 12px 12px;
 }
 
 .diagnostic-step-scroll-wrap-react {
     max-height: min(860px, 70vh);
     overflow: auto;
-    padding-right: 6px;
+    padding-right: 4px;
     scrollbar-gutter: stable;
 }
 
@@ -1566,11 +1566,11 @@ th {
 .step-meta-row-react {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
 }
 
 .step-meta-row-react.is-primary-cause-row {
-    margin-top: 2px;
+    margin-top: 0;
 }
 
 .attempt-step-group-react,
@@ -1613,14 +1613,14 @@ th {
 }
 
 .diagnostic-step-tree-react {
-    gap: 10px;
+    gap: 6px;
 }
 
 .step-tree-children-react {
     position: relative;
-    margin-top: 8px;
-    padding: 8px 0 0 14px;
-    gap: 8px;
+    margin-top: 6px;
+    padding: 6px 0 0 10px;
+    gap: 6px;
     border-left: 2px solid rgba(133, 157, 194, 0.18);
     background: none;
 }
@@ -1639,9 +1639,9 @@ th {
 .step-tree-children-react > .step-node-leaf-react::before {
     content: '';
     position: absolute;
-    left: -14px;
-    top: 20px;
-    width: 10px;
+    left: -10px;
+    top: 15px;
+    width: 6px;
     height: 2px;
     background: rgba(133, 157, 194, 0.18);
 }
@@ -1650,7 +1650,7 @@ th {
 .step-node-leaf-react {
     position: relative;
     border: 1px solid rgba(133, 157, 194, 0.14);
-    border-radius: 14px;
+    border-radius: 11px;
     background: linear-gradient(180deg, rgba(10, 21, 38, 0.78), rgba(7, 15, 27, 0.72));
     overflow: visible;
 }
@@ -1667,30 +1667,40 @@ th {
 
 .step-node-branch-react.is-failure,
 .step-node-leaf-react.is-failure {
-    border-color: rgba(245, 158, 11, 0.26);
-    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(10, 21, 38, 0.84));
+    border-color: rgba(245, 158, 11, 0.32);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), rgba(10, 21, 38, 0.84));
 }
 
 .step-node-branch-react.is-primary-failure,
 .step-node-leaf-react.is-primary-failure {
-    border-color: rgba(239, 68, 68, 0.5);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.14), rgba(10, 21, 38, 0.88));
-    box-shadow: inset 4px 0 0 #ef4444;
+    border-color: rgba(248, 113, 113, 0.72);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.24), rgba(65, 16, 22, 0.34) 24%, rgba(10, 21, 38, 0.9));
+    box-shadow: inset 5px 0 0 #ef4444, inset 0 1px 0 rgba(254, 202, 202, 0.28);
+}
+
+.step-node-branch-react.is-primary-failure::after,
+.step-node-leaf-react.is-primary-failure::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(254, 202, 202, 0.22);
+    pointer-events: none;
 }
 
 .step-node-summary-react {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 12px;
-    padding: 12px 14px 10px;
+    gap: 8px;
+    padding: 9px 10px 7px;
     cursor: pointer;
     list-style: none;
 }
 
 .step-node-summary-react.is-leaf {
     cursor: default;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
 }
 
 .step-node-summary-react::-webkit-details-marker {
@@ -1701,7 +1711,7 @@ th {
 .step-node-panel-react,
 .step-tree-body-react {
     display: grid;
-    gap: 8px;
+    gap: 5px;
 }
 
 .step-node-summary-main-react,
@@ -1720,8 +1730,13 @@ th {
 .step-node-title-row-react {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
+}
+
+.step-title-react {
+    font-size: 13px;
+    line-height: 1.35;
 }
 
 .step-node-rail-react {
@@ -1729,9 +1744,9 @@ th {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 12px;
-    min-width: 12px;
-    padding-top: 3px;
+    width: 10px;
+    min-width: 10px;
+    padding-top: 2px;
 }
 
 .step-node-rail-react::before {
@@ -1745,20 +1760,26 @@ th {
 .step-node-toggle-react {
     position: relative;
     z-index: 1;
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     flex: 0 0 auto;
-    margin-top: 4px;
+    margin-top: 3px;
     border-right: 2px solid rgba(148, 163, 184, 0.92);
     border-bottom: 2px solid rgba(148, 163, 184, 0.92);
     transform: rotate(-45deg);
     transition: transform 120ms ease;
 }
 
+.step-node-branch-react.is-primary-failure > .step-node-summary-react .step-node-toggle-react,
+.step-node-leaf-react.is-primary-failure .step-node-toggle-react.is-leaf {
+    border-color: rgba(254, 202, 202, 0.98);
+    background: rgba(254, 202, 202, 0.98);
+}
+
 .step-node-toggle-react.is-leaf {
     width: 6px;
     height: 6px;
-    margin-top: 5px;
+    margin-top: 4px;
     border: 0;
     border-radius: 999px;
     background: rgba(148, 163, 184, 0.9);
@@ -1772,33 +1793,45 @@ th {
 .step-node-meta-react {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
 }
 
 .step-node-panel-react {
-    padding: 0 14px 14px 16px;
+    padding: 0 10px 10px 12px;
     border-top: 1px solid rgba(133, 157, 194, 0.12);
     background: linear-gradient(180deg, rgba(8, 17, 31, 0.36), rgba(8, 17, 31, 0.08));
 }
 
 .step-tree-body-react {
-    gap: 8px;
-    padding: 0 0 10px;
+    gap: 5px;
+    padding: 0 0 6px;
 }
 
 .step-primary-cause-badge-react {
     display: inline-flex;
     align-items: center;
-    min-height: 32px;
-    padding: 0 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(254, 202, 202, 0.38);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.24), rgba(127, 29, 29, 0.34));
-    color: #ffe2e2;
-    font-size: 12px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(254, 202, 202, 0.52);
+    background: linear-gradient(180deg, rgba(248, 113, 113, 0.34), rgba(153, 27, 27, 0.42));
+    color: #fff1f1;
+    font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
+}
+
+.step-meta-row-react .meta-badge.is-primary-failure-badge {
+    border-color: rgba(248, 113, 113, 0.42);
+    background: rgba(239, 68, 68, 0.16);
+    color: #ffd1d1;
+}
+
+.step-meta-row-react .meta-badge.is-secondary-error-badge {
+    border-color: rgba(251, 191, 36, 0.28);
+    background: rgba(245, 158, 11, 0.1);
+    color: #f7d68a;
 }
 
 .attachment-grid-react {

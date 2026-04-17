@@ -518,6 +518,7 @@ export const ru = {
             emptyAttempt: 'Для этой попытки нет дополнительных шагов, артефактов или текста ошибки.',
             noCategory: 'Категория не указана',
             failedStepBadge: 'Падение на этом шаге',
+            stepErrorBadge: 'Сопутствующая ошибка',
             openAttachment: 'Открыть артефакт',
             inlineImagePreview: 'Показать изображение внутри diagnostics',
             expandImageHint: 'Нажми на изображение, чтобы открыть его крупнее.',

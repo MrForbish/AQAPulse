@@ -58,11 +58,12 @@ function DiagnosticStepCard(props: {
     const { node } = props
     const hasChildren = node.children.length > 0
     const isPrimaryFailure = isPrimaryFailureStep(node.step, props.runId, props.attemptNumber, props.primaryFailure)
-    const suppressDuplicatedTeardownError = shouldSuppressDuplicatedTeardownError(node.step, node.stepIndex, props.allSteps)
-    const hasOwnFailureSignal = isPrimaryFailure
-        || (!suppressDuplicatedTeardownError && (node.step.isFailurePoint || isUnstableDiagnosticStatus(node.step.status)))
+    const hasOwnFailureSignal = isPrimaryFailure || node.step.isFailurePoint
+    const hasOwnDiagnosticError = Boolean(node.step.errorMessage) || isUnstableDiagnosticStatus(node.step.status)
     const hasFailureInSubtree = hasOwnFailureSignal
         || node.children.some((childNode) => nodeHasFailure(childNode, props.runId, props.attemptNumber, props.allSteps, props.primaryFailure))
+    const hasDiagnosticErrorInSubtree = hasOwnDiagnosticError
+        || node.children.some((childNode) => nodeHasDiagnosticError(childNode))
     const metaBadges = [
         node.step.category ?? HISTORY_TEXT.diagnostics.noCategory,
         formatDuration(node.step.durationMs),
@@ -74,7 +75,7 @@ function DiagnosticStepCard(props: {
 
     if (hasChildren) {
         return (
-            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${isPrimaryFailure ? ' is-primary-failure' : (!suppressDuplicatedTeardownError && hasFailureInSubtree) ? ' is-failure' : ''}`} data-step-depth={node.step.depth} open={hasFailureInSubtree || node.step.depth === 0}>
+            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${isPrimaryFailure ? ' is-primary-failure' : hasFailureInSubtree ? ' is-failure' : ''}`} data-step-depth={node.step.depth} open={hasDiagnosticErrorInSubtree || node.step.depth === 0}>
                 <summary className="step-node-summary-react">
                     <div className="step-node-summary-main-react">
                         <div className="step-node-title-row-react">
@@ -95,12 +96,16 @@ function DiagnosticStepCard(props: {
                         <div className="step-meta-row-react is-primary-cause-row">
                             {primaryCauseBadge}
                         </div>
-                    ) : (!suppressDuplicatedTeardownError && node.step.isFailurePoint) ? (
+                    ) : node.step.isFailurePoint ? (
                         <div className="step-meta-row-react">
-                            <span className="meta-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
+                            <span className="meta-badge is-primary-failure-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
+                        </div>
+                    ) : node.step.errorMessage ? (
+                        <div className="step-meta-row-react">
+                            <span className="meta-badge is-secondary-error-badge">{HISTORY_TEXT.diagnostics.stepErrorBadge}</span>
                         </div>
                     ) : null}
-                    {node.step.errorMessage && !suppressDuplicatedTeardownError ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
+                    {node.step.errorMessage ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
                     <div className="step-tree-children-react" data-step-children-depth={node.step.depth + 1}>
                         {node.children.map((childNode) => (
                             <DiagnosticStepCard key={`${props.attemptNumber}-${childNode.stepIndex}-${childNode.step.title}`} node={childNode} runId={props.runId} attemptNumber={props.attemptNumber} allSteps={props.allSteps} primaryFailure={props.primaryFailure} />
@@ -112,7 +117,7 @@ function DiagnosticStepCard(props: {
     }
 
     return (
-        <article id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-card step-node-leaf-react${isPrimaryFailure ? ' is-primary-failure' : (!suppressDuplicatedTeardownError && node.step.isFailurePoint) ? ' is-failure' : ''}`} data-step-depth={node.step.depth}>
+        <article id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-card step-node-leaf-react${isPrimaryFailure ? ' is-primary-failure' : node.step.isFailurePoint ? ' is-failure' : ''}`} data-step-depth={node.step.depth}>
             <div className="step-tree-body-react">
                 <div className="step-node-summary-react is-leaf">
                     <div className="step-node-summary-main-react">
@@ -132,12 +137,16 @@ function DiagnosticStepCard(props: {
                     <div className="step-meta-row-react compact-top is-primary-cause-row">
                         {primaryCauseBadge}
                     </div>
-                ) : (!suppressDuplicatedTeardownError && node.step.isFailurePoint) ? (
+                ) : node.step.isFailurePoint ? (
                     <div className="step-meta-row-react compact-top">
-                        <span className="meta-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
+                        <span className="meta-badge is-primary-failure-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
+                    </div>
+                ) : node.step.errorMessage ? (
+                    <div className="step-meta-row-react compact-top">
+                        <span className="meta-badge is-secondary-error-badge">{HISTORY_TEXT.diagnostics.stepErrorBadge}</span>
                     </div>
                 ) : null}
-                {node.step.errorMessage && !suppressDuplicatedTeardownError ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
+                {node.step.errorMessage ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
             </div>
         </article>
     )
@@ -156,51 +165,17 @@ function nodeHasFailure(
         errorMessage: string | null
     } | null,
 ): boolean {
-    const suppressDuplicatedTeardownError = shouldSuppressDuplicatedTeardownError(node.step, node.stepIndex, allSteps)
-
     return isPrimaryFailureStep(node.step, runId, attemptNumber, primaryFailure)
-        || (!suppressDuplicatedTeardownError && (node.step.isFailurePoint || isUnstableDiagnosticStatus(node.step.status)))
+        || node.step.isFailurePoint
         || node.children.some((childNode) => nodeHasFailure(childNode, runId, attemptNumber, allSteps, primaryFailure))
 }
 
-function shouldSuppressDuplicatedTeardownError(
-    step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number],
-    stepIndex: number,
-    allSteps: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'],
+function nodeHasDiagnosticError(
+    node: ReturnType<typeof buildDiagnosticStepTree>[number],
 ): boolean {
-    const normalizedError = normalizeDiagnosticError(step.errorMessage)
-
-    if (!normalizedError || !isGenericTeardownStep(step)) {
-        return false
-    }
-
-    return allSteps.slice(0, stepIndex).some((candidate) => {
-        if (isGenericTeardownStep(candidate)) {
-            return false
-        }
-
-        return normalizeDiagnosticError(candidate.errorMessage) === normalizedError
-            && (candidate.isFailurePoint || isUnstableDiagnosticStatus(candidate.status))
-    })
-}
-
-function isGenericTeardownStep(
-    step: TestHistoryResponse['history'][number]['attemptDetails'][number]['steps'][number],
-): boolean {
-    const title = step.title.trim().toLowerCase()
-    const category = (step.category ?? '').trim().toLowerCase()
-
-    return /(^|\W)(after hooks|worker cleanup|cleanup|clean up|teardown|tear down|close browser|close context|close page)($|\W)/.test(title)
-        || /(hook:after|fixture:teardown|afterall|aftereach|cleanup|clean up|teardown)/.test(category)
-        || category === 'hook'
-}
-
-function normalizeDiagnosticError(message: string | null): string | null {
-    if (!(message?.trim())) {
-        return null
-    }
-
-    return message.replace(/\s+/g, ' ').trim()
+    return Boolean(node.step.errorMessage)
+        || isUnstableDiagnosticStatus(node.step.status)
+        || node.children.some((childNode) => nodeHasDiagnosticError(childNode))
 }
 
 function isPrimaryFailureStep(

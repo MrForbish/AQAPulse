@@ -7,6 +7,7 @@ import {
     normalizeDashboardSummary,
     readDashboardSummary,
     type ReporterAttachment,
+    getReporterErrorMessage,
     type DashboardSummary,
     type ReporterRoot,
     type ReporterStep,
@@ -104,9 +105,18 @@ export interface TestHistoryIncidentSummary {
     latestSeenAt: string | null
     latestRecoveryAt: string | null
     latestErrorMessage: string | null
+    failureStepRunId: string | null
+    failureStepAttempt: number | null
+    failureStepOffsetMs: number | null
     failureStepTitle: string | null
     failureStepCategory: string | null
     failureStepErrorMessage: string | null
+}
+
+interface PrimaryFailureStepMatch {
+    runId: string
+    attemptNumber: number
+    step: TestHistoryStep
 }
 
 interface IncidentSignalBundle {
@@ -696,8 +706,8 @@ function getMedianDuration(tests: ReporterTest[]): number {
 function countErrorClusters(tests: ReporterTest[]): number {
     return new Set(
         tests
-            .map((test) => test.errors?.find((error) => typeof error.message === 'string' && error.message.trim().length > 0)?.message
-                ?? test.attempts?.find((attempt) => attempt.error?.message)?.error?.message
+            .map((test) => test.errors?.map(getReporterErrorMessage).find((message): message is string => Boolean(message))
+                ?? getReporterErrorMessage(test.attempts?.find((attempt) => Boolean(getReporterErrorMessage(attempt.error)))?.error)
                 ?? null)
             .filter((message): message is string => Boolean(message)),
     ).size
@@ -737,8 +747,8 @@ function normalizeTestHistoryItem(run: DashboardHistoryEntry, test: ReporterTest
         durationMs: typeof test.durationMs === 'number' ? test.durationMs : 0,
         retries: typeof test.retries === 'number' ? test.retries : 0,
         attempts: attempts.length > 0 ? attempts.length : ((typeof test.retries === 'number' ? test.retries : 0) + 1),
-        errorMessage: test.errors?.find((error) => typeof error.message === 'string' && error.message.trim().length > 0)?.message
-            ?? failedAttempt?.error?.message
+        errorMessage: test.errors?.map(getReporterErrorMessage).find((message): message is string => Boolean(message))
+            ?? getReporterErrorMessage(failedAttempt?.error)
             ?? null,
         attemptDetails: normalizeAttemptDetails(test),
     }
@@ -753,7 +763,7 @@ function normalizeAttemptDetails(test: ReporterTest): TestHistoryAttemptDetail[]
             status: normalizeStatus(test.status),
             durationMs: typeof test.durationMs === 'number' ? test.durationMs : 0,
             startTime: null,
-            errorMessage: test.errors?.find((error) => typeof error.message === 'string' && error.message.trim().length > 0)?.message ?? null,
+            errorMessage: test.errors?.map(getReporterErrorMessage).find((message): message is string => Boolean(message)) ?? null,
             attachments: [],
             steps: [],
         }]
@@ -764,9 +774,7 @@ function normalizeAttemptDetails(test: ReporterTest): TestHistoryAttemptDetail[]
         status: normalizeStatus(attempt.status),
         durationMs: typeof attempt.durationMs === 'number' ? attempt.durationMs : 0,
         startTime: typeof attempt.startTime === 'string' ? attempt.startTime : null,
-        errorMessage: typeof attempt.error?.message === 'string' && attempt.error.message.trim().length > 0
-            ? attempt.error.message.trim()
-            : null,
+        errorMessage: getReporterErrorMessage(attempt.error),
         attachments: normalizeAttemptAttachments(attempt.attachments),
         steps: normalizeAttemptSteps(attempt.steps, attempt.failedStepIndex, attempt.failedStepTitle),
     }))
@@ -803,9 +811,7 @@ function normalizeAttemptSteps(
     return steps
         .map((step, index) => {
             const title = typeof step.title === 'string' && step.title.trim().length > 0 ? step.title.trim() : 'step'
-            const errorMessage = typeof step.error?.message === 'string' && step.error.message.trim().length > 0
-                ? step.error.message.trim()
-                : null
+            const errorMessage = getReporterErrorMessage(step.error)
             const depth = typeof step.depth === 'number' && Number.isFinite(step.depth)
                 ? Math.max(0, Math.trunc(step.depth))
                 : 0
@@ -926,14 +932,14 @@ function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncid
         severity,
         category,
         confidence,
-        summary: buildIncidentNarrative(category, severity, latestSignals, matchingRuns.length, primaryFailureStep),
+        summary: buildIncidentNarrative(category, severity, latestSignals, matchingRuns.length, primaryFailureStep?.step ?? null),
         evidence: buildIncidentEvidence({
             latestUnstable,
             matchingRuns,
             latestRecovery,
             latestSignals,
             affectedAttempts,
-            primaryFailureStep,
+            primaryFailureStep: primaryFailureStep?.step ?? null,
         }),
         unstableRuns: unstableItems.length,
         matchingRuns: matchingRuns.length,
@@ -942,9 +948,12 @@ function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncid
         latestSeenAt: getItemTimestamp(latestUnstable),
         latestRecoveryAt: latestRecovery ? getItemTimestamp(latestRecovery) : null,
         latestErrorMessage,
-        failureStepTitle: primaryFailureStep?.title ?? latestSignals.failureStepTitles[0] ?? null,
-        failureStepCategory: primaryFailureStep?.category ?? latestSignals.failureStepCategories[0] ?? null,
-        failureStepErrorMessage: primaryFailureStep?.errorMessage ?? latestSignals.failureStepErrorMessages[0] ?? null,
+        failureStepRunId: primaryFailureStep?.runId ?? null,
+        failureStepAttempt: primaryFailureStep?.attemptNumber ?? null,
+        failureStepOffsetMs: primaryFailureStep?.step.offsetMs ?? null,
+        failureStepTitle: primaryFailureStep?.step.title ?? latestSignals.failureStepTitles[0] ?? null,
+        failureStepCategory: primaryFailureStep?.step.category ?? latestSignals.failureStepCategories[0] ?? null,
+        failureStepErrorMessage: primaryFailureStep?.step.errorMessage ?? latestSignals.failureStepErrorMessages[0] ?? null,
     }
 }
 
@@ -1100,7 +1109,7 @@ function classifyIncidentCategory(signals: IncidentSignalBundle): TestHistoryInc
 function selectPrimaryFailureStep(
     item: TestHistoryItem,
     preferredAttempt: TestHistoryAttemptDetail | null,
-): TestHistoryStep | null {
+): PrimaryFailureStepMatch | null {
     const attempts = preferredAttempt
         ? [preferredAttempt, ...item.attemptDetails.filter((attempt) => attempt !== preferredAttempt)]
         : item.attemptDetails
@@ -1109,7 +1118,11 @@ function selectPrimaryFailureStep(
         const primaryStep = selectPrimaryFailureStepFromSteps(attempt.steps)
 
         if (primaryStep) {
-            return primaryStep
+            return {
+                runId: item.runId,
+                attemptNumber: attempt.attempt,
+                step: primaryStep,
+            }
         }
     }
 

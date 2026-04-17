@@ -13,6 +13,7 @@ import { ApiStore, selectPrimaryFailureStepForDiagnostics, type TestHistoryRespo
 import type { WorkspaceDescriptor } from './backend/contracts'
 import { FileSystemBackendStorage } from './backend/storage'
 import { loadReporterReport } from './dashboard-utils'
+import { buildStepAnchor, findIncidentStepAnchor } from './shared/test-history-helpers'
 import {
     createEmptyFrontendBootstrap,
     type FrontendBootstrapData,
@@ -250,6 +251,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
+    verifyIncidentAnchorUsesFailureMetadata()
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
     await verifyErrorBoundaryRecovery(reactModule)
 
@@ -986,6 +988,68 @@ function verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise(): void {
     ])
 
     assert(selectedStep?.title === 'Expect "toHaveURL"', `Primary failure-step selection should ignore teardown close-noise after a more specific expect failure. Actual step: ${selectedStep?.title ?? 'null'}`)
+}
+
+function verifyIncidentAnchorUsesFailureMetadata(): void {
+    const history: TestHistoryResponse['history'] = [
+        {
+            runId: 'run-primary',
+            reportTimestamp: '2026-04-16T04:38:37.119Z',
+            generatedAt: '2026-04-16T04:38:37.119Z',
+            branch: 'main',
+            commit: 'abc123',
+            author: 'Smoke Bot',
+            status: 'failed',
+            flaky: false,
+            durationMs: 1200,
+            retries: 0,
+            attempts: 1,
+            errorMessage: 'Error: expect(locator).toBeVisible() failed',
+            attemptDetails: [
+                {
+                    attempt: 1,
+                    status: 'failed',
+                    durationMs: 1200,
+                    startTime: '2026-04-16T04:38:37.119Z',
+                    errorMessage: 'Error: expect(locator).toBeVisible() failed',
+                    attachments: [],
+                    steps: [
+                        {
+                            title: 'Expect "toBeVisible"',
+                            category: 'expect',
+                            depth: 2,
+                            offsetMs: 5010,
+                            durationMs: 5000,
+                            status: 'failed',
+                            errorMessage: 'Error: expect(locator).toBeVisible() failed Locator: getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })',
+                            isFailurePoint: true,
+                        },
+                        {
+                            title: 'Expect "toBeVisible"',
+                            category: 'expect',
+                            depth: 2,
+                            offsetMs: 880,
+                            durationMs: 200,
+                            status: 'passed',
+                            errorMessage: null,
+                            isFailurePoint: false,
+                        },
+                    ],
+                },
+            ],
+        },
+    ]
+
+    const anchor = findIncidentStepAnchor(history, {
+        failureStepTitle: 'Expect "toBeVisible"',
+        failureStepCategory: 'expect',
+        failureStepErrorMessage: 'Error: expect(locator).toBeVisible() failed Locator: getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })',
+        failureStepRunId: 'run-primary',
+        failureStepAttempt: 1,
+        failureStepOffsetMs: 5010,
+    })
+
+    assert(anchor === buildStepAnchor('run-primary', 1, 0), `Incident failure-step anchor should use run/attempt/offset metadata to target the exact duplicate step. Actual anchor: ${anchor ?? 'null'}`)
 }
 
 async function verifyTestHistoryAttachmentMarkdownPreview(

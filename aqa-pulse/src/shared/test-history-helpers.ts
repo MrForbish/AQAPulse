@@ -245,9 +245,16 @@ export function buildDiagnosticStepTree(
 
 export function findIncidentStepAnchor(
     history: TestHistoryResponse['history'],
-    failureStepTitle: string | null,
+    input: {
+        failureStepTitle: string | null
+        failureStepCategory?: string | null
+        failureStepErrorMessage?: string | null
+        failureStepRunId?: string | null
+        failureStepAttempt?: number | null
+        failureStepOffsetMs?: number | null
+    },
 ): string | null {
-    const normalizedTarget = normalizeAnchorLookupValue(failureStepTitle)
+    const normalizedTarget = normalizeAnchorLookupValue(input.failureStepTitle)
 
     if (!normalizedTarget) {
         return null
@@ -255,21 +262,59 @@ export function findIncidentStepAnchor(
 
     const latestRun = history[0]
     const latestUnstable = getUnstableHistoryItems(history)[0]
-    const candidates = [latestRun, latestUnstable].filter(
+    const scopedCandidates = typeof input.failureStepRunId === 'string' && input.failureStepRunId.length > 0
+        ? history.filter((item) => item.runId === input.failureStepRunId)
+        : []
+    const candidates = (scopedCandidates.length > 0 ? scopedCandidates : [latestRun, latestUnstable]).filter(
         (item, index, collection): item is NonNullable<typeof item> => Boolean(item) && collection.findIndex((candidate) => candidate?.runId === item?.runId) === index,
     )
+    const normalizedCategory = normalizeAnchorLookupValue(input.failureStepCategory ?? null)
+    const normalizedErrorMessage = normalizeAnchorLookupValue(input.failureStepErrorMessage ?? null)
+    let bestMatch: { anchor: string; score: number } | null = null
 
     for (const item of candidates) {
         for (const attempt of item.attemptDetails) {
+            if (typeof input.failureStepAttempt === 'number' && attempt.attempt !== input.failureStepAttempt) {
+                continue
+            }
+
             for (const [stepIndex, step] of attempt.steps.entries()) {
-                if (normalizeAnchorLookupValue(step.title) === normalizedTarget) {
-                    return buildStepAnchor(item.runId, attempt.attempt, stepIndex)
+                if (normalizeAnchorLookupValue(step.title) !== normalizedTarget) {
+                    continue
+                }
+
+                let score = 1
+
+                if (typeof input.failureStepOffsetMs === 'number' && step.offsetMs === input.failureStepOffsetMs) {
+                    score += 16
+                }
+
+                if (normalizedCategory && normalizeAnchorLookupValue(step.category) === normalizedCategory) {
+                    score += 8
+                }
+
+                if (normalizedErrorMessage && normalizeAnchorLookupValue(step.errorMessage) === normalizedErrorMessage) {
+                    score += 12
+                }
+
+                if (typeof input.failureStepAttempt === 'number' && attempt.attempt === input.failureStepAttempt) {
+                    score += 10
+                }
+
+                if (typeof input.failureStepRunId === 'string' && item.runId === input.failureStepRunId) {
+                    score += 10
+                }
+
+                const anchor = buildStepAnchor(item.runId, attempt.attempt, stepIndex)
+
+                if (!bestMatch || score > bestMatch.score) {
+                    bestMatch = { anchor, score }
                 }
             }
         }
     }
 
-    return null
+    return bestMatch?.anchor ?? null
 }
 
 export function getAttachmentReference(attachment: TestHistoryAttachment): string {

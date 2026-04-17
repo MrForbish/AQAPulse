@@ -47,10 +47,12 @@ export interface ReporterLocation {
     column?: number
 }
 
-export interface ReporterError {
+export interface ReporterErrorObject {
     message?: string
     stack?: string
 }
+
+export type ReporterError = ReporterErrorObject | string
 
 export interface ReporterAttachment {
     name?: string
@@ -485,7 +487,19 @@ function resolveReporterFailedStepIndex(attempt: ReporterAttempt, steps: Reporte
 }
 
 function hasReporterErrorMessage(error: ReporterError | undefined): boolean {
-    return typeof error?.message === 'string' && error.message.trim().length > 0
+    return Boolean(getReporterErrorMessage(error))
+}
+
+export function getReporterErrorMessage(error: ReporterError | undefined | null): string | null {
+    if (typeof error === 'string' && error.trim().length > 0) {
+        return error.trim()
+    }
+
+    if (error && typeof error === 'object' && typeof error.message === 'string' && error.message.trim().length > 0) {
+        return error.message.trim()
+    }
+
+    return null
 }
 
 function normalizeReporterStatus(status: string | undefined): string {
@@ -903,7 +917,7 @@ function getSeverityScore(test: ReporterTest, failureRate: number): number {
 }
 
 function extractErrorMessage(test: ReporterTest): string | null {
-    const directError = firstNonEmpty((test.errors ?? []).map((error) => error.message))
+    const directError = firstNonEmpty((test.errors ?? []).map((error) => getReporterErrorMessage(error) ?? undefined))
 
     if (directError) {
         return directError
@@ -912,7 +926,7 @@ function extractErrorMessage(test: ReporterTest): string | null {
     return firstNonEmpty(
         (test.attempts ?? [])
             .filter((attempt) => ['failed', 'timedout', 'interrupted'].includes(getAttemptStatus(attempt.status)))
-            .map((attempt) => attempt.error?.message),
+            .map((attempt) => getReporterErrorMessage(attempt.error) ?? undefined),
     )
 }
 

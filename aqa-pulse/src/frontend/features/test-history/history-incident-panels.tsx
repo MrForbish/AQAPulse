@@ -19,7 +19,14 @@ export function IncidentSummaryPanel(props: {
     const failureStepTitle = props.incidentSummary.failureStepTitle
     const failureStepCategory = props.incidentSummary.failureStepCategory
     const failureStepValue = failureStepTitle ?? failureStepCategory ?? HISTORY_TEXT.incident.notCaptured
-    const failureStepAnchor = findIncidentStepAnchor(props.history, props.incidentSummary.failureStepTitle)
+    const failureStepAnchor = findIncidentStepAnchor(props.history, {
+        failureStepTitle,
+        failureStepCategory,
+        failureStepErrorMessage: props.incidentSummary.failureStepErrorMessage,
+        failureStepRunId: props.incidentSummary.failureStepRunId,
+        failureStepAttempt: props.incidentSummary.failureStepAttempt,
+        failureStepOffsetMs: props.incidentSummary.failureStepOffsetMs,
+    })
 
     return (
         <Panel

@@ -101,6 +101,14 @@ export function DashboardCurrentRunTestsBrowserSection(props: { summary: Dashboa
 
 export function DashboardLatestRunsSection(props: { summary: DashboardSummary }): React.JSX.Element {
     const previousRunLabel = props.summary.comparison.previousRun ? formatDate(props.summary.comparison.previousRun.reportTimestamp ?? props.summary.comparison.previousRun.generatedAt) : DASHBOARD_TEXT.states.noPreviousRunShort
+    const previousRunTitle = props.summary.comparison.mode === 'comparable' ? 'Сопоставимый прогон' : DASHBOARD_TEXT.history.previousRun
+    const previousRunMeta = props.summary.comparison.previousRun
+        ? [
+            props.summary.comparison.mode === 'comparable' && props.summary.comparison.scopeLabel ? `Поток: ${props.summary.comparison.scopeLabel}` : null,
+            props.summary.comparison.previousRun.branch ?? '—',
+            formatCommit(props.summary.comparison.previousRun.commit),
+        ].filter(Boolean).join(' • ')
+        : DASHBOARD_TEXT.states.noPreviousRun
 
     return (
         <Panel title={DASHBOARD_TEXT.metrics.latestRuns} titleMetricKey="latestRuns" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.recentRuns} className="span-2">
@@ -108,7 +116,7 @@ export function DashboardLatestRunsSection(props: { summary: DashboardSummary })
                 className="compact-top"
                 items={[
                     { label: DASHBOARD_TEXT.history.totalRuns, value: String(props.summary.history.totalRuns), meta: 'архивных запусков доступно для сравнения' },
-                    { label: DASHBOARD_TEXT.history.previousRun, value: previousRunLabel, meta: props.summary.comparison.previousRun ? `${props.summary.comparison.previousRun.branch ?? '—'} • ${formatCommit(props.summary.comparison.previousRun.commit)}` : DASHBOARD_TEXT.states.noPreviousRun },
+                    { label: previousRunTitle, value: previousRunLabel, meta: previousRunMeta },
                     { label: DASHBOARD_TEXT.history.latestSource, value: <OverflowText as="span" text={props.summary.sourceFile} lines={2} className="summary-strip-text" />, meta: 'источник свежего dashboard snapshot', muted: true },
                     { label: DASHBOARD_TEXT.history.currentBranch, value: props.summary.runMetadata.branch ?? '—', meta: `${DASHBOARD_TEXT.commitMeta}: ${formatCommit(props.summary.runMetadata.commit)} • ${DASHBOARD_TEXT.authorMeta}: ${props.summary.runMetadata.author ?? '—'}` },
                 ]}

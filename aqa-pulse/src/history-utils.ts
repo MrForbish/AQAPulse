@@ -8,6 +8,8 @@ export interface DashboardHistoryEntry {
     reportTimestamp: string | null
     generatedAt: string
     sourceFile: string
+    comparisonKey: string | null
+    comparisonLabel: string | null
     branch: string | null
     commit: string | null
     author: string | null
@@ -40,6 +42,8 @@ export interface ArchivedRunMetadata {
     reportTimestamp: string | null
     generatedAt: string
     sourceFile: string
+    comparisonKey: string | null
+    comparisonLabel: string | null
     branch: string | null
     commit: string | null
     author: string | null
@@ -96,6 +100,8 @@ function normalizeHistoryEntry(run: Partial<DashboardHistoryEntry>): DashboardHi
         reportTimestamp: typeof run.reportTimestamp === 'string' ? run.reportTimestamp : null,
         generatedAt: typeof run.generatedAt === 'string' ? run.generatedAt : new Date().toISOString(),
         sourceFile: typeof run.sourceFile === 'string' ? run.sourceFile : 'unknown',
+        comparisonKey: typeof run.comparisonKey === 'string' ? run.comparisonKey : null,
+        comparisonLabel: typeof run.comparisonLabel === 'string' ? run.comparisonLabel : null,
         branch: typeof run.branch === 'string' ? run.branch : null,
         commit: typeof run.commit === 'string' ? run.commit : null,
         author: typeof run.author === 'string' ? run.author : null,
@@ -163,6 +169,8 @@ export function archiveHistoryRun(
         reportTimestamp: entry.reportTimestamp,
         generatedAt: entry.generatedAt,
         sourceFile: entry.sourceFile,
+        comparisonKey: entry.comparisonKey,
+        comparisonLabel: entry.comparisonLabel,
         branch: entry.branch,
         commit: entry.commit,
         author: entry.author,

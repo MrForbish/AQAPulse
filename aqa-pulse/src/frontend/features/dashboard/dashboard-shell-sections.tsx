@@ -89,12 +89,13 @@ export function DashboardMetricsSection(props: {
     summary: DashboardSummary
 }): React.JSX.Element {
     const clusteredFailures = props.summary.errorClusters.reduce((total, cluster) => total + cluster.count, 0)
+    const comparisonMode = props.summary.comparison.mode
 
     return (
         <section className="metrics-grid">
             <MetricCard label={DASHBOARD_TEXT.metrics.passRate} labelMetricKey="passRate" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.passRate} value={formatPercent(props.summary.kpis.passRate)} tone="good" hint={`${props.summary.kpis.passedTests} / ${props.summary.kpis.totalTests}`} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.failedTests} labelMetricKey="failedTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.failedTests} value={String(props.summary.kpis.failedTests)} tone={props.summary.kpis.failedTests > 0 ? 'danger' : 'default'} hint={formatDelta(props.summary.trend.failedTestsDelta, 'падений')} />
-            <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTests} value={String(props.summary.kpis.flakyTests)} tone={props.summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(props.summary.trend.flakyTestsDelta, 'flaky')} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.failedTests} labelMetricKey="failedTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.failedTests} value={String(props.summary.kpis.failedTests)} tone={props.summary.kpis.failedTests > 0 ? 'danger' : 'default'} hint={formatDelta(props.summary.trend.failedTestsDelta, 'падений', comparisonMode)} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTests} value={String(props.summary.kpis.flakyTests)} tone={props.summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(props.summary.trend.flakyTestsDelta, 'flaky', comparisonMode)} />
             <MetricCard label={DASHBOARD_TEXT.metrics.runDuration} labelMetricKey="runDuration" labelTooltip={`${DASHBOARD_METRIC_DESCRIPTIONS.runDuration} ${DASHBOARD_METRIC_DESCRIPTIONS.medianDuration}`} value={formatDuration(props.summary.kpis.totalDurationMs)} hint={formatDuration(props.summary.kpis.medianDurationMs)} />
             <MetricCard
                 label="Паттерны падений"

@@ -88,17 +88,19 @@ export function getScoreTone(value: number): DashboardMetricTone {
     return 'danger'
 }
 
-export function formatDelta(value: number | null, label: string): string {
+export function formatDelta(value: number | null, label: string, comparisonMode: DashboardSummary['comparison']['mode'] = 'adjacent'): string {
     if (value === null) {
-        return DASHBOARD_TEXT.states.noPreviousRun
+        return comparisonMode === 'comparable' ? 'Нет сопоставимого прогона для сравнения' : DASHBOARD_TEXT.states.noPreviousRun
     }
 
     if (value === 0) {
-        return DASHBOARD_TEXT.states.noChanges
+        return comparisonMode === 'comparable' ? 'Без изменений к сопоставимому прогону' : DASHBOARD_TEXT.states.noChanges
     }
 
     const prefix = value > 0 ? '+' : ''
-    return `${prefix}${value} ${label}`
+    return comparisonMode === 'comparable'
+        ? `${prefix}${value} ${label} к сопоставимому прогону`
+        : `${prefix}${value} ${label}`
 }
 
 export function formatPerformancePhaseLabel(label: string): string {

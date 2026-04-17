@@ -2,6 +2,7 @@ import {
     buildAdvancedMetricsFromArchivedRuns,
     buildDashboardSummary,
     collectCurrentRunTests,
+    deriveDashboardRunComparisonIdentity,
     type DashboardAvailableFilters,
     type DashboardFilters,
     normalizeDashboardSummary,
@@ -613,9 +614,12 @@ function buildFilteredHistoryEntry(run: DashboardHistoryEntry, report: ReporterR
     const totalTests = tests.length
     const totalDurationMs = sumDurations(tests)
     const medianDurationMs = getMedianDuration(tests)
+    const comparisonIdentity = deriveDashboardRunComparisonIdentity(report, run.sourceFile)
 
     return {
         ...run,
+        comparisonKey: comparisonIdentity.key,
+        comparisonLabel: comparisonIdentity.label,
         totalTests,
         passedTests,
         failedTests,

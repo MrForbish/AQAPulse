@@ -66,15 +66,15 @@ export function buildDashboardDoughnutChart(labels: string[], values: number[]):
     }
 }
 
-export function formatDashboardDurationDelta(value: number | null): string {
+export function formatDashboardDurationDelta(value: number | null, comparisonMode: 'adjacent' | 'comparable' = 'adjacent'): string {
     if (value === null) {
-        return DASHBOARD_TEXT.states.noPreviousRun
+        return comparisonMode === 'comparable' ? 'Нет сопоставимого прогона для сравнения' : DASHBOARD_TEXT.states.noPreviousRun
     }
 
     if (value === 0) {
-        return DASHBOARD_TEXT.states.noChanges
+        return comparisonMode === 'comparable' ? 'Без изменений к сопоставимому прогону' : DASHBOARD_TEXT.states.noChanges
     }
 
     const prefix = value > 0 ? '+' : ''
-    return `${prefix}${value.toFixed(1)}% к прошлому прогону`
+    return `${prefix}${value.toFixed(1)}% ${comparisonMode === 'comparable' ? 'к сопоставимому прогону' : 'к прошлому прогону'}`
 }

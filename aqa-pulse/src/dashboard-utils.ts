@@ -331,6 +331,13 @@ export interface DashboardManagerSummary {
     changes: DashboardManagerChange[]
 }
 
+export type DashboardComparisonMode = 'adjacent' | 'comparable'
+
+export interface DashboardRunComparisonIdentity {
+    key: string
+    label: string | null
+}
+
 export interface DashboardSummary {
     generatedAt: string
     sourceFile: string
@@ -367,6 +374,9 @@ export interface DashboardSummary {
     comparison: {
         currentRun: DashboardHistoryEntry | null
         previousRun: DashboardHistoryEntry | null
+        previousOverallRun: DashboardHistoryEntry | null
+        mode: DashboardComparisonMode
+        scopeLabel: string | null
     }
     history: {
         totalRuns: number
@@ -382,6 +392,115 @@ export interface DashboardSummary {
 }
 
 const ANSI_PATTERN = /\u001B\[[0-9;]*m/g
+
+export function deriveDashboardRunComparisonIdentity(report: ReporterRoot, sourceFile: string): DashboardRunComparisonIdentity {
+    const projects = collectComparisonProjects(report)
+
+    if (projects.length === 1) {
+        return {
+            key: `project:${projects[0]}`,
+            label: projects[0],
+        }
+    }
+
+    if (projects.length > 1) {
+        return {
+            key: `projects:${projects.join('|')}`,
+            label: projects.join(' + '),
+        }
+    }
+
+    const normalizedSource = normalizeSourceFileForComparison(sourceFile)
+    return {
+        key: `source:${normalizedSource}`,
+        label: path.basename(sourceFile),
+    }
+}
+
+interface ResolvedComparisonBaseline {
+    currentRun: DashboardHistoryEntry | null
+    previousRun: DashboardHistoryEntry | null
+    previousOverallRun: DashboardHistoryEntry | null
+    mode: DashboardComparisonMode
+    scopeLabel: string | null
+}
+
+function resolveComparisonBaseline(historyRuns: DashboardHistoryEntry[]): ResolvedComparisonBaseline {
+    const currentRun = historyRuns[historyRuns.length - 1] ?? null
+    const previousOverallRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
+
+    if (!currentRun) {
+        return {
+            currentRun: null,
+            previousRun: null,
+            previousOverallRun: null,
+            mode: 'adjacent',
+            scopeLabel: null,
+        }
+    }
+
+    const currentComparisonKey = getHistoryRunComparisonKey(currentRun)
+    let previousComparableRun: DashboardHistoryEntry | null = null
+
+    if (currentComparisonKey) {
+        for (let index = historyRuns.length - 2; index >= 0; index -= 1) {
+            const candidate = historyRuns[index]
+
+            if (getHistoryRunComparisonKey(candidate) === currentComparisonKey) {
+                previousComparableRun = candidate
+                break
+            }
+        }
+    }
+
+    return {
+        currentRun,
+        previousRun: previousComparableRun ?? previousOverallRun,
+        previousOverallRun,
+        mode: previousComparableRun && previousOverallRun && previousComparableRun.id !== previousOverallRun.id ? 'comparable' : 'adjacent',
+        scopeLabel: currentRun.comparisonLabel ?? previousComparableRun?.comparisonLabel ?? null,
+    }
+}
+
+function getHistoryRunComparisonKey(run: DashboardHistoryEntry): string | null {
+    if (run.comparisonKey) {
+        return run.comparisonKey
+    }
+
+    const normalizedSource = normalizeSourceFileForComparison(run.sourceFile)
+    return normalizedSource.length > 0 ? `source:${normalizedSource}` : null
+}
+
+function collectComparisonProjects(report: ReporterRoot): string[] {
+    const environmentProjects = (report.environment?.projects ?? [])
+        .map(normalizeComparisonToken)
+        .filter((project): project is string => project.length > 0)
+
+    if (environmentProjects.length > 0) {
+        return [...new Set(environmentProjects)].sort()
+    }
+
+    return [...new Set(
+        (report.tests ?? [])
+            .map((test) => normalizeComparisonToken(test.project))
+            .filter((project): project is string => project.length > 0),
+    )].sort()
+}
+
+function normalizeComparisonToken(value: string | undefined): string {
+    return (value ?? '').trim().toLowerCase()
+}
+
+function normalizeSourceFileForComparison(sourceFile: string): string {
+    const fileName = path.basename(sourceFile, path.extname(sourceFile)).toLowerCase()
+
+    return fileName
+        .replace(/\b(previous|prev|latest|current|last)\b/g, ' ')
+        .replace(/\b\d{4}[-_]\d{2}[-_]\d{2}(?:[t_ -]?\d{2}[-_:]?\d{2}(?:[-_:]?\d{2})?)?\b/g, ' ')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+}
 
 export function loadReporterReport(reportPath: string): ReporterRoot {
     const report = readJsonFile<ReporterRoot>(reportPath, 'JSON-репорт Playwright')
@@ -555,6 +674,13 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
     const currentRunTests = summary.currentRunTests ?? recoverCurrentRunTestsFromSource(summary.sourceFile)
     const topProblematicTests = summary.topProblematicTests ?? []
     const errorClusters = summary.errorClusters ?? []
+    const normalizedComparison = {
+        currentRun: summary.comparison?.currentRun ?? null,
+        previousRun: summary.comparison?.previousRun ?? null,
+        previousOverallRun: summary.comparison?.previousOverallRun ?? summary.comparison?.previousRun ?? null,
+        mode: summary.comparison?.mode ?? 'adjacent',
+        scopeLabel: summary.comparison?.scopeLabel ?? null,
+    }
 
     return {
         ...summary,
@@ -562,9 +688,11 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
         currentRunTests,
         topProblematicTests,
         errorClusters,
+        comparison: normalizedComparison,
         managerSummary: summary.managerSummary ?? buildManagerSummary({
             kpis: summary.kpis,
             trend: summary.trend,
+            comparison: normalizedComparison,
             historyTotalRuns: summary.history.totalRuns,
             performance: summary.performance,
             flakyAnalytics: summary.flakyAnalytics,
@@ -620,8 +748,9 @@ export function buildDashboardSummary(
         .sort((left, right) => safeNumber(right.durationMs) - safeNumber(left.durationMs))
         .slice(0, 5)
     const recentRuns = historyRuns.slice(-10)
-    const currentRun = recentRuns.length > 0 ? recentRuns[recentRuns.length - 1] : null
-    const previousRun = recentRuns.length > 1 ? recentRuns[recentRuns.length - 2] : null
+    const comparisonBaseline = resolveComparisonBaseline(historyRuns)
+    const currentRun = comparisonBaseline.currentRun
+    const previousRun = comparisonBaseline.previousRun
     const resolvedAdvancedMetrics = advancedMetrics ?? buildFallbackAdvancedMetrics(tests, historyRuns, passRate, flakyTests, totalDurationMs)
     const topProblematicTests = collectTopProblematicTests(tests)
     const managerSummary = buildManagerSummary({
@@ -645,6 +774,13 @@ export function buildDashboardSummary(
             failedTestsDelta: previousRun ? failedTests - previousRun.failedTests : null,
             flakyTestsDelta: previousRun ? flakyTests - previousRun.flakyTests : null,
             durationMsDelta: previousRun ? totalDurationMs - previousRun.totalDurationMs : null,
+        },
+        comparison: {
+            currentRun,
+            previousRun,
+            previousOverallRun: comparisonBaseline.previousOverallRun,
+            mode: comparisonBaseline.mode,
+            scopeLabel: comparisonBaseline.scopeLabel,
         },
         historyTotalRuns: historyRuns.length,
         performance: resolvedAdvancedMetrics.performance,
@@ -729,6 +865,9 @@ export function buildDashboardSummary(
         comparison: {
             currentRun,
             previousRun,
+            previousOverallRun: comparisonBaseline.previousOverallRun,
+            mode: comparisonBaseline.mode,
+            scopeLabel: comparisonBaseline.scopeLabel,
         },
         history: {
             totalRuns: historyRuns.length,
@@ -780,7 +919,8 @@ export function buildAdvancedMetricsFromArchivedRuns(
         .filter((durationMs) => durationMs > 0)
     const performanceMetrics = buildPerformanceMetrics(report, historyRuns)
 
-    const previousRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
+    const comparisonBaseline = resolveComparisonBaseline(historyRuns)
+    const previousRun = comparisonBaseline.previousRun
 
     const flakyTrend = {
         currentFlakyTests: historyRuns[historyRuns.length - 1]?.flakyTests ?? tests.filter((test) => Boolean(test.flaky)).length,
@@ -1039,7 +1179,7 @@ function buildPerformanceMetrics(
         .map((test) => safeNumber(test.durationMs))
         .filter((durationMs) => durationMs > 0)
     const totalDurationMs = report.durationMs ?? sum(tests.map((test) => safeNumber(test.durationMs)))
-    const previousRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
+    const previousRun = resolveComparisonBaseline(historyRuns).previousRun
 
     return {
         p95DurationMs: getPercentile(durationValues, 95),
@@ -1450,7 +1590,7 @@ function buildFallbackAdvancedMetrics(
     flakyTests: number,
     totalDurationMs: number,
 ): DashboardAdvancedMetrics {
-    const previousRun = historyRuns.length > 1 ? historyRuns[historyRuns.length - 2] : null
+    const previousRun = resolveComparisonBaseline(historyRuns).previousRun
     const performanceMetrics = buildPerformanceMetrics({ tests, durationMs: totalDurationMs }, historyRuns)
 
     return {
@@ -1674,6 +1814,7 @@ function buildEmptyCurrentRunTests(): DashboardCurrentRunTests {
 function buildManagerSummary(input: {
     kpis: DashboardKpis
     trend: DashboardSummary['trend']
+    comparison: DashboardSummary['comparison']
     historyTotalRuns: number
     performance: DashboardAdvancedMetrics['performance']
     flakyAnalytics: DashboardAdvancedMetrics['flakyAnalytics']
@@ -1767,7 +1908,7 @@ function buildManagerSummary(input: {
             severity: durationDeltaPercent >= 25 || slowestDurationSeconds >= 90 ? 'critical' : 'warning',
             title: 'Пайплайн теряет скорость',
             value: durationDeltaPercent > 0
-                ? `${roundToOneDigit(durationDeltaPercent)}% к прошлому прогону`
+                ? `${roundToOneDigit(durationDeltaPercent)}% ${input.comparison.mode === 'comparable' ? 'к сопоставимому прогону' : 'к прошлому прогону'}`
                 : formatDuration(slowestTest.durationMs),
             details: `Самый медленный тест: ${shorten(slowestTest.title, 44)} • ${formatDuration(slowestTest.durationMs)}.`,
             testTitle: slowestTest.title,

@@ -103,6 +103,8 @@ export class PostgresWorkspaceRunStorage implements WorkspaceRunStorage, Dashboa
             reportTimestamp: entry.reportTimestamp,
             generatedAt: entry.generatedAt,
             sourceFile: entry.sourceFile,
+            comparisonKey: entry.comparisonKey,
+            comparisonLabel: entry.comparisonLabel,
             branch: entry.branch,
             commit: entry.commit,
             author: entry.author,

@@ -12,7 +12,8 @@ import { HashRouter, MemoryRouter, Route, Routes, useParams } from 'react-router
 import { ApiStore, selectPrimaryFailureStepForDiagnostics, type TestHistoryResponse } from './api-store'
 import type { WorkspaceDescriptor } from './backend/contracts'
 import { FileSystemBackendStorage } from './backend/storage'
-import { loadReporterReport } from './dashboard-utils'
+import { buildDashboardSummary, loadReporterReport, type ReporterRoot } from './dashboard-utils'
+import type { DashboardHistoryEntry } from './history-utils'
 import { buildStepAnchor, findIncidentStepAnchor } from './shared/test-history-helpers'
 import {
     createEmptyFrontendBootstrap,
@@ -256,6 +257,7 @@ async function main(): Promise<void> {
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
     verifyIncidentAnchorUsesFailureMetadata()
+    verifyDashboardComparisonUsesPreviousComparableRun()
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
     await verifyErrorBoundaryRecovery(reactModule)
 
@@ -1176,6 +1178,126 @@ function verifyIncidentAnchorUsesFailureMetadata(): void {
     })
 
     assert(anchor === buildStepAnchor('run-primary', 1, 0), `Incident failure-step anchor should use run/attempt/offset metadata to target the exact duplicate step. Actual anchor: ${anchor ?? 'null'}`)
+}
+
+function verifyDashboardComparisonUsesPreviousComparableRun(): void {
+    const currentUiReport: ReporterRoot = {
+        schemaVersion: 2,
+        timestamp: '2026-04-17T10:00:00.000Z',
+        durationMs: 60000,
+        environment: {
+            projects: ['ui'],
+        },
+        tests: [
+            {
+                title: 'UI smoke 1',
+                status: 'passed',
+                flaky: false,
+                durationMs: 20000,
+                location: { file: 'tests/ui/smoke.spec.ts' },
+                project: 'ui',
+                retries: 0,
+                errors: [],
+                attempts: [{ attempt: 1, status: 'passed', durationMs: 20000 }],
+            },
+            {
+                title: 'UI smoke 2',
+                status: 'failed',
+                flaky: false,
+                durationMs: 40000,
+                location: { file: 'tests/ui/checkout.spec.ts' },
+                project: 'ui',
+                retries: 0,
+                errors: [{ message: 'Checkout failed' }],
+                attempts: [{ attempt: 1, status: 'failed', durationMs: 40000, error: { message: 'Checkout failed' } }],
+            },
+        ],
+    }
+
+    const historyRuns: DashboardHistoryEntry[] = [
+        createSmokeHistoryEntry({
+            id: 'ui-previous',
+            reportTimestamp: '2026-04-17T08:00:00.000Z',
+            sourceFile: 'reports/ui-report.json',
+            comparisonKey: 'project:ui',
+            comparisonLabel: 'ui',
+            totalTests: 2,
+            passedTests: 2,
+            failedTests: 0,
+            passRate: 100,
+            totalDurationMs: 30000,
+        }),
+        createSmokeHistoryEntry({
+            id: 'api-middle',
+            reportTimestamp: '2026-04-17T09:00:00.000Z',
+            sourceFile: 'reports/api-report.json',
+            comparisonKey: 'project:api',
+            comparisonLabel: 'api',
+            totalTests: 3,
+            passedTests: 3,
+            failedTests: 0,
+            passRate: 100,
+            totalDurationMs: 5000,
+        }),
+        createSmokeHistoryEntry({
+            id: 'ui-current',
+            reportTimestamp: '2026-04-17T10:00:00.000Z',
+            sourceFile: 'reports/ui-report.json',
+            comparisonKey: 'project:ui',
+            comparisonLabel: 'ui',
+            totalTests: 2,
+            passedTests: 1,
+            failedTests: 1,
+            passRate: 50,
+            totalDurationMs: 60000,
+        }),
+    ]
+
+    const summary = buildDashboardSummary(currentUiReport, 'reports/ui-report.json', historyRuns, { branch: 'main', commit: 'ui-latest', author: 'Smoke Bot' })
+
+    assert(summary.comparison.previousRun?.id === 'ui-previous', 'Dashboard comparison should pick the previous comparable UI run instead of the adjacent API run.')
+    assert(summary.comparison.previousOverallRun?.id === 'api-middle', 'Dashboard summary should preserve the adjacent run separately from the comparable baseline.')
+    assert(summary.comparison.mode === 'comparable', 'Dashboard summary should mark comparison mode as comparable when streams interleave.')
+    assert(summary.trend.failedTestsDelta === 1, 'Dashboard failed delta should be calculated against the previous comparable UI run.')
+    assert(summary.trend.durationMsDelta === 30000, 'Dashboard duration delta should be calculated against the previous comparable UI run.')
+    assert(summary.performance.durationTrend.deltaPercent === 100, 'Performance duration delta should use the previous comparable UI run.')
+}
+
+function createSmokeHistoryEntry(input: {
+    id: string
+    reportTimestamp: string
+    sourceFile: string
+    comparisonKey: string
+    comparisonLabel: string
+    totalTests: number
+    passedTests: number
+    failedTests: number
+    passRate: number
+    totalDurationMs: number
+}): DashboardHistoryEntry {
+    return {
+        id: input.id,
+        reportTimestamp: input.reportTimestamp,
+        generatedAt: input.reportTimestamp,
+        sourceFile: input.sourceFile,
+        comparisonKey: input.comparisonKey,
+        comparisonLabel: input.comparisonLabel,
+        branch: 'main',
+        commit: input.id,
+        author: 'Smoke Bot',
+        totalTests: input.totalTests,
+        passedTests: input.passedTests,
+        failedTests: input.failedTests,
+        flakyTests: 0,
+        skippedTests: 0,
+        timedOutTests: 0,
+        interruptedTests: 0,
+        passRate: input.passRate,
+        flakyRatio: 0,
+        totalDurationMs: input.totalDurationMs,
+        medianDurationMs: Math.round(input.totalDurationMs / Math.max(input.totalTests, 1)),
+        errorClusterCount: input.failedTests > 0 ? 1 : 0,
+    }
 }
 
 async function verifyTestHistoryAttachmentMarkdownPreview(

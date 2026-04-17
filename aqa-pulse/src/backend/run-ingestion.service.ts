@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import {
     buildAdvancedMetrics,
     buildDashboardSummary,
+    deriveDashboardRunComparisonIdentity,
     enrichReporterReport,
     type DashboardRunMetadata,
     type ReporterAttachment,
@@ -34,11 +35,14 @@ export function ingestReporterRun(options: {
         : buildDefaultSourceFile(options.workspace.slug, enrichedReport)
 
     const summaryWithoutHistory = buildDashboardSummary(enrichedReport, sourceFile, [], runMetadata)
+    const comparisonIdentity = deriveDashboardRunComparisonIdentity(enrichedReport, sourceFile)
     const nextHistoryEntry = {
         id: buildHistoryEntryId(summaryWithoutHistory.reportTimestamp, sourceFile),
         reportTimestamp: summaryWithoutHistory.reportTimestamp,
         generatedAt: summaryWithoutHistory.generatedAt,
         sourceFile,
+        comparisonKey: comparisonIdentity.key,
+        comparisonLabel: comparisonIdentity.label,
         branch: runMetadata.branch,
         commit: runMetadata.commit,
         author: runMetadata.author,

@@ -237,10 +237,12 @@ input {
 }
 
 .overflow-text-react.is-2-line {
+    line-clamp: 2;
     -webkit-line-clamp: 2;
 }
 
 .overflow-text-react.is-3-line {
+    line-clamp: 3;
     -webkit-line-clamp: 3;
 }
 
@@ -470,6 +472,7 @@ input {
     white-space: normal;
     text-overflow: clip;
     -webkit-box-orient: vertical;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
 }
 
@@ -2474,6 +2477,7 @@ th {
     text-overflow: ellipsis;
     color: #ffe4c7;
     -webkit-box-orient: vertical;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
 }
 
@@ -2484,6 +2488,7 @@ th {
     overflow: hidden;
     text-overflow: ellipsis;
     -webkit-box-orient: vertical;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
 }
 

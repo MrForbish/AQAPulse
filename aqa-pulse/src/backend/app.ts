@@ -57,14 +57,49 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
     const workspaceApiKeyGuard = createWorkspaceApiKeyGuard(registry, config)
     const workspaceShellGuard = createWorkspaceUserGuard(registry, config, { unauthorizedResponseMode: 'redirect' })
     const workspaceApiGuard = createWorkspaceUserGuard(registry, config, { unauthorizedResponseMode: 'json' })
-    const createDefaultApiStore = () => new ApiStore({
-        storage: backendStorage.createDashboardReadStorage({
-            summaryPath: path.join(config.distPath, 'dashboard-data.json'),
-            historyPath: path.join(config.distPath, 'history.json'),
-            archiveRootPath: config.archiveRootPath,
-        }),
-        businessAssumptions: config.businessAssumptions,
-    })
+    let defaultApiStore: ApiStore | null = null
+    const workspaceApiStores = new Map<string, ApiStore>()
+    const createDefaultApiStore = () => {
+        if (!defaultApiStore) {
+            defaultApiStore = new ApiStore({
+                storage: backendStorage.createDashboardReadStorage({
+                    summaryPath: path.join(config.distPath, 'dashboard-data.json'),
+                    historyPath: path.join(config.distPath, 'history.json'),
+                    archiveRootPath: config.archiveRootPath,
+                }),
+                businessAssumptions: config.businessAssumptions,
+            })
+        }
+
+        return defaultApiStore
+    }
+    const invalidateDefaultApiStore = () => {
+        defaultApiStore?.invalidateCaches()
+        defaultApiStore = null
+    }
+    const createWorkspaceApiStore = (slug: string) => {
+        ensureWorkspaceReadModelInitialized(slug, backendStorage, config)
+
+        const cachedStore = workspaceApiStores.get(slug)
+
+        if (cachedStore) {
+            return cachedStore
+        }
+
+        const store = new ApiStore({
+            storage: backendStorage.getWorkspaceStorage(slug),
+            businessAssumptions: config.businessAssumptions,
+        })
+
+        workspaceApiStores.set(slug, store)
+        return store
+    }
+    const invalidateWorkspaceApiStore = (slug: string) => {
+        const store = workspaceApiStores.get(slug)
+
+        store?.invalidateCaches()
+        workspaceApiStores.delete(slug)
+    }
     const distPath = config.distPath
     const distAssetsPath = path.resolve(distPath, './assets')
     const frontendDistPath = path.resolve(distPath, './web')
@@ -385,8 +420,10 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
                 if (updatedWorkspace.previousSlug !== updatedWorkspace.workspace.slug) {
                     backendStorage.renameWorkspaceData(updatedWorkspace.previousSlug, updatedWorkspace.workspace.slug)
+                    invalidateWorkspaceApiStore(updatedWorkspace.previousSlug)
                 }
 
+                invalidateWorkspaceApiStore(updatedWorkspace.workspace.slug)
                 ensureWorkspaceReadModelInitialized(updatedWorkspace.workspace.slug, backendStorage, config)
                 registry.recordAdminAudit({
                     action: 'workspace-updated',
@@ -416,6 +453,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             try {
                 const deletedWorkspace = registry.deleteWorkspace(workspace.slug)
                 backendStorage.deleteWorkspaceData(workspace.slug)
+                invalidateWorkspaceApiStore(workspace.slug)
                 registry.recordAdminAudit({
                     action: 'workspace-deleted',
                     actorLabel: actor.label,
@@ -1068,12 +1106,15 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                 businessAssumptions: config.businessAssumptions,
             })
 
+            invalidateWorkspaceApiStore(workspace.slug)
+            invalidateDefaultApiStore()
+
             response.status(202).json(result)
         })
 
         app.get('/w/:slug', workspaceResolver, workspaceShellGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             frontendShell.send(response, {
                 route: { kind: 'dashboard', workspaceSlug: workspace.slug },
                 initialRequestUrl: request.originalUrl,
@@ -1087,7 +1128,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.get('/w/:slug/test/:name', workspaceResolver, workspaceShellGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             const testName = getRouteParam(request, 'name')
             const filters = getTestHistoryFiltersFromRequest(request)
             const payload = store.getTestHistory(testName, filters)
@@ -1111,19 +1152,19 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             response.json(store.getFilteredSummary(getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/runs', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             response.json({ runs: store.getRuns(getFiltersFromRequest(request)) })
         })
 
         app.get('/api/workspaces/:slug/run/:id', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
 
             const runId = getRouteParam(request, 'id')
             const run = store.getRunById(runId)
@@ -1138,25 +1179,25 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.get('/api/workspaces/:slug/flaky', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             response.json(store.getFlakyPayload(getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/errors/clusters', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             response.json(store.getErrorClustersPayload(getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/metrics/cost', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
             response.json(store.getCostMetricsPayload(getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/test/:name', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
+            const store = createWorkspaceApiStore(workspace.slug)
 
             const testName = getRouteParam(request, 'name')
             const payload = store.getTestHistory(testName, getTestHistoryFiltersFromRequest(request))
@@ -1209,15 +1250,6 @@ function isPayloadTooLargeError(error: unknown): boolean {
         || maybeError.status === 413
         || maybeError.statusCode === 413
         || maybeError.message === 'request entity too large'
-}
-
-function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage, config: SaasAppConfig): ApiStore {
-    ensureWorkspaceReadModelInitialized(slug, backendStorage, config)
-
-    return new ApiStore({
-        storage: backendStorage.getWorkspaceStorage(slug),
-        businessAssumptions: config.businessAssumptions,
-    })
 }
 
 /**

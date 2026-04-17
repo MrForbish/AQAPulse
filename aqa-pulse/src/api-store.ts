@@ -178,9 +178,57 @@ export interface TestHistoryConflict {
     }>
 }
 
+const FILTERED_SUMMARY_CACHE_MAX_ENTRIES = 24
+const FILTERED_RUNS_CACHE_MAX_ENTRIES = 24
+const TEST_HISTORY_CACHE_MAX_ENTRIES = 24
+
+class BoundedCache<Key, Value> {
+    private readonly entries = new Map<Key, Value>()
+
+    constructor(private readonly maxEntries: number) {}
+
+    get(key: Key): Value | undefined {
+        if (!this.entries.has(key)) {
+            return undefined
+        }
+
+        const value = this.entries.get(key) as Value
+        this.entries.delete(key)
+        this.entries.set(key, value)
+        return value
+    }
+
+    set(key: Key, value: Value): void {
+        if (this.entries.has(key)) {
+            this.entries.delete(key)
+        }
+
+        this.entries.set(key, value)
+
+        if (this.entries.size <= this.maxEntries) {
+            return
+        }
+
+        const oldestKey = this.entries.keys().next().value as Key | undefined
+
+        if (oldestKey !== undefined) {
+            this.entries.delete(oldestKey)
+        }
+    }
+
+    clear(): void {
+        this.entries.clear()
+    }
+}
+
 export class ApiStore {
     private readonly storage: DashboardReadStorage
     private readonly businessAssumptions: Partial<DashboardBusinessAssumptions> | null
+    private cachedSummary: DashboardSummary | null = null
+    private cachedHistory: DashboardHistory | null = null
+    private readonly filteredSummaryCache = new BoundedCache<string, DashboardSummary>(FILTERED_SUMMARY_CACHE_MAX_ENTRIES)
+    private readonly filteredRunsCache = new BoundedCache<string, DashboardHistoryEntry[]>(FILTERED_RUNS_CACHE_MAX_ENTRIES)
+    private readonly testHistoryCache = new BoundedCache<string, TestHistoryResponse | TestHistoryConflict | null>(TEST_HISTORY_CACHE_MAX_ENTRIES)
 
     constructor(options: ApiStoreOptions = {}) {
         this.storage = options.storage ?? new FileSystemDashboardReadStorage({
@@ -191,7 +239,19 @@ export class ApiStore {
         this.businessAssumptions = options.businessAssumptions ?? null
     }
 
+    invalidateCaches(): void {
+        this.cachedSummary = null
+        this.cachedHistory = null
+        this.filteredSummaryCache.clear()
+        this.filteredRunsCache.clear()
+        this.testHistoryCache.clear()
+    }
+
     getSummary(): DashboardSummary {
+        if (this.cachedSummary) {
+            return this.cachedSummary
+        }
+
         const summary = normalizeDashboardSummary(this.storage.readSummary())
         const history = this.getHistory()
         const latestRun = summary.comparison.currentRun ?? history.runs[history.runs.length - 1] ?? null
@@ -200,30 +260,41 @@ export class ApiStore {
             const rebuiltSummary = this.rebuildSummaryFromArchives(history, latestRun)
 
             if (rebuiltSummary) {
-                return this.applyConfiguredBusinessAssumptions(rebuiltSummary)
+                const configuredSummary = this.applyConfiguredBusinessAssumptions(rebuiltSummary)
+                this.cachedSummary = configuredSummary
+                return configuredSummary
             }
         }
 
         if (summary.currentRunTests.all.length > 0) {
-            return this.applyConfiguredBusinessAssumptions(summary)
+            const configuredSummary = this.applyConfiguredBusinessAssumptions(summary)
+            this.cachedSummary = configuredSummary
+            return configuredSummary
         }
 
         if (!latestRun) {
-            return this.applyConfiguredBusinessAssumptions(summary)
+            const configuredSummary = this.applyConfiguredBusinessAssumptions(summary)
+            this.cachedSummary = configuredSummary
+            return configuredSummary
         }
 
         const runDirectory = this.storage.findArchivedRunDirectory(latestRun.id)
 
         if (!runDirectory) {
-            return this.applyConfiguredBusinessAssumptions(summary)
+            const configuredSummary = this.applyConfiguredBusinessAssumptions(summary)
+            this.cachedSummary = configuredSummary
+            return configuredSummary
         }
 
         const archivedRun = this.storage.readArchivedRunRecord(runDirectory)
 
-        return this.applyConfiguredBusinessAssumptions({
+        const configuredSummary = this.applyConfiguredBusinessAssumptions({
             ...summary,
             currentRunTests: collectCurrentRunTests(archivedRun.data.tests ?? []),
         })
+
+        this.cachedSummary = configuredSummary
+        return configuredSummary
     }
 
     private rebuildSummaryFromArchives(history: DashboardHistory, latestRun: DashboardHistoryEntry): DashboardSummary | null {
@@ -270,10 +341,10 @@ export class ApiStore {
 
     getFilteredSummary(filters: ApiFilters = {}): DashboardSummary {
         const normalizedFilters = normalizeFilters(filters)
+        const cacheKey = buildDashboardFiltersCacheKey(normalizedFilters)
 
         if (!normalizedFilters.branch && !normalizedFilters.project && !normalizedFilters.file) {
             const summary = this.getSummary()
-            const context = this.buildFilteredContext(normalizedFilters)
 
             return this.applyConfiguredBusinessAssumptions({
                 ...summary,
@@ -282,8 +353,14 @@ export class ApiStore {
                     project: null,
                     file: null,
                 },
-                availableFilters: context.availableFilters,
+                availableFilters: summary.availableFilters,
             })
+        }
+
+        const cachedSummary = this.filteredSummaryCache.get(cacheKey)
+
+        if (cachedSummary) {
+            return cachedSummary
         }
 
         const context = this.buildFilteredContext(normalizedFilters)
@@ -291,7 +368,7 @@ export class ApiStore {
         const latest = context.filteredRuns[context.filteredRuns.length - 1] ?? null
 
         if (!latest) {
-            return this.applyConfiguredBusinessAssumptions(buildDashboardSummary(
+            const emptySummary = this.applyConfiguredBusinessAssumptions(buildDashboardSummary(
                 {
                     schemaVersion: baseSummary.schemaVersion ?? undefined,
                     timestamp: undefined,
@@ -313,6 +390,9 @@ export class ApiStore {
                 normalizedFilters,
                 context.availableFilters,
             ))
+
+            this.filteredSummaryCache.set(cacheKey, emptySummary)
+            return emptySummary
         }
 
         const historyEntries = context.filteredRuns.map((run) => run.filteredEntry)
@@ -323,7 +403,7 @@ export class ApiStore {
             latest.run.sourceFile,
         )
 
-        return this.applyConfiguredBusinessAssumptions(buildDashboardSummary(
+        const filteredSummary = this.applyConfiguredBusinessAssumptions(buildDashboardSummary(
             latest.filteredReport,
             latest.run.sourceFile,
             historyEntries,
@@ -336,6 +416,9 @@ export class ApiStore {
             normalizedFilters,
             context.availableFilters,
         ))
+
+        this.filteredSummaryCache.set(cacheKey, filteredSummary)
+        return filteredSummary
     }
 
     private applyConfiguredBusinessAssumptions(summary: DashboardSummary): DashboardSummary {
@@ -345,19 +428,33 @@ export class ApiStore {
     }
 
     getHistory(): DashboardHistory {
-        return this.storage.readHistory()
+        if (!this.cachedHistory) {
+            this.cachedHistory = this.storage.readHistory()
+        }
+
+        return this.cachedHistory
     }
 
     getRuns(filters: ApiFilters = {}): DashboardHistoryEntry[] {
         const normalizedFilters = normalizeFilters(filters)
+        const cacheKey = buildDashboardFiltersCacheKey(normalizedFilters)
 
         if (!normalizedFilters.branch && !normalizedFilters.project && !normalizedFilters.file) {
             return [...this.getHistory().runs].reverse()
         }
 
-        return [...this.buildFilteredContext(normalizedFilters).filteredRuns]
+        const cachedRuns = this.filteredRunsCache.get(cacheKey)
+
+        if (cachedRuns) {
+            return [...cachedRuns]
+        }
+
+        const filteredRuns = [...this.buildFilteredContext(normalizedFilters).filteredRuns]
             .map((run) => run.filteredEntry)
             .reverse()
+
+        this.filteredRunsCache.set(cacheKey, filteredRuns)
+        return [...filteredRuns]
     }
 
     getRunById(id: string): DashboardRunResponse | null {
@@ -418,6 +515,13 @@ export class ApiStore {
 
     getTestHistory(name: string, filters: TestHistoryFilters & ApiFilters = {}): TestHistoryResponse | TestHistoryConflict | null {
         const normalizedFilters = normalizeFilters(filters)
+        const cacheKey = buildTestHistoryCacheKey(name, normalizedFilters)
+        const cachedPayload = this.testHistoryCache.get(cacheKey)
+
+        if (cachedPayload !== undefined) {
+            return cachedPayload
+        }
+
         const history = this.getHistory()
         const matchedRuns: Array<{ run: DashboardHistoryEntry; test: ReporterTest }> = []
         const missingRuns: string[] = []
@@ -463,16 +567,20 @@ export class ApiStore {
         }
 
         if (matchedRuns.length === 0) {
+            this.testHistoryCache.set(cacheKey, null)
             return null
         }
 
         const candidates = [...candidateMap.values()]
 
         if (candidates.length > 1) {
-            return {
+            const conflictPayload = {
                 message: 'Найдено несколько тестов с одинаковым title. Уточни file и/или project через query params.',
                 candidates,
             }
+
+            this.testHistoryCache.set(cacheKey, conflictPayload)
+            return conflictPayload
         }
 
         const [selectedCandidate] = candidates
@@ -489,7 +597,7 @@ export class ApiStore {
         const mtbfFactor = mtbfDays === null ? 0.2 : (mtbfDays < 1 ? 1.0 : (mtbfDays <= 3 ? 0.5 : 0.2))
         const flakyScore = roundToOneDigit((((failRate / 100) * 0.4) + (patternFactor * 0.3) + (mtbfFactor * 0.3)) * 100)
 
-        return {
+        const responsePayload = {
             test: selectedCandidate,
             summary: {
                 totalRuns: historyItems.length,
@@ -506,6 +614,9 @@ export class ApiStore {
             history: historyItems,
             missingRuns,
         }
+
+        this.testHistoryCache.set(cacheKey, responsePayload)
+        return responsePayload
     }
 
     private buildFilteredContext(filters: DashboardFilters): {
@@ -569,6 +680,14 @@ function normalizeFilters(filters: ApiFilters): DashboardFilters {
         project: normalizeString(filters.project),
         file: normalizeString(filters.file),
     }
+}
+
+function buildDashboardFiltersCacheKey(filters: DashboardFilters): string {
+    return [filters.branch ?? '*', filters.project ?? '*', filters.file ?? '*'].join('::')
+}
+
+function buildTestHistoryCacheKey(name: string, filters: DashboardFilters): string {
+    return `${name}::${buildDashboardFiltersCacheKey(filters)}`
 }
 
 function normalizeString(value: string | undefined): string | null {

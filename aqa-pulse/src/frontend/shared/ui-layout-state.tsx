@@ -6,17 +6,7 @@ export interface PageFrameProps {
 }
 
 export function PageFrame(props: PageFrameProps): React.JSX.Element {
-    return (
-        <div className="app-shell">
-            <div className="app-shell-statusbar" aria-hidden="true">
-                <span>LIVE UI</span>
-                <span>ENGINEERING CONSOLE</span>
-                <span>AQA PULSE</span>
-            </div>
-            {props.children}
-            <footer className="app-shell-footer">© AQA Pulse — developed by Maksim Pecherskiy</footer>
-        </div>
-    )
+    return <div className="app-shell">{props.children}</div>
 }
 
 export interface PanelProps {
@@ -33,7 +23,6 @@ export function Panel(props: PanelProps): React.JSX.Element {
         <section className={['panel', props.className].filter(Boolean).join(' ')}>
             {(props.title || props.description) ? (
                 <header className="panel-header">
-                    <div className="panel-kicker">Console block</div>
                     {props.title ? (
                         <h2>
                             <MetricHeading

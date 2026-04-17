@@ -80,6 +80,7 @@ export function DashboardCodeQualityRiskFilesSection(props: { summary: Dashboard
                 'POM',
                 'Assertions',
                 'Waits',
+                'Isolation',
                 'Selectors',
                 'Сигналы',
             ]}
@@ -95,6 +96,7 @@ export function DashboardCodeQualityRiskFilesSection(props: { summary: Dashboard
                     <td>{formatNullablePercent(fileMetric.pomCompliancePercent)}</td>
                     <td>{formatPerTestMetric(fileMetric.assertionDensity)}</td>
                     <td>{formatNullablePercent(fileMetric.waitStrategyScore)}</td>
+                    <td>{formatNullableScore(fileMetric.isolationScore)}</td>
                     <td>{formatNullablePercent(fileMetric.selectorStabilityPercent)}</td>
                     <td>{fileMetric.notableSignals.length > 0 ? fileMetric.notableSignals.join(' • ') : '—'}</td>
                 </tr>

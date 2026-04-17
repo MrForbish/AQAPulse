@@ -1583,18 +1583,25 @@ interface ParsedSourceTestMetric {
     hardWaitCount: number
     stepCount: number
     directLocatorCount: number
+    directPageActionCount: number
     stableSelectorCount: number
     textSelectorCount: number
     fragileSelectorCount: number
+    pomReferenceCount: number
+    pomFixtureReferenceCount: number
+    sharedStateMutationCount: number
     usesPom: boolean
 }
 
 interface ParsedSourceFileAnalysis {
     tests: ParsedSourceTestMetric[]
     hasPomImports: boolean
+    pomImportIdentifiers: string[]
     beforeAllCount: number
+    beforeEachCount: number
     serialModeCount: number
     topLevelMutableStateCount: number
+    topLevelMutableIdentifiers: string[]
 }
 
 interface CodeQualityAggregateResult {
@@ -1607,9 +1614,13 @@ interface CodeQualityAggregateResult {
     totalHardWaits: number
     totalSteps: number
     totalDirectLocators: number
+    totalDirectPageActions: number
     totalStableSelectors: number
     totalTextSelectors: number
     totalFragileSelectors: number
+    totalPomReferences: number
+    totalPomFixtureReferences: number
+    totalSharedStateMutations: number
     smellScore: number | null
     pomCompliancePercent: number | null
     assertionDensity: number | null
@@ -1635,6 +1646,8 @@ const DIRECT_LOCATOR_METHODS = new Set([
 const STABLE_LOCATOR_METHODS = new Set(['getByRole', 'getByLabel', 'getByTestId'])
 const TEXT_LOCATOR_METHODS = new Set(['getByText', 'getByPlaceholder', 'getByAltText', 'getByTitle'])
 const SMART_WAIT_METHODS = new Set(['waitForSelector', 'waitForResponse', 'waitForNavigation', 'waitForURL', 'waitForLoadState'])
+const PAGE_ACTION_METHODS = new Set(['click', 'dblclick', 'tap', 'fill', 'press', 'check', 'uncheck', 'selectOption', 'goto', 'reload', 'setInputFiles', 'dragTo', 'hover'])
+const SHARED_MUTATION_METHODS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'set', 'add', 'delete', 'clear'])
 
 let cachedTypeScriptModule: typeof TypeScript | null | undefined
 
@@ -1729,12 +1742,12 @@ function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string 
             const aggregate = buildCodeQualityAggregate(matchedSourceTests, parsedAnalysis)
 
             driverCounts.hardWaits += aggregate.totalHardWaits
-            driverCounts.directLocators += aggregate.totalDirectLocators
+            driverCounts.directLocators += aggregate.totalDirectLocators + aggregate.totalDirectPageActions
             driverCounts.testsWithoutPom += aggregate.testsWithoutPom
             driverCounts.testsWithoutSteps += aggregate.testsWithoutSteps
             driverCounts.fragileSelectors += aggregate.totalFragileSelectors
             driverCounts.lowAssertionTests += aggregate.lowAssertionTests
-            driverCounts.sharedStateSignals += parsedAnalysis.beforeAllCount + parsedAnalysis.serialModeCount + parsedAnalysis.topLevelMutableStateCount
+            driverCounts.sharedStateSignals += parsedAnalysis.beforeAllCount + parsedAnalysis.serialModeCount + parsedAnalysis.topLevelMutableStateCount + aggregate.totalSharedStateMutations
 
             weightedTotals.smellScore += (aggregate.smellScore ?? 0) * matchedSourceTests.length
             weightedTotals.pomCompliancePercent += (aggregate.pomCompliancePercent ?? 0) * matchedSourceTests.length
@@ -1805,9 +1818,12 @@ function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript
         )
 
         let hasPomImports = false
+        let pomImportIdentifiers = new Set<string>()
         let beforeAllCount = 0
+        let beforeEachCount = 0
         let serialModeCount = 0
         let topLevelMutableStateCount = 0
+        let topLevelMutableIdentifiers = new Set<string>()
         const tests: ParsedSourceTestMetric[] = []
 
         for (const statement of sourceFile.statements) {
@@ -1816,6 +1832,16 @@ function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript
 
                 if (isPomImportPath(importPath)) {
                     hasPomImports = true
+
+                    if (statement.importClause?.name) {
+                        pomImportIdentifiers.add(statement.importClause.name.text)
+                    }
+
+                    if (statement.importClause?.namedBindings && typeScriptModule.isNamedImports(statement.importClause.namedBindings)) {
+                        for (const element of statement.importClause.namedBindings.elements) {
+                            pomImportIdentifiers.add(element.name.text)
+                        }
+                    }
                 }
 
                 continue
@@ -1827,6 +1853,12 @@ function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript
 
                 if (!isConst) {
                     topLevelMutableStateCount += statement.declarationList.declarations.length
+
+                    for (const declaration of statement.declarationList.declarations) {
+                        if (typeScriptModule.isIdentifier(declaration.name)) {
+                            topLevelMutableIdentifiers.add(declaration.name.text)
+                        }
+                    }
                 }
             }
         }
@@ -1834,6 +1866,10 @@ function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript
         visitCallExpressions(sourceFile, typeScriptModule, (callExpression) => {
             if (getCallExpressionName(callExpression, typeScriptModule) === 'beforeAll') {
                 beforeAllCount += 1
+            }
+
+            if (getCallExpressionName(callExpression, typeScriptModule) === 'beforeEach') {
+                beforeEachCount += 1
             }
 
             if (isSerialConfigureCall(callExpression, sourceFile, typeScriptModule)) {
@@ -1850,15 +1886,22 @@ function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript
                 return
             }
 
-            tests.push(collectSourceTestMetric(callback, sourceFile, typeScriptModule, hasPomImports))
+            tests.push(collectSourceTestMetric(callback, sourceFile, typeScriptModule, {
+                hasPomImports,
+                pomImportIdentifiers,
+                topLevelMutableIdentifiers,
+            }))
         })
 
         return {
             tests,
             hasPomImports,
+            pomImportIdentifiers: [...pomImportIdentifiers],
             beforeAllCount,
+            beforeEachCount,
             serialModeCount,
             topLevelMutableStateCount,
+            topLevelMutableIdentifiers: [...topLevelMutableIdentifiers],
         }
     } catch {
         return null
@@ -1869,16 +1912,25 @@ function collectSourceTestMetric(
     callback: TypeScript.FunctionExpression | TypeScript.ArrowFunction,
     sourceFile: TypeScript.SourceFile,
     typeScriptModule: typeof TypeScript,
-    hasPomImports: boolean,
+    context: {
+        hasPomImports: boolean
+        pomImportIdentifiers: Set<string>
+        topLevelMutableIdentifiers: Set<string>
+    },
 ): ParsedSourceTestMetric {
     let assertionCount = 0
     let smartWaitCount = 0
     let hardWaitCount = 0
     let stepCount = 0
     let directLocatorCount = 0
+    let directPageActionCount = 0
     let stableSelectorCount = 0
     let textSelectorCount = 0
     let fragileSelectorCount = 0
+    let pomReferenceCount = 0
+    let pomFixtureReferenceCount = 0
+    let sharedStateMutationCount = 0
+    const pomFixtureNames = new Set(getPomFixtureNames(callback, typeScriptModule))
 
     visitCallExpressions(callback.body, typeScriptModule, (callExpression) => {
         if (isExpectCall(callExpression, typeScriptModule)) {
@@ -1907,6 +1959,22 @@ function collectSourceTestMetric(
             smartWaitCount += 1
         }
 
+        if (isDirectPageActionCall(callExpression, typeScriptModule)) {
+            directPageActionCount += 1
+        }
+
+        if (isPomInteractionCall(callExpression, typeScriptModule, context.pomImportIdentifiers, pomFixtureNames)) {
+            if (isFixtureBackedPomCall(callExpression, typeScriptModule, pomFixtureNames)) {
+                pomFixtureReferenceCount += 1
+            } else {
+                pomReferenceCount += 1
+            }
+        }
+
+        if (isSharedMutableMutationCall(callExpression, typeScriptModule, context.topLevelMutableIdentifiers)) {
+            sharedStateMutationCount += 1
+        }
+
         if (DIRECT_LOCATOR_METHODS.has(callName)) {
             directLocatorCount += 1
 
@@ -1932,6 +2000,20 @@ function collectSourceTestMetric(
         }
     })
 
+    visitNodes(callback.body, typeScriptModule, (node) => {
+        if (typeScriptModule.isIdentifier(node) && context.pomImportIdentifiers.has(node.text)) {
+            pomReferenceCount += 1
+        }
+
+        if (typeScriptModule.isIdentifier(node) && pomFixtureNames.has(node.text)) {
+            pomFixtureReferenceCount += 1
+        }
+
+        if (isSharedMutableAssignment(node, typeScriptModule, context.topLevelMutableIdentifiers)) {
+            sharedStateMutationCount += 1
+        }
+    })
+
     const startLine = sourceFile.getLineAndCharacterOfPosition(callback.getStart(sourceFile)).line + 1
     const endLine = sourceFile.getLineAndCharacterOfPosition(callback.getEnd()).line + 1
 
@@ -1944,10 +2026,20 @@ function collectSourceTestMetric(
         hardWaitCount,
         stepCount,
         directLocatorCount,
+        directPageActionCount,
         stableSelectorCount,
         textSelectorCount,
         fragileSelectorCount,
-        usesPom: hasPomImports && directLocatorCount <= 1,
+        pomReferenceCount,
+        pomFixtureReferenceCount,
+        sharedStateMutationCount,
+        usesPom: evaluatePomUsage({
+            hasPomImports: context.hasPomImports,
+            pomReferenceCount,
+            pomFixtureReferenceCount,
+            directLocatorCount,
+            directPageActionCount,
+        }),
     }
 }
 
@@ -1957,6 +2049,15 @@ function visitCallExpressions(node: TypeScript.Node, typeScriptModule: typeof Ty
             callback(currentNode)
         }
 
+        typeScriptModule.forEachChild(currentNode, visit)
+    }
+
+    visit(node)
+}
+
+function visitNodes(node: TypeScript.Node, typeScriptModule: typeof TypeScript, callback: (node: TypeScript.Node) => void): void {
+    const visit = (currentNode: TypeScript.Node): void => {
+        callback(currentNode)
         typeScriptModule.forEachChild(currentNode, visit)
     }
 
@@ -1995,6 +2096,22 @@ function getTestCallback(
     }
 
     return callbackCandidate as TypeScript.FunctionExpression | TypeScript.ArrowFunction
+}
+
+function getPomFixtureNames(
+    callback: TypeScript.FunctionExpression | TypeScript.ArrowFunction,
+    typeScriptModule: typeof TypeScript,
+): string[] {
+    const firstParameter = callback.parameters[0]
+
+    if (!firstParameter || !typeScriptModule.isObjectBindingPattern(firstParameter.name)) {
+        return []
+    }
+
+    return firstParameter.name.elements
+        .map((element) => typeScriptModule.isIdentifier(element.name) ? element.name.text : null)
+        .filter((value): value is string => typeof value === 'string')
+        .filter((value) => isPomLikeIdentifier(value))
 }
 
 function isTestStepCall(callExpression: TypeScript.CallExpression, typeScriptModule: typeof TypeScript): boolean {
@@ -2045,6 +2162,113 @@ function getCallExpressionName(callExpression: TypeScript.CallExpression, typeSc
     }
 
     return null
+}
+
+function isDirectPageActionCall(callExpression: TypeScript.CallExpression, typeScriptModule: typeof TypeScript): boolean {
+    return typeScriptModule.isPropertyAccessExpression(callExpression.expression)
+        && typeScriptModule.isIdentifier(callExpression.expression.expression)
+        && callExpression.expression.expression.text === 'page'
+        && PAGE_ACTION_METHODS.has(callExpression.expression.name.text)
+}
+
+function isPomInteractionCall(
+    callExpression: TypeScript.CallExpression,
+    typeScriptModule: typeof TypeScript,
+    pomImportIdentifiers: Set<string>,
+    pomFixtureNames: Set<string>,
+): boolean {
+    if (!typeScriptModule.isPropertyAccessExpression(callExpression.expression)) {
+        return false
+    }
+
+    const target = callExpression.expression.expression
+
+    if (!typeScriptModule.isIdentifier(target)) {
+        return false
+    }
+
+    return pomImportIdentifiers.has(target.text)
+        || pomFixtureNames.has(target.text)
+        || isPomLikeIdentifier(target.text)
+}
+
+function isFixtureBackedPomCall(
+    callExpression: TypeScript.CallExpression,
+    typeScriptModule: typeof TypeScript,
+    pomFixtureNames: Set<string>,
+): boolean {
+    return typeScriptModule.isPropertyAccessExpression(callExpression.expression)
+        && typeScriptModule.isIdentifier(callExpression.expression.expression)
+        && pomFixtureNames.has(callExpression.expression.expression.text)
+}
+
+function isSharedMutableMutationCall(
+    callExpression: TypeScript.CallExpression,
+    typeScriptModule: typeof TypeScript,
+    topLevelMutableIdentifiers: Set<string>,
+): boolean {
+    if (!typeScriptModule.isPropertyAccessExpression(callExpression.expression)) {
+        return false
+    }
+
+    const target = callExpression.expression.expression
+
+    return typeScriptModule.isIdentifier(target)
+        && topLevelMutableIdentifiers.has(target.text)
+        && SHARED_MUTATION_METHODS.has(callExpression.expression.name.text)
+}
+
+function isSharedMutableAssignment(
+    node: TypeScript.Node,
+    typeScriptModule: typeof TypeScript,
+    topLevelMutableIdentifiers: Set<string>,
+): boolean {
+    if (typeScriptModule.isBinaryExpression(node) && isAssignmentOperator(node.operatorToken.kind, typeScriptModule)) {
+        return typeScriptModule.isIdentifier(node.left) && topLevelMutableIdentifiers.has(node.left.text)
+    }
+
+    if (typeScriptModule.isPrefixUnaryExpression(node) || typeScriptModule.isPostfixUnaryExpression(node)) {
+        const operand = node.operand
+        return typeScriptModule.isIdentifier(operand)
+            && topLevelMutableIdentifiers.has(operand.text)
+            && (node.operator === typeScriptModule.SyntaxKind.PlusPlusToken || node.operator === typeScriptModule.SyntaxKind.MinusMinusToken)
+    }
+
+    return false
+}
+
+function isAssignmentOperator(kind: TypeScript.SyntaxKind, typeScriptModule: typeof TypeScript): boolean {
+    return kind >= typeScriptModule.SyntaxKind.FirstAssignment && kind <= typeScriptModule.SyntaxKind.LastAssignment
+}
+
+function isPomLikeIdentifier(value: string): boolean {
+    return /(?:page|screen|modal|dialog|drawer|form|flow|widget|section|panel|steps|po|model)$/i.test(value)
+        && value.toLowerCase() !== 'page'
+}
+
+function evaluatePomUsage(input: {
+    hasPomImports: boolean
+    pomReferenceCount: number
+    pomFixtureReferenceCount: number
+    directLocatorCount: number
+    directPageActionCount: number
+}): boolean {
+    const pomSignals = input.pomReferenceCount + input.pomFixtureReferenceCount
+    const directSignals = input.directLocatorCount + input.directPageActionCount
+
+    if (pomSignals >= 2 && directSignals <= 4) {
+        return true
+    }
+
+    if (input.pomFixtureReferenceCount > 0 && directSignals <= 3) {
+        return true
+    }
+
+    if (input.hasPomImports && pomSignals > 0 && input.directLocatorCount <= 1 && input.directPageActionCount <= 2) {
+        return true
+    }
+
+    return false
 }
 
 function readFirstStringArgument(
@@ -2188,9 +2412,13 @@ function buildCodeQualityAggregate(
             totalHardWaits: 0,
             totalSteps: 0,
             totalDirectLocators: 0,
+            totalDirectPageActions: 0,
             totalStableSelectors: 0,
             totalTextSelectors: 0,
             totalFragileSelectors: 0,
+            totalPomReferences: 0,
+            totalPomFixtureReferences: 0,
+            totalSharedStateMutations: 0,
             smellScore: null,
             pomCompliancePercent: null,
             assertionDensity: null,
@@ -2209,9 +2437,13 @@ function buildCodeQualityAggregate(
     const totalHardWaits = sum(tests.map((test) => test.hardWaitCount))
     const totalSteps = sum(tests.map((test) => test.stepCount))
     const totalDirectLocators = sum(tests.map((test) => test.directLocatorCount))
+    const totalDirectPageActions = sum(tests.map((test) => test.directPageActionCount))
     const totalStableSelectors = sum(tests.map((test) => test.stableSelectorCount))
     const totalTextSelectors = sum(tests.map((test) => test.textSelectorCount))
     const totalFragileSelectors = sum(tests.map((test) => test.fragileSelectorCount))
+    const totalPomReferences = sum(tests.map((test) => test.pomReferenceCount))
+    const totalPomFixtureReferences = sum(tests.map((test) => test.pomFixtureReferenceCount))
+    const totalSharedStateMutations = sum(tests.map((test) => test.sharedStateMutationCount))
     const pomCompliancePercent = roundToOneDigit(((testCount - testsWithoutPom) / testCount) * 100)
     const assertionDensity = roundToTwoDigits(totalAssertions / testCount)
     const totalWaitSignals = totalSmartWaits + totalHardWaits
@@ -2222,12 +2454,19 @@ function buildCodeQualityAggregate(
         ? 100
         : roundToOneDigit((((totalStableSelectors * 1) + (totalTextSelectors * 0.65) + (totalFragileSelectors * 0.2)) / totalSelectorSignals) * 100)
     const hardWaitRatio = totalWaitSignals === 0 ? 0 : totalHardWaits / totalWaitSignals
-    const directLocatorDensity = Math.min(totalDirectLocators / Math.max(testCount * 4, 1), 1)
+    const directLocatorDensity = Math.min((totalDirectLocators + (totalDirectPageActions * 0.7)) / Math.max(testCount * 4, 1), 1)
     const noPomRatio = testsWithoutPom / testCount
     const noStepRatio = testsWithoutSteps / testCount
     const lowAssertionRatio = lowAssertionTests / testCount
     const fragileSelectorRatio = totalSelectorSignals === 0 ? 0 : totalFragileSelectors / totalSelectorSignals
-    const sharedStatePenalty = Math.min(analysis.beforeAllCount * 15 + analysis.serialModeCount * 20 + analysis.topLevelMutableStateCount * 12, 60)
+    const sharedStatePenalty = Math.min(Math.max(
+        analysis.beforeAllCount * 15
+        + analysis.serialModeCount * 20
+        + analysis.topLevelMutableStateCount * 10
+        + totalSharedStateMutations * 12
+        - analysis.beforeEachCount * 6,
+        0,
+    ), 70)
     const smellScore = roundToOneDigit(clampScore(
         100
         - (hardWaitRatio * 28 * 100)
@@ -2250,9 +2489,13 @@ function buildCodeQualityAggregate(
         totalHardWaits,
         totalSteps,
         totalDirectLocators,
+        totalDirectPageActions,
         totalStableSelectors,
         totalTextSelectors,
         totalFragileSelectors,
+        totalPomReferences,
+        totalPomFixtureReferences,
+        totalSharedStateMutations,
         smellScore,
         pomCompliancePercent,
         assertionDensity,
@@ -2269,11 +2512,11 @@ function buildCodeQualityNotableSignals(
 ): string[] {
     const signals: Array<{ label: string; count: number }> = [
         { label: 'waitForTimeout', count: aggregate.totalHardWaits },
-        { label: 'direct locators', count: aggregate.totalDirectLocators },
+        { label: 'direct locators', count: aggregate.totalDirectLocators + aggregate.totalDirectPageActions },
         { label: 'fragile selectors', count: aggregate.totalFragileSelectors },
         { label: 'tests without test.step', count: aggregate.testsWithoutSteps },
         { label: 'tests without POM', count: aggregate.testsWithoutPom },
-        { label: 'shared state / beforeAll', count: analysis.beforeAllCount + analysis.serialModeCount + analysis.topLevelMutableStateCount },
+        { label: 'shared state / beforeAll', count: analysis.beforeAllCount + analysis.serialModeCount + analysis.topLevelMutableStateCount + aggregate.totalSharedStateMutations },
     ]
 
     return signals

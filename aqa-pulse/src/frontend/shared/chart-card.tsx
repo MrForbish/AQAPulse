@@ -34,7 +34,32 @@ export interface ChartCardProps {
 }
 
 interface ChartInstance {
+    data: FrontendChartData
+    options: ChartOptions
     destroy(): void
+    update(mode?: string): void
+}
+
+interface ChartOptions {
+    maintainAspectRatio: boolean
+    plugins: {
+        legend: {
+            display: boolean
+            labels: {
+                color: string
+            }
+        }
+    }
+    scales?: {
+        x: {
+            ticks: { color: string }
+            grid: { color: string }
+        }
+        y: {
+            ticks: { color: string }
+            grid: { color: string }
+        }
+    }
 }
 
 type ChartConstructor = new (
@@ -42,33 +67,75 @@ type ChartConstructor = new (
     configuration: {
         type: FrontendChartType
         data: FrontendChartData
-        options: {
-            maintainAspectRatio: boolean
-            plugins: {
-                legend: {
-                    display: boolean
-                    labels: {
-                        color: string
-                    }
-                }
-            }
-            scales?: {
-                x: {
-                    ticks: { color: string }
-                    grid: { color: string }
-                }
-                y: {
-                    ticks: { color: string }
-                    grid: { color: string }
-                }
-            }
-        }
+        options: ChartOptions
     },
 ) => ChartInstance
 
+let chartConstructorPromise: Promise<ChartConstructor> | null = null
+
+function loadChartConstructor(): Promise<ChartConstructor> {
+    if (!chartConstructorPromise) {
+        chartConstructorPromise = import('chart.js/auto').then((chartModule) => chartModule.default as unknown as ChartConstructor)
+    }
+
+    return chartConstructorPromise
+}
+
+function cloneChartData(data: FrontendChartData): FrontendChartData {
+    return {
+        ...data,
+        labels: [...data.labels],
+        datasets: data.datasets.map((dataset) => ({
+            ...dataset,
+            data: [...dataset.data],
+            backgroundColor: Array.isArray(dataset.backgroundColor)
+                ? [...dataset.backgroundColor]
+                : dataset.backgroundColor,
+        })),
+    }
+}
+
+function buildChartOptions(type: FrontendChartType, shouldShowLegend: boolean): ChartOptions {
+    return {
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: shouldShowLegend,
+                labels: {
+                    color: '#d7deeb',
+                },
+            },
+        },
+        scales: type === 'doughnut' || type === 'pie'
+            ? undefined
+            : {
+                x: {
+                    ticks: { color: '#91a0b8' },
+                    grid: { color: 'rgba(145, 160, 184, 0.12)' },
+                },
+                y: {
+                    ticks: { color: '#91a0b8' },
+                    grid: { color: 'rgba(145, 160, 184, 0.12)' },
+                },
+            },
+    }
+}
+
 export function ChartCard(props: ChartCardProps): React.JSX.Element {
     const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
+    const chartRef = React.useRef<ChartInstance | null>(null)
     const shouldShowLegend = props.showLegend ?? props.data.datasets.length > 1
+    const latestPropsRef = React.useRef({
+        data: props.data,
+        type: props.type,
+        shouldShowLegend,
+    })
+
+    latestPropsRef.current = {
+        data: props.data,
+        type: props.type,
+        shouldShowLegend,
+    }
 
     React.useEffect(() => {
         if (!canvasRef.current) {
@@ -88,48 +155,40 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
         }
 
         let isDisposed = false
-        let chart: ChartInstance | null = null
 
-        void import('chart.js/auto').then((chartModule) => {
+        void loadChartConstructor().then((Chart) => {
             if (!canvasRef.current || isDisposed) {
                 return
             }
 
-            const Chart = chartModule.default as unknown as ChartConstructor
+            const latestProps = latestPropsRef.current
 
-            chart = new Chart(canvasRef.current, {
-                type: props.type,
-                data: props.data,
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: shouldShowLegend,
-                            labels: {
-                                color: '#d7deeb',
-                            },
-                        },
-                    },
-                    scales: props.type === 'doughnut' || props.type === 'pie'
-                        ? undefined
-                        : {
-                            x: {
-                                ticks: { color: '#91a0b8' },
-                                grid: { color: 'rgba(145, 160, 184, 0.12)' },
-                            },
-                            y: {
-                                ticks: { color: '#91a0b8' },
-                                grid: { color: 'rgba(145, 160, 184, 0.12)' },
-                            },
-                        },
-                },
+            const chart = new Chart(canvasRef.current, {
+                type: latestProps.type,
+                data: cloneChartData(latestProps.data),
+                options: buildChartOptions(latestProps.type, latestProps.shouldShowLegend),
             })
+
+            chartRef.current = chart
         })
 
         return () => {
             isDisposed = true
-            chart?.destroy()
+            chartRef.current?.destroy()
+            chartRef.current = null
         }
+    }, [props.type])
+
+    React.useEffect(() => {
+        const chart = chartRef.current
+
+        if (!chart) {
+            return
+        }
+
+        chart.data = cloneChartData(props.data)
+        chart.options = buildChartOptions(props.type, shouldShowLegend)
+        chart.update('none')
     }, [props.data, props.type, shouldShowLegend])
 
     return (

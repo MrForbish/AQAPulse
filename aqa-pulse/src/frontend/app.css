@@ -1795,11 +1795,6 @@ th {
     gap: 12px;
 }
 
-.code-quality-drivers-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-}
-
 .overview-signals-grid {
     gap: 10px;
 }
@@ -1868,33 +1863,6 @@ th {
     margin-top: 6px;
     font-size: 11px;
     line-height: 1.35;
-}
-
-.code-quality-drivers-grid .readiness-item {
-    padding: 11px 12px;
-    border-radius: 14px;
-}
-
-.code-quality-drivers-grid .readiness-item-header {
-    gap: 8px;
-    align-items: flex-start;
-}
-
-.code-quality-drivers-grid .readiness-item strong {
-    font-size: 13px;
-    line-height: 1.35;
-}
-
-.code-quality-drivers-grid .module-pill {
-    min-height: 24px;
-    padding: 0 8px;
-    font-size: 11px;
-}
-
-.code-quality-drivers-grid .readiness-item p {
-    margin-top: 6px;
-    font-size: 12px;
-    line-height: 1.4;
 }
 
 .signal-grid,
@@ -2824,7 +2792,6 @@ th {
     .summary-strip,
     .chart-layout.has-aside,
     .filters-grid,
-    .code-quality-drivers-grid,
     .signal-grid,
     .business-assumptions-grid,
     .incident-grid-react {
@@ -2852,7 +2819,6 @@ th {
     .summary-strip,
     .chart-layout.has-aside,
     .filters-grid,
-    .code-quality-drivers-grid,
     .signal-grid,
     .business-assumptions-grid,
     .incident-grid-react {

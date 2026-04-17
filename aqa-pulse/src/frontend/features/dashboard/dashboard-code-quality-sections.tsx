@@ -45,7 +45,7 @@ export function DashboardCodeQualityDriversSection(props: { summary: DashboardSu
             className="span-2"
         >
             {drivers.length > 0 ? (
-                <div className="page-grid compact-top code-quality-drivers-grid">
+                <div className="page-grid compact-top">
                     {drivers.map((driver) => (
                         <ReadinessCard
                             key={driver.label}

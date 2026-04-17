@@ -3727,6 +3727,552 @@ th {
         width: 100%;
     }
 }
+
+/* Developer-console intensification overrides */
+:root {
+    --panel-shell-bg:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.16) 0, rgba(15, 23, 42, 0) 28px),
+        linear-gradient(180deg, rgba(3, 7, 18, 0.98), rgba(2, 6, 23, 0.98));
+    --panel-shell-border: rgba(71, 85, 105, 0.46);
+    --panel-shell-highlight: rgba(56, 189, 248, 0.82);
+    --panel-shell-purple: rgba(168, 85, 247, 0.68);
+}
+
+body {
+    background:
+        linear-gradient(90deg, rgba(56, 189, 248, 0.045) 0, transparent 18%, transparent 82%, rgba(168, 85, 247, 0.05) 100%),
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.11), transparent 16%),
+        radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.075), transparent 18%),
+        linear-gradient(180deg, #010409 0%, #020617 48%, #020814 100%);
+}
+
+.app-shell {
+    position: relative;
+    width: min(1760px, calc(100vw - 16px));
+    padding: 34px 0 24px;
+}
+
+.app-shell::before {
+    content: 'AQA_PULSE // ENGINEERING_CONSOLE';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    padding: 9px 12px 8px;
+    border: 1px solid var(--panel-shell-border);
+    border-radius: 4px;
+    background:
+        linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.02) 22%, rgba(168, 85, 247, 0.08) 100%),
+        rgba(2, 6, 23, 0.98);
+    color: #cbd5e1;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.hero-block,
+.filters-block,
+.panel,
+.metric-card,
+.candidate-card,
+.hero-meta-card,
+.status-strip-item,
+.summary-strip-item,
+.status-switch-button,
+.stack-item,
+.placeholder-item,
+.callout-card,
+.formula-card-react,
+.detail-card-react,
+.readiness-item,
+.cost-breakdown-item-react,
+.attempt-card,
+.attachment-card-react,
+.step-card,
+.admin-compact-list li,
+.detail-row,
+.checkbox-card-row,
+.admin-credential-card,
+.incident-evidence-card,
+.incident-summary-lead-react,
+.status-distribution-metric,
+.auth-card,
+.test-history-diagnostics-panel-react,
+.diagnostics-focus-block-react,
+.diagnostics-attempt-card-react,
+.attempt-step-group-react,
+.attachment-preview-react,
+.step-node-branch-react,
+.step-node-leaf-react,
+.diagnostic-step-group-react,
+.table-wrap,
+.current-run-tests-table-wrap,
+.image-lightbox-dialog-react,
+.trace-disclosure-dialog-react,
+.inline-note {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--panel-shell-border);
+    background: var(--panel-shell-bg);
+}
+
+.hero-block::before,
+.filters-block::before,
+.panel::before,
+.hero-meta-card::before,
+.auth-card::before,
+.test-history-diagnostics-panel-react::after,
+.metric-card::before,
+.summary-strip-item::before,
+.status-strip-item::before,
+.status-switch-button::before,
+.stack-item::before,
+.detail-row::before,
+.admin-compact-list li::before,
+.diagnostics-focus-block-react::before,
+.diagnostics-attempt-card-react::before,
+.attempt-step-group-react::before,
+.attachment-preview-react::before,
+.step-node-branch-react::before,
+.step-node-leaf-react::before,
+.incident-evidence-card::before,
+.incident-summary-lead-react::before,
+.trace-disclosure-dialog-react::before,
+.image-lightbox-dialog-react::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--panel-shell-highlight), rgba(56, 189, 248, 0.08) 58%, rgba(168, 85, 247, 0.4) 100%);
+    pointer-events: none;
+}
+
+.hero-block::after,
+.filters-block::after,
+.panel::after,
+.hero-meta-card::after,
+.metric-card::after,
+.summary-strip-item::after,
+.status-strip-item::after,
+.status-switch-button::after,
+.stack-item::after,
+.detail-row::after,
+.admin-compact-list li::after,
+.diagnostics-focus-block-react::after,
+.diagnostics-attempt-card-react::after,
+.attempt-step-group-react::after,
+.attachment-preview-react::after,
+.step-node-branch-react::after,
+.step-node-leaf-react::after,
+.incident-evidence-card::after,
+.incident-summary-lead-react::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    width: 10px;
+    height: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.44);
+    border-right: 1px solid rgba(148, 163, 184, 0.44);
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+.hero-block,
+.filters-block,
+.panel,
+.hero-meta-card,
+.auth-card,
+.test-history-diagnostics-panel-react .panel-header {
+    padding-top: 18px;
+}
+
+.hero-block {
+    gap: 12px;
+    padding: 18px;
+    border-left: 2px solid rgba(56, 189, 248, 0.72);
+}
+
+.hero-block h1,
+.hero-block .test-history-title-react,
+.auth-title {
+    max-width: 28ch;
+}
+
+.hero-block h1 {
+    font-size: clamp(28px, 3.2vw, 40px);
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+.hero-block p,
+.panel-header p,
+.filters-copy p,
+.hero-note {
+    max-width: 80ch;
+}
+
+.panel-header,
+.workspace-admin-header,
+.module-header-row,
+.cost-breakdown-head-react,
+.readiness-item-header,
+.workspace-link-group {
+    position: relative;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.28);
+}
+
+.panel-header::after,
+.workspace-admin-header::after,
+.module-header-row::after,
+.cost-breakdown-head-react::after,
+.readiness-item-header::after,
+.workspace-link-group::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 88px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.96), rgba(56, 189, 248, 0));
+}
+
+.panel-header h2,
+.workspace-admin-header h2,
+.business-track-intro h2 {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.panel-title-react,
+.metric-label-heading-react,
+.metric-heading-react {
+    letter-spacing: 0.05em;
+}
+
+.metric-card,
+.summary-strip-item,
+.status-strip-item,
+.status-switch-button,
+.status-distribution-metric,
+.detail-row,
+.admin-compact-list li,
+.stack-item,
+.callout-card,
+.formula-card-react,
+.detail-card-react,
+.readiness-item,
+.cost-breakdown-item-react {
+    background:
+        linear-gradient(180deg, rgba(56, 189, 248, 0.06), transparent 22px),
+        repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.025) 0 1px, transparent 1px 26px),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.99), rgba(3, 8, 20, 0.97));
+}
+
+.metric-card {
+    min-height: 168px;
+    padding-top: 16px;
+    border-left: 2px solid rgba(56, 189, 248, 0.34);
+}
+
+.metric-card.is-good {
+    border-left-color: rgba(52, 211, 153, 0.72);
+}
+
+.metric-card.is-warn {
+    border-left-color: rgba(245, 158, 11, 0.76);
+}
+
+.metric-card.is-danger {
+    border-left-color: rgba(244, 63, 94, 0.78);
+}
+
+.metric-label,
+.summary-strip-item span,
+.status-strip-item span,
+.status-switch-button span,
+.detail-row span,
+.admin-form span,
+.auth-form span,
+.filters-grid span {
+    color: #7f91ab;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+}
+
+.metric-value {
+    margin: 10px 0 8px;
+    font-size: clamp(24px, 2.5vw, 34px);
+    letter-spacing: -0.04em;
+    line-height: 1;
+}
+
+.metric-value,
+.status-strip-item strong,
+.summary-strip-item strong,
+.status-switch-button strong,
+.status-distribution-metric-value {
+    text-shadow: 0 0 24px rgba(56, 189, 248, 0.08);
+}
+
+.metric-card.is-good .metric-value,
+.status-badge.is-good,
+.health-state-pill.is-healthy {
+    text-shadow: 0 0 18px rgba(52, 211, 153, 0.12);
+}
+
+.metric-card.is-warn .metric-value,
+.status-badge.is-warn,
+.health-state-pill.is-warning {
+    text-shadow: 0 0 18px rgba(245, 158, 11, 0.12);
+}
+
+.metric-card.is-danger .metric-value,
+.status-badge.is-danger,
+.health-state-pill.is-critical {
+    text-shadow: 0 0 18px rgba(244, 63, 94, 0.13);
+}
+
+.summary-strip,
+.status-strip,
+.status-switcher,
+.metrics-grid,
+.admin-grid,
+.page-grid,
+.split-grid,
+.signal-grid,
+.incident-grid-react,
+.status-distribution-metrics {
+    gap: 12px;
+}
+
+.segmented-tabs {
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--panel-shell-border);
+    border-radius: 4px;
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.28), rgba(15, 23, 42, 0.08)),
+        rgba(2, 6, 23, 0.92);
+}
+
+.segmented-tabs button {
+    min-height: 32px;
+    padding: 0 11px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-color: rgba(71, 85, 105, 0.5);
+    background: rgba(7, 12, 22, 0.95);
+}
+
+.segmented-tabs button.is-active,
+.status-switch-button.is-active {
+    border-color: rgba(56, 189, 248, 0.82);
+    background:
+        linear-gradient(180deg, rgba(56, 189, 248, 0.18), rgba(14, 165, 233, 0.06)),
+        rgba(7, 12, 22, 0.98);
+    box-shadow: inset 0 -2px 0 rgba(56, 189, 248, 0.88);
+}
+
+.primary-link,
+.ghost-link,
+.secondary-button,
+.status-switch-button,
+.image-lightbox-close-react,
+.trace-disclosure-close-react {
+    min-height: 32px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.primary-link {
+    box-shadow: inset 0 -2px 0 rgba(56, 189, 248, 0.4);
+}
+
+.status-badge,
+.meta-badge,
+.module-pill,
+.access-state-pill,
+.step-primary-cause-badge-react,
+.trace-disclosure-pill-react {
+    min-height: 22px;
+    padding: 0 7px;
+    border-radius: 3px;
+    border-width: 1px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.status-badge.is-accent,
+.module-pill.is-accent {
+    background: rgba(168, 85, 247, 0.16);
+    border-color: rgba(168, 85, 247, 0.44);
+    color: #d8b4fe;
+}
+
+.auth-form input,
+.admin-form input,
+.admin-form select,
+.filters-grid select,
+.access-inline-form select {
+    min-height: 38px;
+    border-color: rgba(71, 85, 105, 0.58);
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0)),
+        #040915;
+}
+
+.auth-form input::placeholder,
+.admin-form input::placeholder {
+    color: #64748b;
+}
+
+.table-wrap,
+.current-run-tests-table-wrap {
+    border-radius: 4px;
+    border-color: rgba(71, 85, 105, 0.56);
+    background:
+        repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.02) 0 1px, transparent 1px 30px),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.99), rgba(3, 8, 20, 0.98));
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+tbody tr:nth-child(even) td {
+    background: rgba(15, 23, 42, 0.24);
+}
+
+tbody tr:hover td {
+    background: rgba(8, 145, 178, 0.08);
+}
+
+th,
+td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.24);
+}
+
+th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom-color: rgba(56, 189, 248, 0.22);
+    box-shadow: inset 0 -1px 0 rgba(56, 189, 248, 0.12);
+}
+
+td:first-child,
+th:first-child {
+    border-left: 1px solid transparent;
+}
+
+tbody tr:hover td:first-child {
+    border-left-color: rgba(56, 189, 248, 0.65);
+}
+
+.test-history-diagnostics-panel-react {
+    border-left: 2px solid rgba(244, 63, 94, 0.72);
+    background:
+        linear-gradient(180deg, rgba(244, 63, 94, 0.06), transparent 32px),
+        repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.024) 0 1px, transparent 1px 28px),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.99), rgba(3, 8, 20, 0.98));
+}
+
+.test-history-diagnostics-panel-react .panel-header::before {
+    content: 'INCIDENT / TRACE / EVIDENCE';
+    display: block;
+    margin-bottom: 8px;
+    color: #fda4af;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.test-history-diagnostics-panel-react .panel-header::after {
+    width: 120px;
+    background: linear-gradient(90deg, rgba(244, 63, 94, 0.9), rgba(244, 63, 94, 0));
+}
+
+.diagnostics-focus-block-react,
+.step-node-branch-react.is-primary-failure,
+.step-node-leaf-react.is-primary-failure,
+.trace-disclosure-dialog-react {
+    border-left: 2px solid rgba(244, 63, 94, 0.82);
+}
+
+.diagnostics-focus-label-react,
+.trace-disclosure-header-react,
+.step-primary-cause-badge-react {
+    color: #fecdd3;
+}
+
+.inline-note,
+.detail-row,
+.admin-compact-list li,
+.checkbox-card-row,
+.admin-credential-card,
+.status-distribution-metric,
+.incident-evidence-card,
+.incident-summary-lead-react,
+.attachment-preview-react,
+.diagnostic-step-group-react,
+.image-lightbox-dialog-react,
+.trace-disclosure-dialog-react {
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.14), rgba(15, 23, 42, 0)),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.99), rgba(3, 8, 20, 0.97));
+}
+
+.admin-action-dialog,
+.admin-credential-dialog,
+.image-lightbox-dialog-react,
+.trace-disclosure-dialog-react {
+    border: 1px solid rgba(71, 85, 105, 0.56);
+    background:
+        linear-gradient(180deg, rgba(56, 189, 248, 0.08), transparent 18px),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.99), rgba(3, 8, 20, 0.98));
+}
+
+.image-lightbox-title-react,
+.trace-disclosure-header-react,
+.admin-action-dialog .panel-header h2,
+.admin-credential-dialog .panel-header h2 {
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 820px) {
+    .app-shell {
+        padding-top: 38px;
+    }
+
+    .app-shell::before {
+        font-size: 9px;
+        letter-spacing: 0.12em;
+    }
+
+    .hero-block {
+        padding: 14px;
+    }
+
+    .hero-block h1 {
+        font-size: 24px;
+    }
+}
     .attempt-card summary,
     .stack-item-header,
     .hero-meta-row,

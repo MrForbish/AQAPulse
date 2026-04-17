@@ -66,7 +66,7 @@ export function DashboardManagerOverviewSection(props: { summary: DashboardSumma
                                 <article key={`${blocker.kind}-${index}`} className={`overview-signal-entry is-${blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'}`}>
                                     <div className="overview-signal-entry-head">
                                         <OverflowText as="strong" text={blocker.title} lines={2} className="overview-signal-entry-title" />
-                                        <span className={`module-pill is-${blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'}`}>{blocker.value}</span>
+                                        <span className={`module-pill overview-signal-entry-pill is-${blocker.severity === 'critical' ? 'danger' : blocker.severity === 'warning' ? 'warn' : 'accent'}`}>{blocker.value}</span>
                                     </div>
                                     <p>{blocker.details}</p>
                                     {blocker.testTitle ? <div className="overview-signal-entry-meta" title={blocker.testTitle}>{blocker.testTitle}</div> : null}

@@ -77,7 +77,7 @@ export function ingestReporterRun(options: {
 
     const history = appendHistoryEntry(options.storage.readHistory(), nextHistoryEntry)
     const archivedRun = options.storage.archiveRun(reportWithArtifacts, nextHistoryEntry)
-    const advancedMetrics = buildAdvancedMetrics(reportWithArtifacts, history.runs, options.storage.paths.archiveRootPath)
+    const advancedMetrics = buildAdvancedMetrics(reportWithArtifacts, history.runs, options.storage.paths.archiveRootPath, sourceFile)
     const dashboardSummary = applyBusinessAssumptionsToSummary(
         buildDashboardSummary(reportWithArtifacts, sourceFile, history.runs, runMetadata, advancedMetrics),
         options.businessAssumptions,

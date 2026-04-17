@@ -25,8 +25,10 @@ import {
     DashboardAiRiskRankingSection,
 } from './dashboard-ai-sections'
 import {
+    DashboardCodeQualityDriversSection,
     DashboardCodeQualityFailureHotspotsSection,
     DashboardCodeQualityOverviewMetrics,
+    DashboardCodeQualityRiskFilesSection,
 } from './dashboard-code-quality-sections'
 import { mapChangeTone, mapManagerTone } from './dashboard-manager-helpers'
 import {
@@ -256,6 +258,8 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
     return (
         <div className="page-grid">
             <DashboardCodeQualityOverviewMetrics summary={summary} />
+            <DashboardCodeQualityDriversSection summary={summary} />
+            <DashboardCodeQualityRiskFilesSection summary={summary} />
             <DashboardCodeQualityFailureHotspotsSection summary={summary} workspaceSlug={props.workspaceSlug} />
         </div>
     )

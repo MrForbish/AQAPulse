@@ -252,6 +252,7 @@ export class ApiStore {
             latestArchivedRun.archivedRun.data,
             history.runs,
             archivedRuns.map((item) => ({ run: item.run, report: item.archivedRun.data })),
+            latestRun.sourceFile,
         )
 
         return buildDashboardSummary(
@@ -319,6 +320,7 @@ export class ApiStore {
             latest.filteredReport,
             historyEntries,
             context.filteredRuns.map((run) => ({ run: run.filteredEntry, report: run.filteredReport })),
+            latest.run.sourceFile,
         )
 
         return this.applyConfiguredBusinessAssumptions(buildDashboardSummary(

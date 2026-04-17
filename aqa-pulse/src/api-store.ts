@@ -67,7 +67,8 @@ export interface TestHistoryAttachment {
 export interface TestHistoryStep {
     title: string
     category: string | null
-    depth: 1 | 2
+    depth: number
+    offsetMs: number | null
     durationMs: number
     status: string | null
     errorMessage: string | null
@@ -805,15 +806,14 @@ function normalizeAttemptSteps(
             const errorMessage = typeof step.error?.message === 'string' && step.error.message.trim().length > 0
                 ? step.error.message.trim()
                 : null
-            const depth = step.depth === 2 ? 2 : 1
+            const depth = typeof step.depth === 'number' && Number.isFinite(step.depth)
+                ? Math.max(0, Math.trunc(step.depth))
+                : 0
             const normalizedStatus = typeof step.status === 'string' && step.status.trim().length > 0
                 ? normalizeStatus(step.status)
                 : null
             const isFailurePoint = step.failed === true
                 || Boolean(errorMessage)
-                || normalizedStatus === 'failed'
-                || normalizedStatus === 'timedout'
-                || normalizedStatus === 'interrupted'
                 || (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex === index)
                 || (normalizedFailedTitle !== null && title.toLowerCase() === normalizedFailedTitle)
 
@@ -821,6 +821,7 @@ function normalizeAttemptSteps(
                 title,
                 category: typeof step.category === 'string' && step.category.trim().length > 0 ? step.category.trim() : null,
                 depth,
+                offsetMs: typeof step.offsetMs === 'number' && Number.isFinite(step.offsetMs) ? Math.max(0, step.offsetMs) : null,
                 durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
                 status: normalizedStatus,
                 errorMessage,
@@ -908,6 +909,7 @@ function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncid
         ?? null
 
     const latestSignals = collectIncidentSignals(latestUnstable)
+    const primaryFailureStep = selectPrimaryFailureStep(latestUnstable, latestRelevantAttempt)
     const latestErrorMessage = latestRelevantAttempt?.errorMessage ?? latestUnstable.errorMessage ?? null
     const category = classifyIncidentCategory(latestSignals)
     const matchingRuns = unstableItems.filter((item) => classifyIncidentCategory(collectIncidentSignals(item)) === category)
@@ -924,13 +926,14 @@ function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncid
         severity,
         category,
         confidence,
-        summary: buildIncidentNarrative(category, severity, latestSignals, matchingRuns.length),
+        summary: buildIncidentNarrative(category, severity, latestSignals, matchingRuns.length, primaryFailureStep),
         evidence: buildIncidentEvidence({
             latestUnstable,
             matchingRuns,
             latestRecovery,
             latestSignals,
             affectedAttempts,
+            primaryFailureStep,
         }),
         unstableRuns: unstableItems.length,
         matchingRuns: matchingRuns.length,
@@ -939,9 +942,9 @@ function buildIncidentSummary(historyItems: TestHistoryItem[]): TestHistoryIncid
         latestSeenAt: getItemTimestamp(latestUnstable),
         latestRecoveryAt: latestRecovery ? getItemTimestamp(latestRecovery) : null,
         latestErrorMessage,
-        failureStepTitle: latestSignals.failureStepTitles[0] ?? null,
-        failureStepCategory: latestSignals.failureStepCategories[0] ?? null,
-        failureStepErrorMessage: latestSignals.failureStepErrorMessages[0] ?? null,
+        failureStepTitle: primaryFailureStep?.title ?? latestSignals.failureStepTitles[0] ?? null,
+        failureStepCategory: primaryFailureStep?.category ?? latestSignals.failureStepCategories[0] ?? null,
+        failureStepErrorMessage: primaryFailureStep?.errorMessage ?? latestSignals.failureStepErrorMessages[0] ?? null,
     }
 }
 
@@ -950,6 +953,7 @@ function buildIncidentNarrative(
     severity: TestHistoryIncidentSeverity,
     latestSignals: IncidentSignalBundle,
     matchingRunsCount: number,
+    primaryFailureStep: TestHistoryStep | null,
 ): string {
     const categoryLabel = getIncidentCategoryLabel(category)
     const statePrefix = severity === 'active'
@@ -960,8 +964,9 @@ function buildIncidentNarrative(
     const recurrence = matchingRunsCount > 1
         ? ` Паттерн повторялся ${matchingRunsCount} раза.`
         : ' Пока это выглядит как единичный эпизод.'
-    const failingStepPart = latestSignals.failureStepTitles[0]
-        ? ` Точка падения: ${latestSignals.failureStepTitles[0]}.`
+    const primaryFailureStepTitle = primaryFailureStep?.title ?? latestSignals.failureStepTitles[0] ?? null
+    const failingStepPart = primaryFailureStepTitle
+        ? ` Точка падения: ${primaryFailureStepTitle}.`
         : ''
     const evidenceHint = latestSignals.hasContextAttachment
         ? ' Есть `error-context.md` с дополнительным контекстом.'
@@ -981,6 +986,7 @@ function buildIncidentEvidence(input: {
     latestRecovery: TestHistoryItem | null
     latestSignals: IncidentSignalBundle
     affectedAttempts: number
+    primaryFailureStep: TestHistoryStep | null
 }): string[] {
     const evidence: string[] = []
 
@@ -988,14 +994,16 @@ function buildIncidentEvidence(input: {
         evidence.push(`Последний сигнал: ${input.latestSignals.normalizedErrorMessages[0]}`)
     }
 
-    if (input.latestSignals.failureStepTitles[0]) {
-        const failureCategory = input.latestSignals.failureStepCategories[0]
-        const categorySuffix = failureCategory ? ` (${failureCategory})` : ''
-        evidence.push(`Точная точка падения: ${input.latestSignals.failureStepTitles[0]}${categorySuffix}.`)
+    const primaryFailureStepTitle = input.primaryFailureStep?.title ?? input.latestSignals.failureStepTitles[0] ?? null
+    const primaryFailureStepCategory = input.primaryFailureStep?.category ?? input.latestSignals.failureStepCategories[0] ?? null
+
+    if (primaryFailureStepTitle) {
+        const categorySuffix = primaryFailureStepCategory ? ` (${primaryFailureStepCategory})` : ''
+        evidence.push(`Точная точка падения: ${primaryFailureStepTitle}${categorySuffix}.`)
     }
 
-    if (input.latestSignals.failureStepErrorMessages[0]) {
-        evidence.push(`Ошибка на шаге: ${input.latestSignals.failureStepErrorMessages[0]}`)
+    if (input.primaryFailureStep?.errorMessage ?? input.latestSignals.failureStepErrorMessages[0]) {
+        evidence.push(`Ошибка на шаге: ${input.primaryFailureStep?.errorMessage ?? input.latestSignals.failureStepErrorMessages[0]}`)
     }
 
     evidence.push(`В последнем нестабильном запуске задеты попытки: ${input.affectedAttempts} из ${input.latestUnstable.attempts}.`)
@@ -1087,6 +1095,148 @@ function classifyIncidentCategory(signals: IncidentSignalBundle): TestHistoryInc
     }
 
     return 'unknown'
+}
+
+function selectPrimaryFailureStep(
+    item: TestHistoryItem,
+    preferredAttempt: TestHistoryAttemptDetail | null,
+): TestHistoryStep | null {
+    const attempts = preferredAttempt
+        ? [preferredAttempt, ...item.attemptDetails.filter((attempt) => attempt !== preferredAttempt)]
+        : item.attemptDetails
+
+    for (const attempt of attempts) {
+        const primaryStep = selectPrimaryFailureStepFromSteps(attempt.steps)
+
+        if (primaryStep) {
+            return primaryStep
+        }
+    }
+
+    return null
+}
+
+function selectPrimaryFailureStepFromSteps(steps: TestHistoryStep[]): TestHistoryStep | null {
+    if (steps.length === 0) {
+        return null
+    }
+
+    const exactFailureCandidates = steps
+        .map((step, stepIndex) => ({ step, stepIndex }))
+        .filter((candidate) => candidate.step.isFailurePoint)
+    const bestExactFailure = pickBestDiagnosticStepCandidate(exactFailureCandidates)
+
+    if (bestExactFailure && !isGenericTeardownFailureStep(bestExactFailure.step)) {
+        return bestExactFailure.step
+    }
+
+    if (bestExactFailure) {
+        const contextualCandidates = steps
+            .slice(0, bestExactFailure.stepIndex)
+            .map((step, stepIndex) => ({ step, stepIndex }))
+            .filter((candidate) => isMeaningfulFailureContextStep(candidate.step))
+        const contextualStep = pickBestDiagnosticStepCandidate(contextualCandidates)
+
+        return contextualStep?.step ?? bestExactFailure.step
+    }
+
+    const fallbackCandidate = pickBestDiagnosticStepCandidate(
+        steps
+            .map((step, stepIndex) => ({ step, stepIndex }))
+            .filter((candidate) => isMeaningfulFailureContextStep(candidate.step)),
+    )
+
+    return fallbackCandidate?.step ?? null
+}
+
+function pickBestDiagnosticStepCandidate(
+    candidates: Array<{ step: TestHistoryStep; stepIndex: number }>,
+): { step: TestHistoryStep; stepIndex: number } | null {
+    if (candidates.length === 0) {
+        return null
+    }
+
+    return [...candidates].sort((left, right) => {
+        const scoreDelta = getDiagnosticStepPriority(right.step, right.stepIndex) - getDiagnosticStepPriority(left.step, left.stepIndex)
+
+        if (scoreDelta !== 0) {
+            return scoreDelta
+        }
+
+        return right.stepIndex - left.stepIndex
+    })[0] ?? null
+}
+
+function getDiagnosticStepPriority(step: TestHistoryStep, stepIndex: number): number {
+    let score = stepIndex
+
+    if (step.errorMessage) {
+        score += 120
+    }
+
+    if (step.isFailurePoint) {
+        score += 80
+    }
+
+    if (isUnstableStatus(step.status ?? '')) {
+        score += 50
+    }
+
+    score += step.depth * 14
+
+    switch (step.category) {
+        case 'expect':
+            score += 28
+            break
+        case 'pw:api':
+            score += 22
+            break
+        case 'test.step':
+            score += 18
+            break
+        case 'hook':
+            score += 6
+            break
+        default:
+            break
+    }
+
+    if (isGenericLifecycleStep(step)) {
+        score -= 48
+    }
+
+    if (isGenericTeardownFailureStep(step)) {
+        score -= 200
+    }
+
+    return score
+}
+
+function isMeaningfulFailureContextStep(step: TestHistoryStep): boolean {
+    if (isGenericTeardownFailureStep(step)) {
+        return false
+    }
+
+    return Boolean(step.errorMessage)
+        || isUnstableStatus(step.status ?? '')
+        || step.category !== 'hook'
+        || step.depth > 0
+}
+
+function isGenericLifecycleStep(step: TestHistoryStep): boolean {
+    const category = (step.category ?? '').trim().toLowerCase()
+    const title = step.title.trim().toLowerCase()
+
+    return /(^|\W)(before hooks|after hooks|setup|teardown|cleanup|worker cleanup|fixture|hook)($|\W)/.test(title)
+        || /(hook:before|hook:after|fixture:setup|fixture:teardown|beforeall|beforeeach|afterall|aftereach)/.test(category)
+}
+
+function isGenericTeardownFailureStep(step: TestHistoryStep): boolean {
+    const category = (step.category ?? '').trim().toLowerCase()
+    const title = step.title.trim().toLowerCase()
+
+    return /(^|\W)(after hooks|worker cleanup|cleanup|clean up|teardown|tear down)($|\W)/.test(title)
+        || /(hook:after|fixture:teardown|afterall|aftereach|cleanup|clean up|teardown)/.test(category)
 }
 
 function collectIncidentSignals(item: TestHistoryItem): IncidentSignalBundle {

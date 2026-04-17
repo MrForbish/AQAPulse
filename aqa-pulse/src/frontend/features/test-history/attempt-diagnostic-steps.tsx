@@ -41,16 +41,61 @@ function DiagnosticStepCard(props: {
     attemptNumber: number
 }): React.JSX.Element {
     const { node } = props
-    const meta = `${node.step.category ?? HISTORY_TEXT.diagnostics.noCategory} • depth ${node.step.depth} • ${formatDuration(node.step.durationMs)}`
+    const hasChildren = node.children.length > 0
+    const hasFailureInSubtree = node.step.isFailurePoint
+        || isUnstableDiagnosticStatus(node.step.status)
+        || node.children.some((childNode) => nodeHasFailure(childNode))
+    const metaBadges = [
+        node.step.category ?? HISTORY_TEXT.diagnostics.noCategory,
+        formatDuration(node.step.durationMs),
+        node.step.offsetMs !== null ? `+${formatDuration(node.step.offsetMs)}` : null,
+    ].filter((value): value is string => Boolean(value))
+    const title = <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />
+    const statusBadge = node.step.status ? <StatusBadge label={formatStatusLabel(node.step.status, false)} tone={getStatusTone(node.step.status, false)} /> : null
+
+    if (hasChildren) {
+        return (
+            <details id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-node-branch-react${hasFailureInSubtree ? ' is-failure' : ''}`} open={hasFailureInSubtree || node.step.depth === 0}>
+                <summary className="step-node-summary-react">
+                    <div className="step-node-summary-main-react">
+                        <div className="step-node-title-row-react">
+                            <span className="step-node-toggle-react" aria-hidden="true" />
+                            {title}
+                        </div>
+                        <div className="step-node-meta-react">
+                            {metaBadges.map((badge) => <span key={badge} className="meta-badge">{badge}</span>)}
+                            <span className="meta-badge">{node.children.length}</span>
+                        </div>
+                    </div>
+                    {statusBadge}
+                </summary>
+                <div className="step-node-panel-react">
+                    {node.step.isFailurePoint ? (
+                        <div className="step-meta-row-react">
+                            <span className="meta-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
+                        </div>
+                    ) : null}
+                    {node.step.errorMessage ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
+                    <div className="step-tree-children-react">
+                        {node.children.map((childNode) => (
+                            <DiagnosticStepCard key={`${props.attemptNumber}-${childNode.stepIndex}-${childNode.step.title}`} node={childNode} runId={props.runId} attemptNumber={props.attemptNumber} />
+                        ))}
+                    </div>
+                </div>
+            </details>
+        )
+    }
 
     return (
-        <div className={`step-card step-tree-node-react${node.step.isFailurePoint ? ' is-failure' : ''}${node.step.depth === 2 ? ' is-nested' : ''}`} data-step-depth={node.step.depth}>
-            <div id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className="step-tree-body-react">
+        <article id={buildStepAnchor(props.runId, props.attemptNumber, node.stepIndex)} className={`step-card step-node-leaf-react${node.step.isFailurePoint ? ' is-failure' : ''}`} data-step-depth={node.step.depth}>
+            <div className="step-tree-body-react">
                 <div className="stack-item-header">
-                    <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />
-                    {node.step.status ? <StatusBadge label={formatStatusLabel(node.step.status, false)} tone={getStatusTone(node.step.status, false)} /> : null}
+                    {title}
+                    {statusBadge}
                 </div>
-                <div className="subtle-copy" title={meta}>{meta}</div>
+                <div className="step-node-meta-react">
+                    {metaBadges.map((badge) => <span key={badge} className="meta-badge">{badge}</span>)}
+                </div>
                 {node.step.isFailurePoint ? (
                     <div className="step-meta-row-react compact-top">
                         <span className="meta-badge">{HISTORY_TEXT.diagnostics.failedStepBadge}</span>
@@ -58,13 +103,16 @@ function DiagnosticStepCard(props: {
                 ) : null}
                 {node.step.errorMessage ? <TraceDisclosure previewText={node.step.errorMessage} text={node.step.errorMessage} badgeLabel="step" /> : null}
             </div>
-            {node.children.length > 0 ? (
-                <div className="step-tree-children-react">
-                    {node.children.map((childNode) => (
-                        <DiagnosticStepCard key={`${props.attemptNumber}-${childNode.stepIndex}-${childNode.step.title}`} node={childNode} runId={props.runId} attemptNumber={props.attemptNumber} />
-                    ))}
-                </div>
-            ) : null}
-        </div>
+        </article>
     )
+}
+
+function nodeHasFailure(node: ReturnType<typeof buildDiagnosticStepTree>[number]): boolean {
+    return node.step.isFailurePoint
+        || isUnstableDiagnosticStatus(node.step.status)
+        || node.children.some((childNode) => nodeHasFailure(childNode))
+}
+
+function isUnstableDiagnosticStatus(status: string | null): boolean {
+    return status === 'failed' || status === 'timedout' || status === 'interrupted'
 }

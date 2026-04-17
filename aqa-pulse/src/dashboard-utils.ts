@@ -66,6 +66,7 @@ export interface ReporterStep {
     title?: string
     category?: string
     depth?: number
+    offsetMs?: number
     durationMs?: number
     status?: string
     failed?: boolean

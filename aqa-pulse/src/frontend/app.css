@@ -721,8 +721,8 @@ input {
 
 .status-distribution-metric {
     display: grid;
-    gap: 8px;
-    padding: 12px 14px;
+    gap: 6px;
+    padding: 10px 12px;
     border-radius: 16px;
     border: 1px solid rgba(133, 157, 194, 0.14);
     background: rgba(7, 15, 27, 0.72);
@@ -731,9 +731,9 @@ input {
 .status-distribution-metric-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .status-distribution-metric-dot {
@@ -745,7 +745,7 @@ input {
 
 .status-distribution-metric-value {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 24px;
+    font-size: 21px;
 }
 
 .status-strip {
@@ -834,7 +834,7 @@ input {
 }
 
 .current-run-tests-table-wrap {
-    max-height: min(360px, 52vh);
+    max-height: min(430px, 58vh);
     scrollbar-gutter: stable;
 }
 
@@ -1264,21 +1264,85 @@ th {
     border-left: 1px solid rgba(133, 157, 194, 0.16);
 }
 
-.step-tree-node-react.is-nested {
-    background: rgba(10, 21, 38, 0.8);
+.step-node-branch-react,
+.step-node-leaf-react {
+    border: 1px solid rgba(133, 157, 194, 0.14);
+    border-radius: 18px;
+    background: rgba(10, 21, 38, 0.72);
+    overflow: hidden;
 }
 
-.step-tree-node-react[data-step-depth='1'] {
-    border-color: rgba(14, 165, 233, 0.16);
+.step-node-branch-react[open] {
+    border-color: rgba(14, 165, 233, 0.24);
+    background: rgba(11, 24, 43, 0.8);
 }
 
-.step-tree-node-react[data-step-depth='2'] {
-    border-color: rgba(133, 157, 194, 0.1);
+.step-node-branch-react.is-failure,
+.step-node-leaf-react.is-failure {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(10, 21, 38, 0.84));
+}
+
+.step-node-summary-react {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.step-node-summary-react::-webkit-details-marker {
+    display: none;
+}
+
+.step-node-summary-main-react,
+.step-node-panel-react,
+.step-tree-body-react {
+    display: grid;
+    gap: 10px;
+}
+
+.step-node-summary-main-react {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.step-node-title-row-react {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.step-node-toggle-react {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    margin-top: 5px;
+    border-right: 2px solid rgba(148, 163, 184, 0.9);
+    border-bottom: 2px solid rgba(148, 163, 184, 0.9);
+    transform: rotate(-45deg);
+    transition: transform 120ms ease;
+}
+
+.step-node-branch-react[open] > .step-node-summary-react .step-node-toggle-react {
+    transform: rotate(45deg);
+}
+
+.step-node-meta-react {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.step-node-panel-react {
+    padding: 0 16px 16px;
 }
 
 .step-tree-body-react {
-    display: grid;
-    gap: 8px;
+    gap: 10px;
 }
 
 .attachment-image-preview-react {

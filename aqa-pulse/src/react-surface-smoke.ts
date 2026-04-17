@@ -1085,13 +1085,28 @@ async function verifyTestHistoryNestedDiagnosticsStructure(
         assert(nestedChildrenGroup, `Nested diagnostics smoke expects a children container. Actual DOM: ${container.innerHTML}`)
 
         const nestedTitles = Array.from(nestedChildrenGroup.children)
-            .filter((child) => child.classList.contains('step-card'))
             .map((child) => child.querySelector('.step-title-react')?.textContent?.trim() ?? '')
             .filter((title) => title.length > 0)
 
         assert(
-            nestedTitles.join(' | ') === 'Wait for gateway response | Retry policy applied | Capture timeout diagnostics',
-            `Depth-2 diagnostics steps should stay siblings under the depth-1 test.step parent. Actual DOM: ${container.innerHTML}`,
+            nestedTitles.join(' | ') === 'Wait for gateway response | Retry policy applied',
+            `Depth-1 diagnostics steps should stay grouped under the depth-0 parent node. Actual DOM: ${container.innerHTML}`,
+        )
+
+        const nestedBranch = Array.from(nestedChildrenGroup.children)
+            .find((child) => child.querySelector('.step-title-react')?.textContent?.trim() === 'Retry policy applied') as HTMLElement | undefined
+        assert(nestedBranch, `Nested diagnostics smoke expects a nested branch node. Actual DOM: ${container.innerHTML}`)
+
+        const nestedGrandChildrenGroup = nestedBranch.querySelector('.step-tree-children-react') as HTMLDivElement | null
+        assert(nestedGrandChildrenGroup, `Nested diagnostics smoke expects a grand-children container. Actual DOM: ${container.innerHTML}`)
+
+        const nestedGrandChildTitles = Array.from(nestedGrandChildrenGroup.children)
+            .map((child) => child.querySelector('.step-title-react')?.textContent?.trim() ?? '')
+            .filter((title) => title.length > 0)
+
+        assert(
+            nestedGrandChildTitles.join(' | ') === 'Capture timeout diagnostics',
+            `Depth-2 diagnostics steps should stay nested under the depth-1 parent node. Actual DOM: ${container.innerHTML}`,
         )
     } finally {
         if (root) {
@@ -1117,7 +1132,8 @@ function injectNestedDiagnosticsStepsForSmoke(payload: TestHistoryResponse): Tes
         {
             title: 'Submit payment',
             category: 'test.step',
-            depth: 1,
+            depth: 0,
+            offsetMs: 0,
             durationMs: 7200,
             status: 'failed',
             errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
@@ -1126,7 +1142,8 @@ function injectNestedDiagnosticsStepsForSmoke(payload: TestHistoryResponse): Tes
         {
             title: 'Wait for gateway response',
             category: 'pw:api',
-            depth: 2,
+            depth: 1,
+            offsetMs: 120,
             durationMs: 3200,
             status: 'failed',
             errorMessage: 'Timeout 30000ms while waiting for payment gateway response',
@@ -1135,7 +1152,8 @@ function injectNestedDiagnosticsStepsForSmoke(payload: TestHistoryResponse): Tes
         {
             title: 'Retry policy applied',
             category: 'test.step',
-            depth: 2,
+            depth: 1,
+            offsetMs: 3380,
             durationMs: 1800,
             status: 'failed',
             errorMessage: null,
@@ -1145,6 +1163,7 @@ function injectNestedDiagnosticsStepsForSmoke(payload: TestHistoryResponse): Tes
             title: 'Capture timeout diagnostics',
             category: 'pw:api',
             depth: 2,
+            offsetMs: 4210,
             durationMs: 900,
             status: 'passed',
             errorMessage: null,

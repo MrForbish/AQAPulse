@@ -20,31 +20,15 @@ export function AttemptDiagnostics(props: {
         return <EmptyState title="Attempt details отсутствуют" message={HISTORY_TEXT.diagnostics.emptyAttempt} />
     }
 
-    const totalSteps = props.attempts.reduce((sum, attempt) => sum + attempt.steps.length, 0)
-    const totalAttachments = props.attempts.reduce((sum, attempt) => sum + attempt.attachments.length, 0)
-    const unstableAttempts = props.attempts.filter((attempt) => attempt.status !== 'passed' && attempt.status !== 'skipped').length
     const primaryFailureTitle = props.incidentSummary?.failureStepTitle ?? props.incidentSummary?.failureStepCategory ?? null
 
     return (
-        <div className="attempt-list-react attempt-list-scroll-react incident-console-react">
-            <div className="incident-console-toolbar-react">
-                <div className="incident-console-head-react">
-                    <span className="incident-console-kicker-react">Incident console</span>
-                    <strong className="incident-console-title-react">Трассировка последнего запуска</strong>
-                    <div className="subtle-copy incident-console-copy-react">Единый экран для разбора попыток, шагов и артефактов без переключения между отдельными блоками.</div>
-                </div>
-                <div className="incident-console-stats-react">
-                    <span className="meta-badge">Попыток: {props.attempts.length}</span>
-                    <span className="meta-badge">Шагов: {totalSteps}</span>
-                    <span className="meta-badge">Артефактов: {totalAttachments}</span>
-                    <span className="meta-badge">Нестабильных попыток: {unstableAttempts}</span>
-                </div>
-            </div>
+        <div className="attempt-list-react attempt-list-scroll-react diagnostics-workspace-react">
             {props.incidentSummary ? (
-                <div className="incident-console-alert-react">
-                    <div className="incident-console-alert-label-react">Основная точка расследования</div>
+                <div className="incident-console-alert-react diagnostics-focus-block-react">
+                    <div className="diagnostics-focus-label-react">Основная точка расследования</div>
                     <strong>{primaryFailureTitle ?? 'Точка падения не зафиксирована явно'}</strong>
-                    <div className="incident-console-alert-meta-react">
+                    <div className="diagnostics-focus-meta-react">
                         <span className="meta-badge">{ru.testHistory.incident.categoryLabel}: {ru.testHistory.incident.category[props.incidentSummary.category]}</span>
                         <span className="meta-badge">{ru.testHistory.incident.confidenceLabel}: {ru.testHistory.incident.confidence[props.incidentSummary.confidence]}</span>
                         <span className="meta-badge">{ru.testHistory.incident.severityLabel}: {ru.testHistory.incident.severity[props.incidentSummary.severity]}</span>
@@ -53,12 +37,12 @@ export function AttemptDiagnostics(props: {
                 </div>
             ) : null}
             {props.attempts.map((attempt) => (
-                <details key={attempt.attempt} className="attempt-card incident-console-card-react" data-attempt-status={attempt.status} open={attempt.attempt === props.attempts[0]?.attempt}>
+                <details key={attempt.attempt} className="attempt-card diagnostics-attempt-card-react" data-attempt-status={attempt.status} open={attempt.attempt === props.attempts[0]?.attempt}>
                     <summary>
-                        <div className="incident-console-attempt-head-react">
-                            <span className="incident-console-attempt-kicker-react">ATTEMPT {attempt.attempt}</span>
+                        <div className="diagnostics-attempt-head-react">
+                            <span className="diagnostics-attempt-kicker-react">Попытка {attempt.attempt}</span>
                             <strong>{HISTORY_TEXT.diagnostics.attemptTitle.replace('{attempt}', String(attempt.attempt))}</strong>
-                            <div className="subtle-copy incident-console-attempt-meta-react">{formatDuration(attempt.durationMs)} • {attempt.steps.length} steps • {attempt.attachments.length} attachments</div>
+                            <div className="subtle-copy diagnostics-attempt-meta-react">{formatDuration(attempt.durationMs)} • {attempt.steps.length} steps • {attempt.attachments.length} attachments</div>
                         </div>
                         <StatusBadge label={formatStatusLabel(attempt.status, false)} tone={getStatusTone(attempt.status, false)} />
                     </summary>

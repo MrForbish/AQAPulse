@@ -602,10 +602,23 @@ function resolveReporterFailedStepIndex(attempt: ReporterAttempt, steps: Reporte
         }
     }
 
-    const explicitIndex = steps.findIndex((step) => step.failed === true || hasReporterErrorMessage(step.error) || isReporterUnstableStatus(normalizeReporterStatus(step.status)))
+    const explicitCandidates = steps
+        .map((step, index) => ({ step, index }))
+        .filter(({ step }) => step.failed === true || hasReporterErrorMessage(step.error) || isReporterUnstableStatus(normalizeReporterStatus(step.status)))
 
-    if (explicitIndex >= 0) {
-        return explicitIndex
+    if (explicitCandidates.length > 0) {
+        const teardownStartIndex = findReporterTeardownStartIndex(steps)
+
+        return [...explicitCandidates].sort((left, right) => {
+            const scoreDelta = getReporterFailurePointPriority(right.step, right.index, steps, teardownStartIndex)
+                - getReporterFailurePointPriority(left.step, left.index, steps, teardownStartIndex)
+
+            if (scoreDelta !== 0) {
+                return scoreDelta
+            }
+
+            return right.index - left.index
+        })[0]?.index ?? null
     }
 
     if (isReporterUnstableStatus(normalizeReporterStatus(attempt.status)) && steps.length > 0) {
@@ -613,6 +626,198 @@ function resolveReporterFailedStepIndex(attempt: ReporterAttempt, steps: Reporte
     }
 
     return null
+}
+
+function getReporterFailurePointPriority(
+    step: ReporterStep,
+    stepIndex: number,
+    allSteps: ReporterStep[],
+    teardownStartIndex: number,
+): number {
+    const category = typeof step.category === 'string' && step.category.trim().length > 0 ? step.category.trim() : null
+    const status = normalizeReporterStatus(step.status)
+    const errorMessage = getReporterErrorMessage(step.error)
+    const depth = typeof step.depth === 'number' && Number.isFinite(step.depth)
+        ? Math.max(0, Math.trunc(step.depth))
+        : 0
+
+    let score = stepIndex
+
+    if (errorMessage) {
+        score += 120
+    }
+
+    if (step.failed === true) {
+        score += 140
+    }
+
+    if (isReporterUnstableStatus(status)) {
+        score += 50
+    }
+
+    score += depth * 14
+
+    switch (category) {
+        case 'expect':
+            score += 28
+            break
+        case 'pw:api':
+            score += 22
+            break
+        case 'test.step':
+            score += 18
+            break
+        case 'hook':
+            score += 6
+            break
+        default:
+            break
+    }
+
+    if (category === 'test.step' || category === 'hook') {
+        score -= 60
+    }
+
+    if (isReporterGenericLifecycleStep(step)) {
+        score -= 48
+    }
+
+    if (isReporterGenericTeardownStep(step)) {
+        score -= 200
+    }
+
+    if (isReporterCascadingTeardownInfrastructureStep(step)) {
+        score -= 180
+    }
+
+    if (isReporterActionableAutomationErrorStep(step)) {
+        score += 36
+    }
+
+    if (teardownStartIndex >= 0 && stepIndex >= teardownStartIndex) {
+        score -= 240
+    }
+
+    if (hasMeaningfulReporterProgressAfterStep(allSteps, stepIndex, teardownStartIndex)) {
+        score -= 260
+    }
+
+    return score
+}
+
+function hasMeaningfulReporterProgressAfterStep(
+    steps: ReporterStep[],
+    stepIndex: number,
+    teardownStartIndex: number,
+): boolean {
+    const step = steps[stepIndex]
+    const endIndex = isReporterScopeWrapper(step)
+        ? findReporterSubtreeEndIndex(steps, stepIndex)
+        : (teardownStartIndex >= 0 && stepIndex < teardownStartIndex ? teardownStartIndex : steps.length)
+    const currentDepth = typeof step.depth === 'number' && Number.isFinite(step.depth)
+        ? Math.max(0, Math.trunc(step.depth))
+        : 0
+
+    for (let index = stepIndex + 1; index < endIndex; index += 1) {
+        const laterStep = steps[index]
+        const laterDepth = typeof laterStep.depth === 'number' && Number.isFinite(laterStep.depth)
+            ? Math.max(0, Math.trunc(laterStep.depth))
+            : 0
+
+        if (isReporterGenericLifecycleStep(laterStep) && !hasReporterErrorMessage(laterStep.error)) {
+            continue
+        }
+
+        if (
+            hasReporterErrorMessage(laterStep.error)
+            || laterStep.category === 'expect'
+            || laterStep.category === 'pw:api'
+            || laterStep.category === 'test.step'
+            || laterDepth > currentDepth
+        ) {
+            return true
+        }
+    }
+
+    return false
+}
+
+function isReporterScopeWrapper(step: ReporterStep): boolean {
+    return step.category === 'test.step' || step.category === 'hook'
+}
+
+function findReporterSubtreeEndIndex(steps: ReporterStep[], stepIndex: number): number {
+    const step = steps[stepIndex]
+    const depth = typeof step.depth === 'number' && Number.isFinite(step.depth)
+        ? Math.max(0, Math.trunc(step.depth))
+        : 0
+
+    for (let index = stepIndex + 1; index < steps.length; index += 1) {
+        const laterStep = steps[index]
+        const laterDepth = typeof laterStep?.depth === 'number' && Number.isFinite(laterStep.depth)
+            ? Math.max(0, Math.trunc(laterStep.depth))
+            : 0
+
+        if (laterDepth <= depth) {
+            return index
+        }
+    }
+
+    return steps.length
+}
+
+function findReporterTeardownStartIndex(steps: ReporterStep[]): number {
+    return steps.findIndex((step) => {
+        const depth = typeof step.depth === 'number' && Number.isFinite(step.depth)
+            ? Math.max(0, Math.trunc(step.depth))
+            : 0
+
+        return depth === 0 && isReporterGenericTeardownStep(step)
+    })
+}
+
+function isReporterGenericLifecycleStep(step: ReporterStep): boolean {
+    const category = (step.category ?? '').trim().toLowerCase()
+    const title = (step.title ?? '').trim().toLowerCase()
+
+    return /(^|\W)(before hooks|after hooks|setup|teardown|cleanup|worker cleanup|fixture|hook)($|\W)/.test(title)
+        || /(hook:before|hook:after|fixture:setup|fixture:teardown|beforeall|beforeeach|afterall|aftereach)/.test(category)
+}
+
+function isReporterGenericTeardownStep(step: ReporterStep): boolean {
+    const category = (step.category ?? '').trim().toLowerCase()
+    const title = (step.title ?? '').trim().toLowerCase()
+
+    return /(^|\W)(after hooks|worker cleanup|cleanup|clean up|teardown|tear down)($|\W)/.test(title)
+        || /(hook:after|fixture:teardown|afterall|aftereach|cleanup|clean up|teardown)/.test(category)
+}
+
+function isReporterCascadingTeardownInfrastructureStep(step: ReporterStep): boolean {
+    const titleCorpus = (step.title ?? '').trim().toLowerCase()
+    const categoryCorpus = (step.category ?? '').trim().toLowerCase()
+    const errorCorpus = (getReporterErrorMessage(step.error) ?? '').trim().toLowerCase()
+
+    if (!errorCorpus) {
+        return false
+    }
+
+    const hasClosedResourceSignal = /target page, context or browser has been closed|browser has been closed|context has been closed|page has been closed|browser\.close:|context\.close:|page\.close:/.test(errorCorpus)
+    const isCloseOperation = /(close browser|close context|close page|browser close|context close|page close)/.test(titleCorpus)
+    const isLifecycleCleanup = isReporterGenericLifecycleStep(step)
+        || isReporterGenericTeardownStep(step)
+        || categoryCorpus === 'hook'
+
+    return hasClosedResourceSignal && (isCloseOperation || isLifecycleCleanup)
+}
+
+function isReporterActionableAutomationErrorStep(step: ReporterStep): boolean {
+    const titleCorpus = (step.title ?? '').trim().toLowerCase()
+    const categoryCorpus = (step.category ?? '').trim().toLowerCase()
+    const errorCorpus = (getReporterErrorMessage(step.error) ?? '').trim().toLowerCase()
+    const combinedCorpus = `${titleCorpus} ${categoryCorpus} ${errorCorpus}`
+
+    return step.category === 'pw:api'
+        && /(timeouterror|timeout \d+ms exceeded|timed out|waitfor|wait for|locator\.|selector)/.test(combinedCorpus)
 }
 
 function hasReporterErrorMessage(error: ReporterError | undefined): boolean {

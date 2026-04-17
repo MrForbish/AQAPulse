@@ -66,8 +66,8 @@ function DiagnosticStepCard(props: {
         || node.children.some((childNode) => nodeHasDiagnosticError(childNode))
     const metaBadges = [
         node.step.category ?? HISTORY_TEXT.diagnostics.noCategory,
-        formatDuration(node.step.durationMs),
-        node.step.offsetMs !== null ? `+${formatDuration(node.step.offsetMs)}` : null,
+        `${HISTORY_TEXT.diagnostics.duration}: ${formatDuration(node.step.durationMs)}`,
+        node.step.offsetMs !== null ? `${HISTORY_TEXT.diagnostics.stepOffset}: +${formatDuration(node.step.offsetMs)}` : null,
     ].filter((value): value is string => Boolean(value))
     const title = <OverflowText as="strong" text={node.step.title} className="step-title-react" lines={2} />
     const statusBadge = node.step.status ? <StatusBadge label={formatStatusLabel(node.step.status, false)} tone={getStatusTone(node.step.status, false)} /> : null

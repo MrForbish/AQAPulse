@@ -852,79 +852,148 @@ function normalizeAttemptSteps(
                 durationMs: typeof step.durationMs === 'number' ? step.durationMs : 0,
                 status: normalizedStatus,
                 errorMessage: rawErrorMessage,
-                isFailurePoint: step.failed === true || Boolean(rawErrorMessage) || isExplicitFailurePoint,
+                isFailurePoint: isExplicitFailurePoint || step.failed === true,
             }
         })
 
-    return normalizedSteps.map((step, index, allSteps) => {
-        if (!shouldDemoteDuplicatedFailurePoint(step, index, allSteps, failedStepIndex, normalizedFailedTitle)) {
-            return step
-        }
+    const explicitFailureIndex = resolveExplicitNormalizedFailureIndex(normalizedSteps, failedStepIndex, normalizedFailedTitle)
+    const selectedFailureIndex = selectNormalizedFailurePointIndex(normalizedSteps, explicitFailureIndex)
 
-        return {
-            ...step,
-            isFailurePoint: false,
-        }
-    })
+    return normalizedSteps.map((step, index) => ({
+        ...step,
+        isFailurePoint: index === selectedFailureIndex,
+    }))
 }
 
-function shouldDemoteDuplicatedFailurePoint(
+function resolveExplicitNormalizedFailureIndex(
+    steps: TestHistoryStep[],
+    failedStepIndex?: number,
+    normalizedFailedTitle?: string | null,
+): number | null {
+    if (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex < steps.length) {
+        return failedStepIndex
+    }
+
+    if (!normalizedFailedTitle) {
+        return null
+    }
+
+    const titledIndex = steps.findIndex((step) => step.title.toLowerCase() === normalizedFailedTitle)
+    return titledIndex >= 0 ? titledIndex : null
+}
+
+function selectNormalizedFailurePointIndex(steps: TestHistoryStep[], explicitFailureIndex: number | null): number | null {
+    if (steps.length === 0) {
+        return null
+    }
+
+    const teardownStartIndex = findTeardownStartIndex(steps)
+    const candidates = steps
+        .map((step, index) => ({ step, index, isExplicit: explicitFailureIndex === index }))
+        .filter(({ step, isExplicit }) => isPotentialFailureSignalStep(step, isExplicit))
+
+    if (candidates.length === 0) {
+        return explicitFailureIndex
+    }
+
+    return [...candidates].sort((left, right) => {
+        const scoreDelta = getNormalizedFailurePointPriority(right.step, right.index, steps, teardownStartIndex, right.isExplicit)
+            - getNormalizedFailurePointPriority(left.step, left.index, steps, teardownStartIndex, left.isExplicit)
+
+        if (scoreDelta !== 0) {
+            return scoreDelta
+        }
+
+        return right.index - left.index
+    })[0]?.index ?? explicitFailureIndex
+}
+
+function isPotentialFailureSignalStep(step: TestHistoryStep, isExplicit: boolean): boolean {
+    return isExplicit
+        || Boolean(step.errorMessage)
+        || isUnstableStatus(step.status ?? '')
+}
+
+function getNormalizedFailurePointPriority(
     step: TestHistoryStep,
     stepIndex: number,
     allSteps: TestHistoryStep[],
-    failedStepIndex?: number,
-    normalizedFailedTitle?: string | null,
-): boolean {
-    const normalizedError = step.errorMessage ? normalizeIncidentMessage(step.errorMessage) : null
-    const isExplicitFailurePoint = (typeof failedStepIndex === 'number' && failedStepIndex >= 0 && failedStepIndex === stepIndex)
-        || (normalizedFailedTitle !== null && step.title.toLowerCase() === normalizedFailedTitle)
-
-    if (!normalizedError || isExplicitFailurePoint) {
-        return false
-    }
-
-    return allSteps.slice(0, stepIndex).some((candidate, candidateIndex) => {
-        if (!candidate.errorMessage) {
-            return false
-        }
-
-        if (normalizeIncidentMessage(candidate.errorMessage) !== normalizedError) {
-            return false
-        }
-
-        return shouldPreferEarlierDuplicateErrorCandidate(candidate, candidateIndex, step, stepIndex)
-    })
-}
-
-function shouldPreferEarlierDuplicateErrorCandidate(
-    candidate: TestHistoryStep,
-    candidateIndex: number,
-    current: TestHistoryStep,
-    currentIndex: number,
-): boolean {
-    const candidateScore = getComparableDuplicateSignalPriority(candidate, candidateIndex)
-    const currentScore = getComparableDuplicateSignalPriority(current, currentIndex)
-
-    if (candidateScore <= currentScore) {
-        return false
-    }
-
-    if (candidate.title === current.title && candidate.category === current.category && candidate.depth === current.depth) {
-        return false
-    }
-
-    return isGenericLifecycleStep(current)
-        || isGenericTeardownFailureStep(current)
-        || current.category === 'test.step'
-        || current.category === 'hook'
-        || current.depth < candidate.depth
-}
-
-function getComparableDuplicateSignalPriority(step: TestHistoryStep, stepIndex: number): number {
-    return getDiagnosticStepPriority({
+    teardownStartIndex: number,
+    isExplicit: boolean,
+): number {
+    let score = getDiagnosticStepPriority({
         ...step,
         isFailurePoint: false,
     }, stepIndex)
+
+    if (isExplicit) {
+        score += 160
+    }
+
+    if (step.category === 'test.step' || step.category === 'hook') {
+        score -= 60
+    }
+
+    if (teardownStartIndex >= 0 && stepIndex >= teardownStartIndex) {
+        score -= 240
+    }
+
+    if (hasMeaningfulProgressAfterStep(allSteps, stepIndex, teardownStartIndex)) {
+        score -= 260
+    }
+
+    return score
+}
+
+function hasMeaningfulProgressAfterStep(
+    steps: TestHistoryStep[],
+    stepIndex: number,
+    teardownStartIndex: number,
+): boolean {
+    const step = steps[stepIndex]
+    const endIndex = isFailureScopeWrapper(step)
+        ? findStepSubtreeEndIndex(steps, stepIndex)
+        : (teardownStartIndex >= 0 && stepIndex < teardownStartIndex ? teardownStartIndex : steps.length)
+
+    for (let index = stepIndex + 1; index < endIndex; index += 1) {
+        const laterStep = steps[index]
+
+        if (isGenericLifecycleStep(laterStep) && !laterStep.errorMessage) {
+            return false
+        }
+
+        if (
+            laterStep.errorMessage
+            || laterStep.category === 'expect'
+            || laterStep.category === 'pw:api'
+            || laterStep.category === 'test.step'
+            || laterStep.depth > step.depth
+        ) {
+            return true
+        }
+    }
+
+    return false
+}
+
+function isFailureScopeWrapper(step: TestHistoryStep): boolean {
+    return step.category === 'test.step' || step.category === 'hook'
+}
+
+function findStepSubtreeEndIndex(steps: TestHistoryStep[], stepIndex: number): number {
+    const depth = steps[stepIndex]?.depth ?? 0
+
+    for (let index = stepIndex + 1; index < steps.length; index += 1) {
+        if ((steps[index]?.depth ?? 0) <= depth) {
+            return index
+        }
+    }
+
+    return steps.length
+}
+
+function findTeardownStartIndex(steps: TestHistoryStep[]): number {
+    return steps.findIndex((step) => step.depth === 0 && isGenericTeardownFailureStep(step))
 }
 
 function buildCandidateIdentity(test: ReporterTest): { title: string; file: string; project: string } | null {

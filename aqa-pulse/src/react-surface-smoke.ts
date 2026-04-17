@@ -12,8 +12,8 @@ import { HashRouter, MemoryRouter, Route, Routes, useParams } from 'react-router
 import { ApiStore, selectPrimaryFailureStepForDiagnostics, type TestHistoryResponse } from './api-store'
 import type { WorkspaceDescriptor } from './backend/contracts'
 import { FileSystemBackendStorage } from './backend/storage'
-import { buildDashboardSummary, loadReporterReport, type ReporterRoot } from './dashboard-utils'
-import type { DashboardHistoryEntry } from './history-utils'
+import { buildDashboardSummary, enrichReporterReport, loadReporterReport, type ReporterRoot } from './dashboard-utils'
+import type { ArchivedRunRecord, DashboardHistoryEntry } from './history-utils'
 import { buildStepAnchor, findIncidentStepAnchor } from './shared/test-history-helpers'
 import {
     createEmptyFrontendBootstrap,
@@ -257,6 +257,7 @@ async function main(): Promise<void> {
     verifyDiagnosticTreeKeepsSecondaryErrorsWithoutFailurePoint()
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
+    verifyApiStoreDemotesRecoveredBeforeHookErrors()
     verifyIncidentAnchorUsesFailureMetadata()
     verifyDashboardComparisonUsesPreviousComparableRun()
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
@@ -1176,6 +1177,216 @@ function verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise(): void {
     ])
 
     assert(selectedStep?.title === 'Expect "toHaveURL"', `Primary failure-step selection should ignore teardown close-noise after a more specific expect failure. Actual step: ${selectedStep?.title ?? 'null'}`)
+}
+
+function verifyApiStoreDemotesRecoveredBeforeHookErrors(): void {
+    const testTitle = 'Авторизация пользователя с 2FA > recovered beforeHook error'
+    const reporterReport = enrichReporterReport({
+        schemaVersion: 2,
+        timestamp: '2026-04-17T08:10:00.000Z',
+        durationMs: 35636,
+        environment: {
+            projects: ['ui'],
+        },
+        tests: [
+            {
+                id: 'synthetic-auth-test',
+                title: testTitle,
+                status: 'failed',
+                flaky: false,
+                durationMs: 35636,
+                location: {
+                    file: 'tests/UI/auth/authorization-with-2fa.spec.ts',
+                    line: 148,
+                    column: 13,
+                },
+                project: 'ui',
+                retries: 1,
+                errors: [{
+                    message: 'Error: expect(locator).toBeVisible() failed',
+                }],
+                attempts: [
+                    {
+                        attempt: 1,
+                        status: 'failed',
+                        durationMs: 34264,
+                        startTime: '2026-04-16T06:29:48.394Z',
+                        error: {
+                            message: 'Error: expect(locator).toBeVisible() failed',
+                        },
+                        steps: [
+                            {
+                                title: 'Before Hooks',
+                                category: 'hook',
+                                durationMs: 8690,
+                                depth: 0,
+                                offsetMs: 2,
+                            },
+                            {
+                                title: 'Click getByText(\'Ok\', { exact: true })',
+                                category: 'pw:api',
+                                durationMs: 5002,
+                                depth: 2,
+                                offsetMs: 1988,
+                                error: 'TimeoutError: locator.click: Timeout 5000ms exceeded.',
+                            },
+                            {
+                                title: 'Wait for event "response"',
+                                category: 'pw:api',
+                                durationMs: 409,
+                                depth: 2,
+                                offsetMs: 7024,
+                            },
+                            {
+                                title: 'Включаем 2FA глобально в настройках аккаунта (user-account)',
+                                category: 'test.step',
+                                durationMs: 6443,
+                                depth: 1,
+                                offsetMs: 14359,
+                                error: 'Error: expect(locator).toBeVisible() failed',
+                            },
+                            {
+                                title: 'Expect "toBeVisible" getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })',
+                                category: 'expect',
+                                durationMs: 5001,
+                                depth: 2,
+                                offsetMs: 15800,
+                                error: 'Error: expect(locator).toBeVisible() failed',
+                            },
+                            {
+                                title: 'After Hooks',
+                                category: 'hook',
+                                durationMs: 13485,
+                                depth: 0,
+                                offsetMs: 20803,
+                            },
+                            {
+                                title: 'Cleanup: выключаем 2FA глобально (user-account)',
+                                category: 'test.step',
+                                durationMs: 5486,
+                                depth: 2,
+                                offsetMs: 26368,
+                                error: 'Error: expect(locator).toBeVisible() failed',
+                            },
+                            {
+                                title: 'Expect "toBeVisible" getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })',
+                                category: 'expect',
+                                durationMs: 5002,
+                                depth: 3,
+                                offsetMs: 26851,
+                                error: 'Error: expect(locator).toBeVisible() failed',
+                            },
+                            {
+                                title: 'Worker Cleanup',
+                                category: 'hook',
+                                durationMs: 6,
+                                depth: 0,
+                                offsetMs: 34288,
+                                failed: true,
+                                status: 'failed',
+                                error: {
+                                    message: 'Error: expect(locator).toBeVisible() failed',
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    } satisfies ReporterRoot)
+
+    const attempt = reporterReport.tests?.[0]?.attempts?.[0]
+    assert(attempt?.failedStepTitle === 'Expect "toBeVisible" getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })', `Reporter enrichment should infer the terminal failing expect step instead of the recovered beforeHook click. Actual failedStepTitle: ${attempt?.failedStepTitle ?? 'null'}`)
+
+    const run: DashboardHistoryEntry = {
+        id: 'run-synthetic-auth',
+        reportTimestamp: '2026-04-17T08:10:00.000Z',
+        generatedAt: '2026-04-17T08:10:00.000Z',
+        sourceFile: 'synthetic.json',
+        comparisonKey: null,
+        comparisonLabel: null,
+        branch: 'main',
+        commit: 'synthetic',
+        author: 'Smoke Bot',
+        totalTests: 1,
+        passedTests: 0,
+        failedTests: 1,
+        flakyTests: 0,
+        skippedTests: 0,
+        timedOutTests: 0,
+        interruptedTests: 0,
+        passRate: 0,
+        flakyRatio: 0,
+        totalDurationMs: 35636,
+        medianDurationMs: 35636,
+        errorClusterCount: 1,
+    }
+
+    const archivedRunRecord: ArchivedRunRecord = {
+        metadata: {
+            schemaVersion: 1,
+            id: run.id,
+            runDirectory: run.id,
+            dataFile: 'data.json',
+            metadataFile: 'metadata.json',
+            reportTimestamp: run.reportTimestamp,
+            generatedAt: run.generatedAt,
+            sourceFile: run.sourceFile,
+            comparisonKey: run.comparisonKey,
+            comparisonLabel: run.comparisonLabel,
+            branch: run.branch,
+            commit: run.commit,
+            author: run.author,
+            kpis: {
+                totalTests: run.totalTests,
+                passedTests: run.passedTests,
+                failedTests: run.failedTests,
+                flakyTests: run.flakyTests,
+                skippedTests: run.skippedTests,
+                timedOutTests: run.timedOutTests,
+                interruptedTests: run.interruptedTests,
+                passRate: run.passRate,
+                flakyRatio: run.flakyRatio,
+                totalDurationMs: run.totalDurationMs,
+                medianDurationMs: run.medianDurationMs,
+                errorClusterCount: run.errorClusterCount,
+            },
+        },
+        data: reporterReport,
+    }
+
+    const store = new ApiStore({
+        storage: {
+            readSummary: () => null as unknown as ReturnType<ApiStore['getSummary']>,
+            readHistory: () => ({
+                schemaVersion: 2,
+                updatedAt: '2026-04-17T08:10:00.000Z',
+                runs: [run],
+            }),
+            findArchivedRunDirectory: (entryId) => entryId === run.id ? run.id : null,
+            readArchivedRunRecord: () => archivedRunRecord,
+        },
+    })
+
+    const payload = store.getTestHistory(testTitle, {
+        project: 'ui',
+        file: 'tests/UI/auth/authorization-with-2fa.spec.ts',
+    })
+
+    assert(payload !== null && !('message' in payload), 'Synthetic test-history payload should resolve without conflict.')
+
+    const attemptSteps = payload.history[0]?.attemptDetails[0]?.steps ?? []
+    const beforeHookClick = attemptSteps.find((step) => step.title === 'Click getByText(\'Ok\', { exact: true })')
+    const actualFailure = attemptSteps.find((step) => step.title === 'Expect "toBeVisible" getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })' && step.offsetMs === 15800)
+    const workerCleanup = attemptSteps.find((step) => step.title === 'Worker Cleanup')
+    const failurePoints = attemptSteps.filter((step) => step.isFailurePoint)
+
+    assert(beforeHookClick?.errorMessage === 'TimeoutError: locator.click: Timeout 5000ms exceeded.', 'Recovered beforeHook click error should stay visible in diagnostics.')
+    assert(beforeHookClick?.isFailurePoint === false, `Recovered beforeHook click should not be marked as the actual failure point. Actual value: ${String(beforeHookClick?.isFailurePoint)}`)
+    assert(actualFailure?.isFailurePoint === true, 'Later terminal expect failure should be the only actual failure point.')
+    assert(workerCleanup?.errorMessage === 'Error: expect(locator).toBeVisible() failed', 'Worker Cleanup should keep the duplicated final error context as a secondary error.')
+    assert(workerCleanup?.isFailurePoint === false, 'Worker Cleanup should not be marked as the actual failure point when a better earlier step exists.')
+    assert(failurePoints.length === 1, `Only one step should remain the real failure point per attempt. Actual count: ${failurePoints.length}`)
 }
 
 function verifyIncidentAnchorUsesFailureMetadata(): void {

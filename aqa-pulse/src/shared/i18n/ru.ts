@@ -510,6 +510,7 @@ export const ru = {
             attemptTitle: 'Попытка #{attempt}',
             duration: 'Длительность',
             startTime: 'Старт',
+            stepOffset: 'От начала',
             steps: 'Шаги',
             attachments: 'Артефакты',
             stepsTitle: 'Шаги попытки',

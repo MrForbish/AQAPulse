@@ -1852,6 +1852,10 @@ th {
     gap: 12px;
 }
 
+.overview-signal-hero-head {
+    justify-content: flex-start;
+}
+
 .overview-signal-kicker {
     display: inline-flex;
     align-items: center;
@@ -1998,13 +2002,27 @@ th {
     font-size: 11px;
 }
 
+.overview-signal-stat-head > .module-pill {
+    align-self: center;
+    justify-content: center;
+    min-width: 98px;
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
 .overview-signal-entry-pill {
     align-self: center;
     justify-content: center;
-    min-width: 92px;
-    min-height: 30px;
-    padding: 0 12px;
-    font-size: 12px;
+    min-width: 104px;
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 13px;
     line-height: 1;
     text-align: center;
     white-space: nowrap;

@@ -30,7 +30,6 @@ export function DashboardManagerOverviewSection(props: { summary: DashboardSumma
                 <article className={`overview-signal-hero is-${mapManagerTone(managerSummary.releaseReadiness.level)}`}>
                     <div className="overview-signal-hero-head">
                         <span className="overview-signal-kicker">Главный сигнал</span>
-                        <span className={`module-pill is-${mapManagerTone(managerSummary.releaseReadiness.level)}`}>{getManagerReadinessLabel(managerSummary.releaseReadiness.level)}</span>
                     </div>
                     <div className="overview-signal-hero-label">{DASHBOARD_TEXT.manager.releaseReadiness}</div>
                     <div className="overview-signal-hero-score">{formatScore(managerSummary.releaseReadiness.score)}</div>

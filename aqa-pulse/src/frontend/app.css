@@ -100,7 +100,7 @@ input {
     font-size: clamp(18px, 2.5vw, 28px);
     line-height: 1.08;
     letter-spacing: -0.025em;
-    max-width: 24ch;
+    max-width: 50ch;
 }
 
 .hero-block p,
@@ -1461,11 +1461,6 @@ th {
     line-height: 1.35;
 }
 
-.incident-console-note-react {
-    margin: 0;
-    border-radius: 16px;
-}
-
 .incident-console-card-react {
     border-radius: 14px;
     border-color: rgba(133, 157, 194, 0.18);
@@ -1543,6 +1538,13 @@ th {
 .diagnostic-step-group-react > .attachment-preview-body-react {
     gap: 16px;
     padding: 0 18px 18px;
+}
+
+.diagnostic-step-scroll-wrap-react {
+    max-height: min(560px, 52vh);
+    overflow: auto;
+    padding-right: 6px;
+    scrollbar-gutter: stable;
 }
 
 .attempt-section-title-react {

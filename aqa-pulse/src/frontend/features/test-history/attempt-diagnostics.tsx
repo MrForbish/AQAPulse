@@ -52,7 +52,6 @@ export function AttemptDiagnostics(props: {
                     </div>
                 </div>
             ) : null}
-            <div className="inline-note is-info incident-console-note-react">{HISTORY_TEXT.diagnostics.retriesHint}</div>
             {props.attempts.map((attempt) => (
                 <details key={attempt.attempt} className="attempt-card incident-console-card-react" data-attempt-status={attempt.status} open={attempt.attempt === props.attempts[0]?.attempt}>
                     <summary>

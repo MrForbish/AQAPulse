@@ -31,7 +31,7 @@ export function AttemptStepTree(props: {
                 <span className="attempt-section-title-react">{HISTORY_TEXT.diagnostics.stepsTitle}</span>
                 <span className="meta-badge">{props.steps.length}</span>
             </summary>
-            <div className="attachment-preview-body-react">
+            <div className="attachment-preview-body-react diagnostic-step-scroll-wrap-react">
                 <div className="step-tree-react diagnostic-step-tree-react">
                     {buildDiagnosticStepTree(props.steps).map((node) => (
                         <DiagnosticStepCard key={`${props.attemptNumber}-${node.stepIndex}-${node.step.title}`} node={node} runId={props.runId} attemptNumber={props.attemptNumber} primaryFailure={props.primaryFailure ?? null} />

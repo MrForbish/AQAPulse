@@ -41,6 +41,7 @@ import {
 import { DashboardTeamOverviewMetrics, DashboardTeamRecentRunsSection } from './dashboard-team-sections'
 
 const DASHBOARD_TEXT = ru.dashboard
+const BUSINESS_SCENARIO_STORAGE_KEY_PREFIX = 'aqa-pulse:business-scenario:'
 
 const BUSINESS_SCENARIO_PRESETS: Array<{ key: string; label: string; assumptions: DashboardBusinessAssumptions }> = [
     {
@@ -75,18 +76,46 @@ const BUSINESS_SCENARIO_PRESETS: Array<{ key: string; label: string; assumptions
 export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
     const { summary } = props
     const summaryAssumptions = readSummaryBusinessAssumptions(summary)
-    const [scenarioAssumptions, setScenarioAssumptions] = React.useState<DashboardBusinessAssumptions>(summaryAssumptions)
+    const storageKey = getBusinessScenarioStorageKey(props.workspaceSlug)
+    const [scenarioAssumptions, setScenarioAssumptions] = React.useState<DashboardBusinessAssumptions>(() => (
+        readPersistedBusinessAssumptions(storageKey) ?? summaryAssumptions
+    ))
     const [lastSyncedAssumptions, setLastSyncedAssumptions] = React.useState<DashboardBusinessAssumptions>(summaryAssumptions)
-    const [activePresetKey, setActivePresetKey] = React.useState<string | null>(null)
+    const [activePresetKey, setActivePresetKey] = React.useState<string | null>(() => (
+        resolveMatchingBusinessScenarioPresetKey(readPersistedBusinessAssumptions(storageKey) ?? summaryAssumptions)
+    ))
 
     React.useEffect(() => {
-        if (areBusinessAssumptionsEqual(scenarioAssumptions, lastSyncedAssumptions)) {
+        const persistedAssumptions = readPersistedBusinessAssumptions(storageKey)
+
+        if (persistedAssumptions) {
+            setScenarioAssumptions(persistedAssumptions)
+            setActivePresetKey(resolveMatchingBusinessScenarioPresetKey(persistedAssumptions))
+        } else if (areBusinessAssumptionsEqual(scenarioAssumptions, lastSyncedAssumptions)) {
             setScenarioAssumptions(summaryAssumptions)
-            setActivePresetKey(null)
+            setActivePresetKey(resolveMatchingBusinessScenarioPresetKey(summaryAssumptions))
         }
 
         setLastSyncedAssumptions(summaryAssumptions)
     }, [
+        storageKey,
+        summaryAssumptions.analysisMinutesPerUnstable,
+        summaryAssumptions.ciMinuteCostRub,
+        summaryAssumptions.developerHourlyCostRub,
+    ])
+
+    React.useEffect(() => {
+        if (areBusinessAssumptionsEqual(scenarioAssumptions, summaryAssumptions)) {
+            clearPersistedBusinessAssumptions(storageKey)
+            return
+        }
+
+        writePersistedBusinessAssumptions(storageKey, scenarioAssumptions)
+    }, [
+        scenarioAssumptions.analysisMinutesPerUnstable,
+        scenarioAssumptions.ciMinuteCostRub,
+        scenarioAssumptions.developerHourlyCostRub,
+        storageKey,
         summaryAssumptions.analysisMinutesPerUnstable,
         summaryAssumptions.ciMinuteCostRub,
         summaryAssumptions.developerHourlyCostRub,
@@ -97,11 +126,15 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
     const appliedPresetLabel = BUSINESS_SCENARIO_PRESETS.find((preset) => preset.key === activePresetKey)?.label ?? null
 
     function handleAssumptionChange(key: keyof DashboardBusinessAssumptions, value: number | null): void {
-        setScenarioAssumptions((current) => ({
-            ...current,
-            [key]: value,
-        }))
-        setActivePresetKey(null)
+        setScenarioAssumptions((current) => {
+            const nextAssumptions = {
+                ...current,
+                [key]: value,
+            }
+
+            setActivePresetKey(resolveMatchingBusinessScenarioPresetKey(nextAssumptions))
+            return nextAssumptions
+        })
     }
 
     function handleApplyPreset(presetKey: string): void {
@@ -152,6 +185,51 @@ export function BusinessModule(props: { summary: DashboardSummary; workspaceSlug
     )
 }
 
+function getBusinessScenarioStorageKey(workspaceSlug: string | null): string {
+    return `${BUSINESS_SCENARIO_STORAGE_KEY_PREFIX}${workspaceSlug ?? 'public'}`
+}
+
+function readPersistedBusinessAssumptions(storageKey: string): DashboardBusinessAssumptions | null {
+    if (typeof window === 'undefined') {
+        return null
+    }
+
+    const rawValue = window.localStorage.getItem(storageKey)
+
+    if (!rawValue) {
+        return null
+    }
+
+    try {
+        const parsedValue = JSON.parse(rawValue) as Partial<DashboardBusinessAssumptions>
+
+        return {
+            ciMinuteCostRub: normalizePersistedBusinessAssumptionValue(parsedValue.ciMinuteCostRub),
+            developerHourlyCostRub: normalizePersistedBusinessAssumptionValue(parsedValue.developerHourlyCostRub),
+            analysisMinutesPerUnstable: normalizePersistedBusinessAssumptionValue(parsedValue.analysisMinutesPerUnstable),
+        }
+    } catch {
+        window.localStorage.removeItem(storageKey)
+        return null
+    }
+}
+
+function writePersistedBusinessAssumptions(storageKey: string, assumptions: DashboardBusinessAssumptions): void {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    window.localStorage.setItem(storageKey, JSON.stringify(assumptions))
+}
+
+function clearPersistedBusinessAssumptions(storageKey: string): void {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    window.localStorage.removeItem(storageKey)
+}
+
 function readSummaryBusinessAssumptions(summary: DashboardSummary): DashboardBusinessAssumptions {
     const assumptions = summary.businessMetrics.costOfFlakiness.assumptions
 
@@ -166,6 +244,14 @@ function areBusinessAssumptionsEqual(left: DashboardBusinessAssumptions, right: 
     return left.ciMinuteCostRub === right.ciMinuteCostRub
         && left.developerHourlyCostRub === right.developerHourlyCostRub
         && left.analysisMinutesPerUnstable === right.analysisMinutesPerUnstable
+}
+
+function resolveMatchingBusinessScenarioPresetKey(assumptions: DashboardBusinessAssumptions): string | null {
+    return BUSINESS_SCENARIO_PRESETS.find((preset) => areBusinessAssumptionsEqual(preset.assumptions, assumptions))?.key ?? null
+}
+
+function normalizePersistedBusinessAssumptionValue(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
 export function CodeQualityModule(props: { summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {

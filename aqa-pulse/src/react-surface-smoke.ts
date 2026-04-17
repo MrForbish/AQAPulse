@@ -249,6 +249,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
+    verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
     await verifyErrorBoundaryRecovery(reactModule)
 
@@ -918,6 +919,73 @@ function verifyPrimaryFailureStepSelectionPrefersNestedErroredAction(): void {
     ])
 
     assert(selectedStep?.title === 'Wait for selector locator(\'mat-snack-bar-container, simple-snack-bar\').getByRole(\'button\', { name: /^close$/i })', `Primary failure-step selection should prefer the nested pw:api error over wrapper or cleanup steps. Actual step: ${selectedStep?.title ?? 'null'}`)
+}
+
+function verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise(): void {
+    const selectedStep = selectPrimaryFailureStepForDiagnostics([
+        {
+            title: 'Open configuration page',
+            category: 'test.step',
+            depth: 0,
+            offsetMs: 11202,
+            durationMs: 9127,
+            status: 'failed',
+            errorMessage: 'Error: expect(page).toHaveURL(expected) failed',
+            isFailurePoint: true,
+        },
+        {
+            title: 'Verify page opened without auth',
+            category: 'test.step',
+            depth: 1,
+            offsetMs: 13453,
+            durationMs: 6626,
+            status: 'failed',
+            errorMessage: 'Error: expect(page).toHaveURL(expected) failed',
+            isFailurePoint: true,
+        },
+        {
+            title: 'Expect "toHaveURL"',
+            category: 'expect',
+            depth: 2,
+            offsetMs: 14070,
+            durationMs: 6008,
+            status: 'failed',
+            errorMessage: 'Error: expect(page).toHaveURL(expected) failed',
+            isFailurePoint: true,
+        },
+        {
+            title: 'After Hooks',
+            category: 'hook',
+            depth: 0,
+            offsetMs: 20331,
+            durationMs: 22,
+            status: 'failed',
+            errorMessage: null,
+            isFailurePoint: false,
+        },
+        {
+            title: 'Close browser',
+            category: 'pw:api',
+            depth: 2,
+            offsetMs: 20334,
+            durationMs: 1,
+            status: 'failed',
+            errorMessage: 'Error: browser.close: Target page, context or browser has been closed',
+            isFailurePoint: true,
+        },
+        {
+            title: 'Worker Cleanup',
+            category: 'hook',
+            depth: 0,
+            offsetMs: 20353,
+            durationMs: 3,
+            status: 'failed',
+            errorMessage: null,
+            isFailurePoint: true,
+        },
+    ])
+
+    assert(selectedStep?.title === 'Expect "toHaveURL"', `Primary failure-step selection should ignore teardown close-noise after a more specific expect failure. Actual step: ${selectedStep?.title ?? 'null'}`)
 }
 
 async function verifyTestHistoryAttachmentMarkdownPreview(

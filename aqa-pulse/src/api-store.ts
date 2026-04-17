@@ -1268,6 +1268,10 @@ function getDiagnosticStepPriority(step: TestHistoryStep, stepIndex: number): nu
         score -= 200
     }
 
+    if (isCascadingTeardownInfrastructureStep(step)) {
+        score -= 180
+    }
+
     if (isActionableAutomationErrorStep(step)) {
         score += 36
     }
@@ -1297,6 +1301,7 @@ function hasActionableDiagnosticStepError(step: TestHistoryStep): boolean {
     }
 
     return !isGenericTeardownFailureStep(step)
+        && !isCascadingTeardownInfrastructureStep(step)
 }
 
 function isActionableAutomationErrorStep(step: TestHistoryStep): boolean {
@@ -1307,6 +1312,24 @@ function isActionableAutomationErrorStep(step: TestHistoryStep): boolean {
 
     return step.category === 'pw:api'
         && /(timeouterror|timeout \d+ms exceeded|timed out|waitfor|wait for|locator\.|selector)/.test(combinedCorpus)
+}
+
+function isCascadingTeardownInfrastructureStep(step: TestHistoryStep): boolean {
+    const titleCorpus = step.title.trim().toLowerCase()
+    const categoryCorpus = (step.category ?? '').trim().toLowerCase()
+    const errorCorpus = (step.errorMessage ?? '').trim().toLowerCase()
+
+    if (!errorCorpus) {
+        return false
+    }
+
+    const hasClosedResourceSignal = /target page, context or browser has been closed|browser has been closed|context has been closed|page has been closed|browser\.close:|context\.close:|page\.close:/.test(errorCorpus)
+    const isCloseOperation = /(close browser|close context|close page|browser close|context close|page close)/.test(titleCorpus)
+    const isLifecycleCleanup = isGenericLifecycleStep(step)
+        || isGenericTeardownFailureStep(step)
+        || categoryCorpus === 'hook'
+
+    return hasClosedResourceSignal && (isCloseOperation || isLifecycleCleanup)
 }
 
 function isMeaningfulFailureContextStep(step: TestHistoryStep): boolean {

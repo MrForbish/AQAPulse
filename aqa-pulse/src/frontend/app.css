@@ -16,6 +16,9 @@
     --good: #10b981;
     --shadow-lg: 0 24px 80px rgba(2, 8, 23, 0.45);
     --shadow-md: 0 14px 34px rgba(2, 8, 23, 0.28);
+    --scrollbar-track: rgba(255, 255, 255, 0.04);
+    --scrollbar-thumb: rgba(155, 169, 193, 0.28);
+    --scrollbar-thumb-hover: rgba(155, 169, 193, 0.42);
 }
 
 * {
@@ -848,9 +851,9 @@ input {
 
 .status-distribution-metric {
     display: grid;
-    gap: 5px;
-    padding: 11px 12px;
-    border-radius: 14px;
+    gap: 6px;
+    padding: 13px 14px;
+    border-radius: 16px;
     border: 1px solid rgba(133, 157, 194, 0.14);
     background: rgba(7, 15, 27, 0.72);
 }
@@ -858,15 +861,15 @@ input {
 .status-distribution-metric-label {
     display: flex;
     align-items: flex-start;
-    gap: 7px;
+    gap: 8px;
     color: var(--text-muted);
     font-size: 12px;
     line-height: 1.35;
 }
 
 .status-distribution-metric-dot {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
     border-radius: 999px;
     flex: 0 0 auto;
     margin-top: 3px;
@@ -874,7 +877,7 @@ input {
 
 .status-distribution-metric-value {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 20px;
+    font-size: 22px;
 }
 
 .status-distribution-metric-label > span:last-child {
@@ -985,6 +988,52 @@ input {
 
 .table-wrap {
     overflow: auto;
+}
+
+.table-wrap,
+.diagnostic-step-scroll-wrap-react,
+.attachment-markdown-preview-react,
+.image-lightbox-body-react,
+.trace-disclosure-content-react {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.table-wrap::-webkit-scrollbar,
+.diagnostic-step-scroll-wrap-react::-webkit-scrollbar,
+.attachment-markdown-preview-react::-webkit-scrollbar,
+.image-lightbox-body-react::-webkit-scrollbar,
+.trace-disclosure-content-react::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track,
+.diagnostic-step-scroll-wrap-react::-webkit-scrollbar-track,
+.attachment-markdown-preview-react::-webkit-scrollbar-track,
+.image-lightbox-body-react::-webkit-scrollbar-track,
+.trace-disclosure-content-react::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.table-wrap::-webkit-scrollbar-thumb,
+.diagnostic-step-scroll-wrap-react::-webkit-scrollbar-thumb,
+.attachment-markdown-preview-react::-webkit-scrollbar-thumb,
+.image-lightbox-body-react::-webkit-scrollbar-thumb,
+.trace-disclosure-content-react::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background: linear-gradient(180deg, var(--scrollbar-thumb), var(--scrollbar-thumb));
+    background-clip: padding-box;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover,
+.diagnostic-step-scroll-wrap-react::-webkit-scrollbar-thumb:hover,
+.attachment-markdown-preview-react::-webkit-scrollbar-thumb:hover,
+.image-lightbox-body-react::-webkit-scrollbar-thumb:hover,
+.trace-disclosure-content-react::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--scrollbar-thumb-hover), var(--scrollbar-thumb-hover));
+    background-clip: padding-box;
 }
 
 .current-run-tests-table-wrap {
@@ -1602,21 +1651,6 @@ th {
     overflow: auto;
     padding-right: 4px;
     scrollbar-gutter: stable;
-}
-
-.diagnostic-step-scroll-wrap-react::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-.diagnostic-step-scroll-wrap-react::-webkit-scrollbar-track {
-    background: rgba(8, 13, 20, 0.95);
-}
-
-.diagnostic-step-scroll-wrap-react::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    border: 2px solid rgba(8, 13, 20, 0.95);
-    background: rgba(125, 211, 252, 0.28);
 }
 
 .attempt-section-title-react {

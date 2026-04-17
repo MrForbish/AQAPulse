@@ -104,7 +104,7 @@ export function DashboardCurrentRunTestRow(props: {
         <tr>
             <td className="dashboard-current-run-title-cell"><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
             <td className="dashboard-current-run-file-cell">
-                <OverflowText as="span" text={props.test.file} className="dashboard-current-run-file-copy" lines={2} />
+                <span className="dashboard-current-run-file-copy" title={props.test.file}>{props.test.file}</span>
             </td>
             <td className="dashboard-current-run-project-cell">
                 <OverflowText as="span" text={props.test.project} className="dashboard-current-run-project-copy" />

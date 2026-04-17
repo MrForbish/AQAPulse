@@ -161,8 +161,15 @@ export function DashboardErrorClusterRow(props: { cluster: DashboardErrorCluster
         <tr>
             <DashboardTraceTableCell preview={props.cluster.message} details={props.cluster.sampleMessage ?? props.cluster.message} dialogTitle="Пример ошибки из кластера" />
             <td>{props.cluster.count}</td>
-            <td>
-                <OverflowText as="span" text={props.cluster.tests.join(' • ')} className="cluster-tests-react" lines={2} />
+            <td className="cluster-tests-cell-react">
+                <div className="cluster-tests-list-react">
+                    {props.cluster.tests.map((testTitle, index) => (
+                        <div key={`${testTitle}-${index}`} className="cluster-test-item-react" title={testTitle}>
+                            <span className="cluster-test-index-react">{index + 1}.</span>
+                            <span className="cluster-test-title-react">{testTitle}</span>
+                        </div>
+                    ))}
+                </div>
             </td>
         </tr>
     )

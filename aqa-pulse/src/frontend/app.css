@@ -848,8 +848,8 @@ input {
 
 .status-distribution-metric {
     display: grid;
-    gap: 4px;
-    padding: 9px 10px;
+    gap: 5px;
+    padding: 11px 12px;
     border-radius: 14px;
     border: 1px solid rgba(133, 157, 194, 0.14);
     background: rgba(7, 15, 27, 0.72);
@@ -860,7 +860,7 @@ input {
     align-items: flex-start;
     gap: 7px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
 }
 
@@ -874,7 +874,7 @@ input {
 
 .status-distribution-metric-value {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .status-distribution-metric-label > span:last-child {
@@ -1044,19 +1044,19 @@ input {
 }
 
 .current-run-tests-table-wrap td.dashboard-current-run-title-cell .entity-link {
-    display: -webkit-box;
+    display: block;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: normal;
+    overflow-wrap: anywhere;
     word-break: break-word;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    line-height: 1.45;
 }
 
 .current-run-tests-table-wrap .dashboard-current-run-file-copy {
+    white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
+    line-height: 1.45;
 }
 
 .current-run-tests-table-wrap thead th {
@@ -2269,6 +2269,43 @@ th {
 
 .cluster-tests-react {
     max-width: min(100%, 52ch);
+}
+
+.cluster-tests-cell-react {
+    min-width: 0;
+}
+
+.cluster-tests-list-react {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cluster-test-item-react {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 7px 9px;
+    border-radius: 12px;
+    border: 1px solid rgba(133, 157, 194, 0.12);
+    background: rgba(7, 15, 27, 0.5);
+}
+
+.cluster-test-index-react {
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.cluster-test-title-react {
+    min-width: 0;
+    color: var(--text-main);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .state-block,

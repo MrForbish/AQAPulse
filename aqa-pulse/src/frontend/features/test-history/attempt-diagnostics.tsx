@@ -14,6 +14,7 @@ export function AttemptDiagnostics(props: {
     attempts: TestHistoryResponse['history'][number]['attemptDetails']
     artifactBasePath: string
     isStaticMode: boolean
+    incidentSummary: TestHistoryResponse['incidentSummary']
 }): React.JSX.Element {
     if (props.attempts.length === 0) {
         return <EmptyState title="Attempt details отсутствуют" message={HISTORY_TEXT.diagnostics.emptyAttempt} />
@@ -38,7 +39,19 @@ export function AttemptDiagnostics(props: {
                             <span className="meta-badge">{HISTORY_TEXT.diagnostics.attachments}: {attempt.attachments.length}</span>
                         </div>
                         {attempt.errorMessage ? <TraceDisclosure text={attempt.errorMessage} badgeLabel="attempt" /> : null}
-                        <AttemptStepTree steps={attempt.steps} runId={props.runId} attemptNumber={attempt.attempt} initiallyOpen={Boolean(attempt.errorMessage)} />
+                        <AttemptStepTree
+                            steps={attempt.steps}
+                            runId={props.runId}
+                            attemptNumber={attempt.attempt}
+                            initiallyOpen={Boolean(attempt.errorMessage)}
+                            primaryFailure={props.incidentSummary ? {
+                                runId: props.incidentSummary.failureStepRunId,
+                                attemptNumber: props.incidentSummary.failureStepAttempt,
+                                offsetMs: props.incidentSummary.failureStepOffsetMs,
+                                title: props.incidentSummary.failureStepTitle,
+                                errorMessage: props.incidentSummary.failureStepErrorMessage,
+                            } : null}
+                        />
                         <AttemptAttachmentGrid runId={props.runId} attachments={attempt.attachments} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} />
                         {!attempt.errorMessage && attempt.steps.length === 0 && attempt.attachments.length === 0 ? <div className="subtle-copy">{HISTORY_TEXT.diagnostics.emptyAttempt}</div> : null}
                     </div>

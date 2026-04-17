@@ -14,7 +14,6 @@ export function IncidentSummaryPanel(props: {
     incidentSummary: NonNullable<TestHistoryResponse['incidentSummary']>
     history: TestHistoryResponse['history']
 }): React.JSX.Element {
-    const incidentLead = extractIncidentLead(props.incidentSummary.summary)
     const incidentPrimarySignal = props.incidentSummary.failureStepErrorMessage ?? props.incidentSummary.latestErrorMessage ?? null
     const failureStepTitle = props.incidentSummary.failureStepTitle
     const failureStepCategory = props.incidentSummary.failureStepCategory
@@ -27,8 +26,7 @@ export function IncidentSummaryPanel(props: {
         failureStepAttempt: props.incidentSummary.failureStepAttempt,
         failureStepOffsetMs: props.incidentSummary.failureStepOffsetMs,
     })
-    const primaryEvidence = props.incidentSummary.evidence.filter((item) => item.tone === 'primary')
-    const secondaryEvidence = props.incidentSummary.evidence.filter((item) => item.tone !== 'primary')
+    const secondaryEvidence = props.incidentSummary.evidence
 
     return (
         <Panel
@@ -43,7 +41,6 @@ export function IncidentSummaryPanel(props: {
                     {HISTORY_TEXT.incident.severity[props.incidentSummary.severity]}
                 </span>
             </div>
-            {incidentLead ? <div className="incident-summary-lead-react compact-top">{incidentLead}</div> : null}
             <div className="signal-grid compact-top">
                 <div className="detail-card-react">
                     <span className="metric-label">{HISTORY_TEXT.incident.failureStepLabel}</span>
@@ -72,29 +69,16 @@ export function IncidentSummaryPanel(props: {
                 <span className="meta-badge">{HISTORY_TEXT.incident.recoveryLabel}: {formatOptionalDate(props.incidentSummary.latestRecoveryAt)}</span>
                 <span className="meta-badge">{HISTORY_TEXT.incident.attemptsLabel}: {props.incidentSummary.affectedAttempts}</span>
             </div>
-            {props.incidentSummary.evidence.length > 0 ? (
+            {secondaryEvidence.length > 0 ? (
                 <div className="incident-evidence-block compact-top">
-                    <div className="section-kicker">{HISTORY_TEXT.incident.evidenceTitle}</div>
-                    {primaryEvidence.length > 0 ? (
-                        <div className="incident-evidence-primary-grid compact-top">
-                            {primaryEvidence.map((item) => (
-                                <div key={`${item.label}:${item.value}`} className="detail-card-react incident-evidence-card is-primary">
-                                    <span className="metric-label">{item.label}</span>
-                                    <TraceDisclosure text={item.value} emptyLabel={HISTORY_TEXT.incident.notCaptured} badgeLabel="focus" />
-                                </div>
-                            ))}
-                        </div>
-                    ) : null}
-                    {secondaryEvidence.length > 0 ? (
-                        <div className="evidence-list compact-top">
-                            {secondaryEvidence.map((item) => (
-                                <div key={`${item.label}:${item.value}`} className={`incident-evidence-card is-${item.tone}`}>
-                                    <span className="metric-label">{item.label}</span>
-                                    <div className="incident-evidence-value">{item.value}</div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : null}
+                    <div className="evidence-list">
+                        {secondaryEvidence.map((item) => (
+                            <div key={`${item.label}:${item.value}`} className={`incident-evidence-card is-${item.tone}`}>
+                                <span className="metric-label">{item.label}</span>
+                                <div className="incident-evidence-value">{item.value}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             ) : null}
         </Panel>
@@ -142,15 +126,6 @@ export function HistoryTimelinePanel(props: { history: TestHistoryResponse['hist
 
 function formatOptionalDate(value: string | null): string {
     return value ? formatDate(value) : '—'
-}
-
-function extractIncidentLead(summary: string): string | null {
-    const [lead] = summary
-        .split(/\.\s+/)
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0)
-
-    return lead ? (lead.endsWith('.') ? lead : `${lead}.`) : null
 }
 
 function getIncidentSeverityTone(severity: NonNullable<TestHistoryResponse['incidentSummary']>['severity']): 'danger' | 'warn' | 'good' {

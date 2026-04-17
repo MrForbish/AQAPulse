@@ -1019,21 +1019,6 @@ function buildIncidentEvidence(input: {
         evidence.push({ label, value: value.trim(), tone })
     }
 
-    const primaryFailureStepTitle = input.primaryFailureStep?.title ?? input.latestSignals.failureStepTitles[0] ?? null
-    const primaryFailureStepCategory = input.primaryFailureStep?.category ?? input.latestSignals.failureStepCategories[0] ?? null
-    const primaryStepError = input.primaryFailureStep?.errorMessage ?? input.latestSignals.failureStepErrorMessages[0] ?? null
-
-    if (primaryFailureStepTitle) {
-        const categorySuffix = primaryFailureStepCategory ? ` (${primaryFailureStepCategory})` : ''
-        pushEvidence('Главный шаг', `${primaryFailureStepTitle}${categorySuffix}`, 'primary')
-    }
-
-    if (primaryStepError) {
-        pushEvidence('Ключевая ошибка', primaryStepError, 'primary')
-    } else {
-        pushEvidence('Последний сигнал', input.latestSignals.normalizedErrorMessages[0] ?? null, 'primary')
-    }
-
     pushEvidence(
         'Проблемные попытки',
         `${input.affectedAttempts} из ${input.latestUnstable.attempts} в последнем нестабильном запуске`,
@@ -1054,10 +1039,6 @@ function buildIncidentEvidence(input: {
             input.latestRecovery.reportTimestamp ?? input.latestRecovery.generatedAt,
             'context',
         )
-    }
-
-    if (input.latestSignals.hasContextAttachment) {
-        pushEvidence('Текстовый контекст', 'Есть error-context.md с деталями падения', 'context')
     }
 
     return evidence

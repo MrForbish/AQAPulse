@@ -25,6 +25,7 @@ import { RuntimeProvider as FrontendRuntimeProvider } from './frontend/runtime'
 import { DashboardPage as FrontendDashboardPage } from './frontend/features/dashboard/dashboard-page'
 import { TestHistoryPage as FrontendTestHistoryPage } from './frontend/features/test-history/test-history-page'
 import { IncidentSummaryPanel } from './frontend/features/test-history/history-incident-panels'
+import { AttemptStepTree } from './frontend/features/test-history/attempt-diagnostic-steps'
 import { WorkspaceLoginPage as FrontendWorkspaceLoginPage } from './frontend/features/admin/workspace-login-page'
 
 const { JSDOM } = require('jsdom') as {
@@ -251,6 +252,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     verifyIncidentEvidenceRendering()
+    verifyDiagnosticPrimaryFailureHighlight()
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
     verifyIncidentAnchorUsesFailureMetadata()
@@ -294,8 +296,6 @@ function verifyIncidentEvidenceRendering(): void {
                 confidence: 'high',
                 summary: 'Сбой активен. Повторялся 3 раза. Точка падения: Wait for selector.',
                 evidence: [
-                    { label: 'Главный шаг', value: 'Wait for selector (pw:api)', tone: 'primary' },
-                    { label: 'Ключевая ошибка', value: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.', tone: 'primary' },
                     { label: 'Проблемные попытки', value: '1 из 2 в последнем нестабильном запуске', tone: 'supporting' },
                     { label: 'Артефакты', value: 'error-context.md, trace.zip', tone: 'supporting' },
                 ],
@@ -354,7 +354,59 @@ function verifyIncidentEvidenceRendering(): void {
         }),
     )
 
-    renderMarkup('incident evidence panel', markup, ['Факты и подтверждения', 'Главный шаг', 'Ключевая ошибка', 'Проблемные попытки'])
+    renderMarkup('incident evidence panel', markup, ['Проблемные попытки', 'Артефакты'])
+    assert(!markup.includes('Факты и подтверждения'), 'Incident evidence panel should not render the removed evidence heading.')
+}
+
+function verifyDiagnosticPrimaryFailureHighlight(): void {
+    const markup = renderToStaticMarkup(
+        React.createElement(AttemptStepTree, {
+            runId: 'run-1',
+            attemptNumber: 1,
+            initiallyOpen: true,
+            primaryFailure: {
+                runId: 'run-1',
+                attemptNumber: 1,
+                offsetMs: 14694,
+                title: 'Wait for selector',
+                errorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+            },
+            steps: [
+                {
+                    title: 'Checkout flow',
+                    category: 'test.step',
+                    depth: 0,
+                    offsetMs: 0,
+                    durationMs: 5000,
+                    status: 'failed',
+                    errorMessage: null,
+                    isFailurePoint: true,
+                },
+                {
+                    title: 'Wait for selector',
+                    category: 'pw:api',
+                    depth: 1,
+                    offsetMs: 14694,
+                    durationMs: 800,
+                    status: 'failed',
+                    errorMessage: 'TimeoutError: locator.waitFor: Timeout 10000ms exceeded.',
+                    isFailurePoint: true,
+                },
+                {
+                    title: 'Cleanup: close browser',
+                    category: 'hook',
+                    depth: 1,
+                    offsetMs: 15200,
+                    durationMs: 300,
+                    status: 'failed',
+                    errorMessage: 'Error: browser.close: Target page, context or browser has been closed',
+                    isFailurePoint: true,
+                },
+            ],
+        }),
+    )
+
+    renderMarkup('diagnostic primary failure highlight', markup, ['is-primary-failure', 'Основная причина', 'is-failure'])
 }
 
 /**

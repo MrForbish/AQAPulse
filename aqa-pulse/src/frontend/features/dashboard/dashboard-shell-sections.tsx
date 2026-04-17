@@ -88,6 +88,8 @@ export function DashboardFiltersSection(props: {
 export function DashboardMetricsSection(props: {
     summary: DashboardSummary
 }): React.JSX.Element {
+    const clusteredFailures = props.summary.errorClusters.reduce((total, cluster) => total + cluster.count, 0)
+
     return (
         <section className="metrics-grid">
             <MetricCard label={DASHBOARD_TEXT.metrics.passRate} labelMetricKey="passRate" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.passRate} value={formatPercent(props.summary.kpis.passRate)} tone="good" hint={`${props.summary.kpis.passedTests} / ${props.summary.kpis.totalTests}`} />
@@ -95,11 +97,12 @@ export function DashboardMetricsSection(props: {
             <MetricCard label={DASHBOARD_TEXT.metrics.flakyTests} labelMetricKey="flakyTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyTests} value={String(props.summary.kpis.flakyTests)} tone={props.summary.kpis.flakyTests > 0 ? 'warn' : 'default'} hint={formatDelta(props.summary.trend.flakyTestsDelta, 'flaky')} />
             <MetricCard label={DASHBOARD_TEXT.metrics.runDuration} labelMetricKey="runDuration" labelTooltip={`${DASHBOARD_METRIC_DESCRIPTIONS.runDuration} ${DASHBOARD_METRIC_DESCRIPTIONS.medianDuration}`} value={formatDuration(props.summary.kpis.totalDurationMs)} hint={formatDuration(props.summary.kpis.medianDurationMs)} />
             <MetricCard
-                label={DASHBOARD_TEXT.metrics.errorClusters}
+                label="Паттерны падений"
                 labelMetricKey="errorClusters"
                 labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters}
                 value={String(props.summary.kpis.errorClusterCount)}
                 tone={props.summary.kpis.errorClusterCount > 0 ? 'warn' : 'default'}
+                hint={clusteredFailures > 0 ? `Покрывают ${clusteredFailures} ${pluralizeFailures(clusteredFailures)} в текущем прогоне` : 'Повторяющихся падений в текущем прогоне нет'}
             />
             <MetricCard label={DASHBOARD_TEXT.metrics.releaseConfidenceScore} labelMetricKey="releaseConfidenceScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseConfidenceScore} value={formatScore(props.summary.businessMetrics.releaseConfidenceScore)} tone={getScoreTone(props.summary.businessMetrics.releaseConfidenceScore)} hint={getManagerReadinessLabel(props.summary.managerSummary.releaseReadiness.level)} />
         </section>
@@ -120,4 +123,23 @@ export function DashboardRuntimeNotices(props: {
     }
 
     return null
+}
+
+function pluralizeFailures(count: number): string {
+    const absoluteCount = Math.abs(count) % 100
+    const lastDigit = absoluteCount % 10
+
+    if (absoluteCount >= 11 && absoluteCount <= 19) {
+        return 'падений'
+    }
+
+    if (lastDigit === 1) {
+        return 'падение'
+    }
+
+    if (lastDigit >= 2 && lastDigit <= 4) {
+        return 'падения'
+    }
+
+    return 'падений'
 }

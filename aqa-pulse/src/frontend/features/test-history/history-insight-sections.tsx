@@ -83,12 +83,12 @@ export function HistoryDiagnosticsPanels(props: {
         <>
             {latestRun ? (
                 <Panel title={HISTORY_TEXT.diagnostics.latestRunTitle} description={HISTORY_TEXT.diagnostics.latestRunDescription} className="span-2">
-                    <AttemptDiagnostics runId={latestRun.runId} attempts={latestRun.attemptDetails} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} />
+                    <AttemptDiagnostics runId={latestRun.runId} attempts={latestRun.attemptDetails} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} incidentSummary={props.payload.incidentSummary} />
                 </Panel>
             ) : null}
             {latestUnstableRun && (!latestRun || latestUnstableRun.runId !== latestRun.runId) ? (
                 <Panel title={HISTORY_TEXT.diagnostics.latestUnstableTitle} description={HISTORY_TEXT.diagnostics.latestUnstableDescription} className="span-2">
-                    <AttemptDiagnostics runId={latestUnstableRun.runId} attempts={latestUnstableRun.attemptDetails} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} />
+                    <AttemptDiagnostics runId={latestUnstableRun.runId} attempts={latestUnstableRun.attemptDetails} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} incidentSummary={props.payload.incidentSummary} />
                 </Panel>
             ) : null}
         </>

@@ -32,6 +32,7 @@ try {
             author: 'AQA Pulse demo',
         },
         sourceFile: fixturePath,
+        businessAssumptions: config.businessAssumptions,
     })
 
     console.log('SaaS demo workspace готов.')

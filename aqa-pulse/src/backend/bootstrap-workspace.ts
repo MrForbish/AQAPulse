@@ -1,4 +1,4 @@
-import { buildDashboardSummary } from '../dashboard-utils'
+import { applyBusinessAssumptionsToSummary, buildDashboardSummary } from '../dashboard-utils'
 import { createEmptyHistory } from '../history-utils'
 import { resolveSaasAppConfig } from './config'
 import { createBackendStorage, type BackendStorage } from './storage'
@@ -48,7 +48,7 @@ try {
         apiKeyLabel: options.apiKeyLabel,
     })
 
-    initializeWorkspaceReadModel(createdWorkspace.workspace.slug, backendStorage)
+    initializeWorkspaceReadModel(createdWorkspace.workspace.slug, backendStorage, config)
 
     const shouldCreateWorkspaceUser = config.requireWorkspaceAuth && !options.skipUser
     const createdUser = shouldCreateWorkspaceUser
@@ -216,7 +216,7 @@ function parseCliOptions(args: string[]): CliOptions {
     }
 }
 
-function initializeWorkspaceReadModel(slug: string, backendStorage: BackendStorage): void {
+function initializeWorkspaceReadModel(slug: string, backendStorage: BackendStorage, config: ReturnType<typeof resolveSaasAppConfig>): void {
     const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
     const history = workspaceStorage.readHistory()
     const normalizedHistory = Array.isArray(history.runs) ? history : createEmptyHistory()
@@ -228,7 +228,7 @@ function initializeWorkspaceReadModel(slug: string, backendStorage: BackendStora
     try {
         workspaceStorage.readSummary()
     } catch {
-        workspaceStorage.writeSummary(buildDashboardSummary(
+        workspaceStorage.writeSummary(applyBusinessAssumptionsToSummary(buildDashboardSummary(
             {
                 tests: [],
                 durationMs: 0,
@@ -239,7 +239,7 @@ function initializeWorkspaceReadModel(slug: string, backendStorage: BackendStora
             `workspace://${slug}/initial-empty-summary`,
             normalizedHistory.runs,
             { branch: null, commit: null, author: null },
-        ))
+        ), config.businessAssumptions))
     }
 }
 

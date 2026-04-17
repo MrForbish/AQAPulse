@@ -20,6 +20,16 @@ npm run setup:docker -- --workspace-name "Autotests main" --workspace-slug autot
 
 Если `.env` уже существует, команда по умолчанию не переписывает его, а использует существующие значения как есть. Если в файле остались `change-me-*` заглушки, пересоздай конфиг через `--overwrite-env` или обнови нужные поля вручную.
 
+Для блока `Параметры расчёта` в Business dashboard server-side defaults задаются там же, в `.env`:
+
+```text
+AQA_PULSE_CI_MINUTE_COST=9
+AQA_PULSE_DEV_HOURLY_COST=4500
+AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE=20
+```
+
+Эти значения попадают в API summary как базовый сценарий. В React dashboard их можно локально переопределить для live-пересчёта, но browser editor не меняет `.env` и не переписывает сохранённые server settings.
+
 Результат:
 
 - создан `.env`;

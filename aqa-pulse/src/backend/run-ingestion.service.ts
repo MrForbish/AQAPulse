@@ -1,8 +1,10 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
+    applyBusinessAssumptionsToSummary,
     buildAdvancedMetrics,
     buildDashboardSummary,
+    type DashboardBusinessAssumptions,
     deriveDashboardRunComparisonIdentity,
     enrichReporterReport,
     type DashboardRunMetadata,
@@ -23,6 +25,7 @@ export function ingestReporterRun(options: {
     metadata?: Partial<DashboardRunMetadata>
     sourceFile?: string
     artifactsPath?: string
+    businessAssumptions?: Partial<DashboardBusinessAssumptions> | null
 }): IngestionResult {
     const enrichedReport = enrichReporterReport(options.report)
     const runMetadata: DashboardRunMetadata = {
@@ -34,7 +37,10 @@ export function ingestReporterRun(options: {
         ? options.sourceFile
         : buildDefaultSourceFile(options.workspace.slug, enrichedReport)
 
-    const summaryWithoutHistory = buildDashboardSummary(enrichedReport, sourceFile, [], runMetadata)
+    const summaryWithoutHistory = applyBusinessAssumptionsToSummary(
+        buildDashboardSummary(enrichedReport, sourceFile, [], runMetadata),
+        options.businessAssumptions,
+    )
     const comparisonIdentity = deriveDashboardRunComparisonIdentity(enrichedReport, sourceFile)
     const nextHistoryEntry = {
         id: buildHistoryEntryId(summaryWithoutHistory.reportTimestamp, sourceFile),
@@ -72,7 +78,10 @@ export function ingestReporterRun(options: {
     const history = appendHistoryEntry(options.storage.readHistory(), nextHistoryEntry)
     const archivedRun = options.storage.archiveRun(reportWithArtifacts, nextHistoryEntry)
     const advancedMetrics = buildAdvancedMetrics(reportWithArtifacts, history.runs, options.storage.paths.archiveRootPath)
-    const dashboardSummary = buildDashboardSummary(reportWithArtifacts, sourceFile, history.runs, runMetadata, advancedMetrics)
+    const dashboardSummary = applyBusinessAssumptionsToSummary(
+        buildDashboardSummary(reportWithArtifacts, sourceFile, history.runs, runMetadata, advancedMetrics),
+        options.businessAssumptions,
+    )
 
     options.storage.writeSummary(dashboardSummary)
     options.storage.writeHistory(history)

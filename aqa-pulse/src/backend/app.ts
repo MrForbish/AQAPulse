@@ -5,7 +5,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ApiStore, type ApiFilters } from '../api-store'
-import { buildDashboardSummary, type ReporterRoot } from '../dashboard-utils'
+import { applyBusinessAssumptionsToSummary, buildDashboardSummary, type ReporterRoot } from '../dashboard-utils'
 import { type FrontendBootstrapData } from '../frontend-bootstrap'
 import { createEmptyHistory } from '../history-utils'
 import { getErrorMessage } from '../shared/error-utils'
@@ -46,6 +46,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             historyPath: path.join(config.distPath, 'history.json'),
             archiveRootPath: config.archiveRootPath,
         }),
+        businessAssumptions: config.businessAssumptions,
     })
     const distPath = config.distPath
     const distAssetsPath = path.resolve(distPath, './assets')
@@ -146,7 +147,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
                 slug: pickOptionalString(request.body?.slug) ?? undefined,
                 apiKeyLabel: pickOptionalString(request.body?.apiKeyLabel) ?? undefined,
             })
-            ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage)
+            ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage, config)
 
             response.status(201).json(createdWorkspace)
         } catch (error) {
@@ -448,7 +449,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             apiKeyLabel: pickOptionalString(request.body?.apiKeyLabel) ?? undefined,
         })
 
-        ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage)
+        ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage, config)
 
         response.status(201).json(createdWorkspace)
     })
@@ -489,6 +490,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
             report: payload.report,
             metadata: payload.metadata,
             sourceFile: payload.sourceFile,
+            businessAssumptions: config.businessAssumptions,
         })
 
         response.status(202).json(result)
@@ -496,7 +498,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.get('/w/:slug', workspaceResolver, workspaceShellGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         frontendShell.send(response, {
             route: { kind: 'dashboard', workspaceSlug: workspace.slug },
             initialRequestUrl: request.originalUrl,
@@ -509,7 +511,7 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.get('/w/:slug/test/:name', workspaceResolver, workspaceShellGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         const testName = getRouteParam(request, 'name')
         const filters = getTestHistoryFiltersFromRequest(request)
         const payload = store.getTestHistory(testName, filters)
@@ -532,19 +534,19 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         response.json(store.getFilteredSummary(getFiltersFromRequest(request)))
     })
 
     app.get('/api/workspaces/:slug/runs', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         response.json({ runs: store.getRuns(getFiltersFromRequest(request)) })
     })
 
     app.get('/api/workspaces/:slug/run/:id', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
 
         const runId = getRouteParam(request, 'id')
         const run = store.getRunById(runId)
@@ -559,25 +561,25 @@ export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Exp
 
     app.get('/api/workspaces/:slug/flaky', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         response.json(store.getFlakyPayload(getFiltersFromRequest(request)))
     })
 
     app.get('/api/workspaces/:slug/errors/clusters', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         response.json(store.getErrorClustersPayload(getFiltersFromRequest(request)))
     })
 
     app.get('/api/workspaces/:slug/metrics/cost', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
         response.json(store.getCostMetricsPayload(getFiltersFromRequest(request)))
     })
 
     app.get('/api/workspaces/:slug/test/:name', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
         const workspace = requireWorkspaceFromLocals(response)
-        const store = createWorkspaceApiStore(workspace.slug, backendStorage)
+        const store = createWorkspaceApiStore(workspace.slug, backendStorage, config)
 
         const testName = getRouteParam(request, 'name')
         const payload = store.getTestHistory(testName, getTestHistoryFiltersFromRequest(request))
@@ -631,25 +633,26 @@ function isPayloadTooLargeError(error: unknown): boolean {
         || maybeError.message === 'request entity too large'
 }
 
-function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage): ApiStore {
-    ensureWorkspaceReadModelInitialized(slug, backendStorage)
+function createWorkspaceApiStore(slug: string, backendStorage: BackendStorage, config: SaasAppConfig): ApiStore {
+    ensureWorkspaceReadModelInitialized(slug, backendStorage, config)
 
     return new ApiStore({
         storage: backendStorage.getWorkspaceStorage(slug),
+        businessAssumptions: config.businessAssumptions,
     })
 }
 
 /**
  * Workspace read model инициализируется лениво, потому что новый workspace может быть создан до первого ingestion, а React UI уже должен уметь открывать пустой dashboard без падения по отсутствующим summary/history файлам.
  */
-function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: BackendStorage): void {
+function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: BackendStorage, config: SaasAppConfig): void {
     const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
     const history = workspaceStorage.readHistory()
 
     try {
         workspaceStorage.readSummary()
     } catch {
-        workspaceStorage.writeSummary(buildDashboardSummary(
+        workspaceStorage.writeSummary(applyBusinessAssumptionsToSummary(buildDashboardSummary(
             {
                 tests: [],
                 durationMs: 0,
@@ -660,7 +663,7 @@ function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: Backe
             `workspace://${slug}/initial-empty-summary`,
             history.runs,
             { branch: null, commit: null, author: null },
-        ))
+        ), config.businessAssumptions))
     }
 
     if (!Array.isArray(history.runs)) {

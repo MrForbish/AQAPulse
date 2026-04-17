@@ -1,5 +1,5 @@
 import React from 'react'
-import type { DashboardSummary } from '../../../dashboard-utils'
+import type { DashboardBusinessAssumptions, DashboardSummary } from '../../../dashboard-utils'
 import {
     buildBusinessMetricReadiness,
     buildReleaseConfidenceBreakdown,
@@ -166,18 +166,72 @@ export function DashboardBusinessCostSection(props: { summary: DashboardSummary 
     )
 }
 
-export function DashboardBusinessConfigAssumptionsSection(props: { summary: DashboardSummary }): React.JSX.Element {
-    const assumptions = props.summary.businessMetrics.costOfFlakiness.assumptions
+export function DashboardBusinessConfigAssumptionsSection(props: {
+    summary: DashboardSummary
+    assumptions: DashboardBusinessAssumptions
+    presets: Array<{ key: string; label: string }>
+    appliedPresetLabel: string | null
+    isDirty: boolean
+    onAssumptionChange: (key: keyof DashboardBusinessAssumptions, value: number | null) => void
+    onApplyPreset: (presetKey: string) => void
+    onReset: () => void
+}): React.JSX.Element {
+    const assumptions = props.assumptions
 
     return (
-        <Panel title={DASHBOARD_TEXT.metrics.configAssumptions} titleMetricKey="configAssumptions" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.configAssumptions} description={DASHBOARD_TEXT.business.editorHint}>
+        <Panel title={DASHBOARD_TEXT.metrics.configAssumptions} titleMetricKey="configAssumptions" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.configAssumptions} description={DASHBOARD_TEXT.business.recalcHint}>
+            <div className="module-header-row">
+                <div className="module-pills">
+                    <span className={`module-pill is-${mapScenarioTone(props.summary)}`}>{getBusinessScenarioStatusLabel(assumptions)}</span>
+                    {props.appliedPresetLabel ? <span className="module-pill is-accent">{`${DASHBOARD_TEXT.business.presetApplied}: ${props.appliedPresetLabel}`}</span> : null}
+                </div>
+                <div className="subtle-copy">{DASHBOARD_TEXT.business.editorHint}</div>
+            </div>
+            <div className="business-assumptions-actions compact-top">
+                {props.presets.map((preset) => (
+                    <button key={preset.key} type="button" className="secondary-button" onClick={() => props.onApplyPreset(preset.key)}>{preset.label}</button>
+                ))}
+                <button type="button" className="ghost-link" onClick={props.onReset} disabled={!props.isDirty}>{DASHBOARD_TEXT.business.resetAssumptions}</button>
+            </div>
+            <form className="business-assumptions-grid admin-form compact-top" onSubmit={preventFormSubmission}>
+                <label>
+                    <span>{DASHBOARD_TEXT.business.ciMinuteCost}</span>
+                    <input type="number" min="0" step="0.1" inputMode="decimal" value={formatEditableAssumptionValue(assumptions.ciMinuteCostRub)} onChange={(event) => props.onAssumptionChange('ciMinuteCostRub', parseScenarioInputValue(event.currentTarget.value))} />
+                </label>
+                <label>
+                    <span>{DASHBOARD_TEXT.business.devHourCost}</span>
+                    <input type="number" min="0" step="100" inputMode="decimal" value={formatEditableAssumptionValue(assumptions.developerHourlyCostRub)} onChange={(event) => props.onAssumptionChange('developerHourlyCostRub', parseScenarioInputValue(event.currentTarget.value))} />
+                </label>
+                <label>
+                    <span>{DASHBOARD_TEXT.business.analysisMinutes}</span>
+                    <input type="number" min="0" step="1" inputMode="decimal" value={formatEditableAssumptionValue(assumptions.analysisMinutesPerUnstable)} onChange={(event) => props.onAssumptionChange('analysisMinutesPerUnstable', parseScenarioInputValue(event.currentTarget.value))} />
+                </label>
+            </form>
             <div className="stack-list compact-top">
+                <DetailRow label={DASHBOARD_TEXT.business.assumptionsConfiguredTitle} value={getBusinessScenarioStatusLabel(assumptions)} hint={DASHBOARD_TEXT.business.assumptionsConfiguredHint} />
                 <DetailRow label={DASHBOARD_TEXT.business.ciMinuteCost} value={formatAssumptionValue(assumptions.ciMinuteCostRub, '₽/мин')} />
                 <DetailRow label={DASHBOARD_TEXT.business.devHourCost} value={formatAssumptionValue(assumptions.developerHourlyCostRub, '₽/час')} />
                 <DetailRow label={DASHBOARD_TEXT.business.analysisMinutes} value={formatAssumptionValue(assumptions.analysisMinutesPerUnstable, 'мин/инцидент')} />
             </div>
         </Panel>
     )
+}
+
+function preventFormSubmission(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault()
+}
+
+function parseScenarioInputValue(value: string): number | null {
+    if (value.trim().length === 0) {
+        return null
+    }
+
+    const parsedValue = Number(value)
+    return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : null
+}
+
+function formatEditableAssumptionValue(value: number | null): number | '' {
+    return value ?? ''
 }
 
 function mapReadinessTone(status: 'ready' | 'partial' | 'pending'): 'good' | 'warn' | 'danger' {

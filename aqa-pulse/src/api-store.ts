@@ -1,9 +1,11 @@
 import {
+    applyBusinessAssumptionsToSummary,
     buildAdvancedMetricsFromArchivedRuns,
     buildDashboardSummary,
     collectCurrentRunTests,
     deriveDashboardRunComparisonIdentity,
     type DashboardAvailableFilters,
+    type DashboardBusinessAssumptions,
     type DashboardFilters,
     normalizeDashboardSummary,
     readDashboardSummary,
@@ -25,6 +27,7 @@ export interface ApiStoreOptions {
     historyPath?: string
     archiveRootPath?: string
     storage?: DashboardReadStorage
+    businessAssumptions?: Partial<DashboardBusinessAssumptions> | null
 }
 
 export interface ApiFilters {
@@ -177,6 +180,7 @@ export interface TestHistoryConflict {
 
 export class ApiStore {
     private readonly storage: DashboardReadStorage
+    private readonly businessAssumptions: Partial<DashboardBusinessAssumptions> | null
 
     constructor(options: ApiStoreOptions = {}) {
         this.storage = options.storage ?? new FileSystemDashboardReadStorage({
@@ -184,6 +188,7 @@ export class ApiStore {
             historyPath: options.historyPath,
             archiveRootPath: options.archiveRootPath,
         })
+        this.businessAssumptions = options.businessAssumptions ?? null
     }
 
     getSummary(): DashboardSummary {
@@ -195,30 +200,30 @@ export class ApiStore {
             const rebuiltSummary = this.rebuildSummaryFromArchives(history, latestRun)
 
             if (rebuiltSummary) {
-                return rebuiltSummary
+                return this.applyConfiguredBusinessAssumptions(rebuiltSummary)
             }
         }
 
         if (summary.currentRunTests.all.length > 0) {
-            return summary
+            return this.applyConfiguredBusinessAssumptions(summary)
         }
 
         if (!latestRun) {
-            return summary
+            return this.applyConfiguredBusinessAssumptions(summary)
         }
 
         const runDirectory = this.storage.findArchivedRunDirectory(latestRun.id)
 
         if (!runDirectory) {
-            return summary
+            return this.applyConfiguredBusinessAssumptions(summary)
         }
 
         const archivedRun = this.storage.readArchivedRunRecord(runDirectory)
 
-        return {
+        return this.applyConfiguredBusinessAssumptions({
             ...summary,
             currentRunTests: collectCurrentRunTests(archivedRun.data.tests ?? []),
-        }
+        })
     }
 
     private rebuildSummaryFromArchives(history: DashboardHistory, latestRun: DashboardHistoryEntry): DashboardSummary | null {
@@ -269,7 +274,7 @@ export class ApiStore {
             const summary = this.getSummary()
             const context = this.buildFilteredContext(normalizedFilters)
 
-            return {
+            return this.applyConfiguredBusinessAssumptions({
                 ...summary,
                 filters: {
                     branch: null,
@@ -277,7 +282,7 @@ export class ApiStore {
                     file: null,
                 },
                 availableFilters: context.availableFilters,
-            }
+            })
         }
 
         const context = this.buildFilteredContext(normalizedFilters)
@@ -285,7 +290,7 @@ export class ApiStore {
         const latest = context.filteredRuns[context.filteredRuns.length - 1] ?? null
 
         if (!latest) {
-            return buildDashboardSummary(
+            return this.applyConfiguredBusinessAssumptions(buildDashboardSummary(
                 {
                     schemaVersion: baseSummary.schemaVersion ?? undefined,
                     timestamp: undefined,
@@ -306,7 +311,7 @@ export class ApiStore {
                 null,
                 normalizedFilters,
                 context.availableFilters,
-            )
+            ))
         }
 
         const historyEntries = context.filteredRuns.map((run) => run.filteredEntry)
@@ -316,7 +321,7 @@ export class ApiStore {
             context.filteredRuns.map((run) => ({ run: run.filteredEntry, report: run.filteredReport })),
         )
 
-        return buildDashboardSummary(
+        return this.applyConfiguredBusinessAssumptions(buildDashboardSummary(
             latest.filteredReport,
             latest.run.sourceFile,
             historyEntries,
@@ -328,7 +333,13 @@ export class ApiStore {
             advancedMetrics,
             normalizedFilters,
             context.availableFilters,
-        )
+        ))
+    }
+
+    private applyConfiguredBusinessAssumptions(summary: DashboardSummary): DashboardSummary {
+        return this.businessAssumptions
+            ? applyBusinessAssumptionsToSummary(summary, this.businessAssumptions)
+            : summary
     }
 
     getHistory(): DashboardHistory {

@@ -2,6 +2,7 @@
  * Назначение: нормализует runtime-конфигурацию self-hosted/backend слоя вокруг актуального archiveRootPath contract.
  */
 import * as path from 'node:path'
+import type { DashboardBusinessAssumptions } from '../dashboard-utils'
 import { normalizeOptionalText } from '../shared/text-utils'
 import type { StorageDriver } from './contracts'
 import { resolveWorkspaceDataRoot } from './workspace-paths'
@@ -22,6 +23,7 @@ export interface SaasAppConfig {
     accessTokenTtlSeconds: number
     adminSessionCookieName: string
     workspaceSessionCookiePrefix: string
+    businessAssumptions: DashboardBusinessAssumptions
 }
 
 export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): SaasAppConfig {
@@ -36,6 +38,11 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
     const configuredAccessTokenTtlSeconds = normalizePositiveInteger(overrides.accessTokenTtlSeconds ?? process.env.AQA_PULSE_ACCESS_TOKEN_TTL_SECONDS)
     const configuredAdminSessionCookieName = normalizeOptionalText(overrides.adminSessionCookieName ?? process.env.AQA_PULSE_ADMIN_SESSION_COOKIE_NAME)
     const configuredWorkspaceSessionCookiePrefix = normalizeOptionalText(overrides.workspaceSessionCookiePrefix ?? process.env.AQA_PULSE_WORKSPACE_SESSION_COOKIE_PREFIX)
+    const configuredBusinessAssumptions = {
+        ciMinuteCostRub: normalizeNonNegativeNumber(overrides.businessAssumptions?.ciMinuteCostRub ?? process.env.AQA_PULSE_CI_MINUTE_COST),
+        developerHourlyCostRub: normalizeNonNegativeNumber(overrides.businessAssumptions?.developerHourlyCostRub ?? process.env.AQA_PULSE_DEV_HOURLY_COST),
+        analysisMinutesPerUnstable: normalizeNonNegativeNumber(overrides.businessAssumptions?.analysisMinutesPerUnstable ?? process.env.AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE),
+    }
     const archiveRootPath = configuredArchiveRootPath ? path.resolve(configuredArchiveRootPath) : path.resolve(process.cwd(), './history')
 
     return {
@@ -54,6 +61,7 @@ export function resolveSaasAppConfig(overrides: Partial<SaasAppConfig> = {}): Sa
         accessTokenTtlSeconds: configuredAccessTokenTtlSeconds ?? 60 * 60 * 8,
         adminSessionCookieName: configuredAdminSessionCookieName ?? 'aqa_pulse_admin_session',
         workspaceSessionCookiePrefix: configuredWorkspaceSessionCookiePrefix ?? 'aqa_pulse_workspace_session',
+        businessAssumptions: configuredBusinessAssumptions,
     }
 }
 
@@ -119,5 +127,18 @@ function normalizePositiveInteger(value: number | string | undefined): number | 
 
     const parsedValue = Number(value)
     return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null
+}
+
+function normalizeNonNegativeNumber(value: number | string | undefined): number | null {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+        return value
+    }
+
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        return null
+    }
+
+    const parsedValue = Number(value)
+    return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : null
 }
 

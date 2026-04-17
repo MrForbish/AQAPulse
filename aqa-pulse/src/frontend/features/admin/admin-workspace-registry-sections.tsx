@@ -7,8 +7,12 @@ export function AdminWorkspaceRegistry(props: {
     workspaces: WorkspaceDescriptor[]
     isLoading: boolean
     busyKey: string | null
+    onUpdateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    onDeleteWorkspace: (slug: string) => Promise<void>
     onCreateApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    onCreateShareLink: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onCreateUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    onUpdateUserRole: (event: React.FormEvent<HTMLFormElement>, slug: string, userId: string) => Promise<void>
     onDisableApiKey: (slug: string, apiKeyId: string) => Promise<void>
     onDisableUser: (slug: string, userId: string) => Promise<void>
     onRevokeSession: (slug: string, sessionId: string) => Promise<void>
@@ -40,13 +44,19 @@ function WorkspaceCard(props: {
     workspace: WorkspaceDescriptor
     busyKey: string | null
     runtimeBaseUrl: string | null
+    onUpdateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    onDeleteWorkspace: (slug: string) => Promise<void>
     onCreateApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    onCreateShareLink: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onCreateUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    onUpdateUserRole: (event: React.FormEvent<HTMLFormElement>, slug: string, userId: string) => Promise<void>
     onDisableApiKey: (slug: string, apiKeyId: string) => Promise<void>
     onDisableUser: (slug: string, userId: string) => Promise<void>
     onRevokeSession: (slug: string, sessionId: string) => Promise<void>
 }): React.JSX.Element {
     const { workspace } = props
+    const updateKey = `workspace:update:${workspace.slug}`
+    const deleteKey = `workspace:delete:${workspace.slug}`
 
     return (
         <Panel className="workspace-admin-card">
@@ -61,6 +71,33 @@ function WorkspaceCard(props: {
                     <a href={buildServiceUrl(props.runtimeBaseUrl, `/auth/workspaces/${encodeURIComponent(workspace.slug)}/api-keys/login`)} target="_blank" rel="noreferrer" className="ghost-link">Обмен ключа загрузки</a>
                 </div>
             </div>
+
+            <Panel title="Настройки workspace">
+                <form className="stack admin-form" onSubmit={(event) => void props.onUpdateWorkspace(event, workspace.slug)}>
+                    <label><span>Name</span><input type="text" name="name" defaultValue={workspace.name} required /></label>
+                    <label><span>Slug</span><input type="text" name="slug" defaultValue={workspace.slug} required /></label>
+                    <div className="workspace-settings-actions">
+                        <button type="submit" className="secondary-button" disabled={props.busyKey === updateKey}>
+                            {props.busyKey === updateKey ? 'Сохраняем...' : 'Сохранить workspace'}
+                        </button>
+                        <button type="button" className="secondary-button danger-button" disabled={props.busyKey === deleteKey} onClick={() => void props.onDeleteWorkspace(workspace.slug)}>
+                            {props.busyKey === deleteKey ? 'Удаляем...' : 'Удалить workspace'}
+                        </button>
+                    </div>
+                </form>
+                <form className="stack admin-form" onSubmit={(event) => void props.onCreateShareLink(event, workspace.slug)}>
+                    <label>
+                        <span>Временный доступ по ссылке</span>
+                        <select name="ttlMinutes" defaultValue="10">
+                            <option value="5">5 минут</option>
+                            <option value="10">10 минут</option>
+                        </select>
+                    </label>
+                    <button type="submit" className="secondary-button" disabled={props.busyKey === `share-link:${workspace.slug}`}>
+                        {props.busyKey === `share-link:${workspace.slug}` ? 'Генерируем...' : 'Выдать share link'}
+                    </button>
+                </form>
+            </Panel>
 
             <div className="admin-grid workspace-admin-grid workspace-admin-grid-3">
                 <Panel title="Ключи загрузки">
@@ -122,6 +159,15 @@ function WorkspaceCard(props: {
                                         {user.disabledAt ? <span>Отключён: {formatDateTime(user.disabledAt)}</span> : null}
                                     </div>
                                     <div className="access-item-actions">
+                                        <form className="access-inline-form" onSubmit={(event) => void props.onUpdateUserRole(event, workspace.slug, user.id)}>
+                                            <select name="role" defaultValue={user.role} disabled={isDisabled || props.busyKey === `user:role:${workspace.slug}:${user.id}`}>
+                                                <option value="viewer">Наблюдатель</option>
+                                                <option value="owner">Владелец</option>
+                                            </select>
+                                            <button type="submit" className="secondary-button" disabled={isDisabled || props.busyKey === `user:role:${workspace.slug}:${user.id}`}>
+                                                {props.busyKey === `user:role:${workspace.slug}:${user.id}` ? 'Обновляем...' : 'Сменить роль'}
+                                            </button>
+                                        </form>
                                         <button
                                             type="button"
                                             className="secondary-button"
@@ -163,7 +209,7 @@ function WorkspaceCard(props: {
                                         <span className={`access-state-pill${isRevoked ? ' is-disabled' : ' is-active'}`}>{isRevoked ? 'Отозвана' : 'Активна'}</span>
                                     </div>
                                     <div className="access-item-meta access-item-meta-compact">
-                                        <span>Тип: {session.kind === 'workspace-api-key' ? 'загрузка отчётов' : 'пользователь dashboard'}</span>
+                                        <span>Тип: {formatSessionKind(session.kind)}</span>
                                         <span>Доступ: {session.scope === 'workspace:ingest' ? 'загрузка' : session.role === 'owner' ? 'владелец' : 'чтение'}</span>
                                         <span>Начало: {formatDateTime(session.createdAt)}</span>
                                         <span>Последняя активность: {formatDateTime(session.lastSeenAt)}</span>
@@ -213,4 +259,16 @@ function buildServiceUrl(baseUrl: string | null, pathname: string): string {
     }
 
     return `${baseUrl.replace(/\/+$/g, '')}${pathname}`
+}
+
+function formatSessionKind(kind: WorkspaceDescriptor['sessions'][number]['kind']): string {
+    if (kind === 'workspace-api-key') {
+        return 'загрузка отчётов'
+    }
+
+    if (kind === 'workspace-share-link') {
+        return 'временная share link'
+    }
+
+    return 'пользователь dashboard'
 }

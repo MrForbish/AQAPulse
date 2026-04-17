@@ -1,7 +1,7 @@
 /**
  * Назначение: backend-доменные контракты для workspace registry, provisioning, storage и ingestion. Это слой типов и протоколов сервера, а не React UI.
  */
-import type { DashboardRunMetadata, ReporterRoot } from '../dashboard-utils'
+import type { DashboardBusinessAssumptions, DashboardRunMetadata, ReporterRoot } from '../dashboard-utils'
 
 export interface WorkspaceRecord {
     slug: string
@@ -45,7 +45,7 @@ export interface AdminSessionRecord {
     revokedAt: string | null
 }
 
-export type WorkspaceSessionKind = 'workspace-user' | 'workspace-api-key'
+export type WorkspaceSessionKind = 'workspace-user' | 'workspace-api-key' | 'workspace-share-link'
 
 export interface WorkspaceSessionRecord {
     id: string
@@ -64,7 +64,67 @@ export interface WorkspaceRegistrySnapshot {
     schemaVersion: number
     updatedAt: string
     adminSessions: AdminSessionRecord[]
+    adminAuditLog: AdminAuditRecord[]
+    serverSettings: PersistedServerSettingsRecord | null
     workspaces: WorkspaceRecord[]
+}
+
+export type AdminAuditAction =
+    | 'admin-login'
+    | 'admin-logout'
+    | 'workspace-created'
+    | 'workspace-updated'
+    | 'workspace-deleted'
+    | 'workspace-api-key-created'
+    | 'workspace-api-key-disabled'
+    | 'workspace-user-created'
+    | 'workspace-user-disabled'
+    | 'workspace-user-role-updated'
+    | 'workspace-share-link-created'
+    | 'workspace-session-revoked'
+    | 'server-settings-updated'
+
+export interface AdminAuditRecord {
+    id: string
+    action: AdminAuditAction
+    actorLabel: string
+    actorSessionId: string | null
+    workspaceSlug: string | null
+    targetType: 'workspace' | 'api-key' | 'user' | 'session' | 'server-settings' | 'admin-session'
+    targetId: string | null
+    summary: string
+    createdAt: string
+    details: Record<string, string>
+}
+
+export interface PersistedServerSettingsRecord {
+    adminBaseUrl?: string | null
+    runtimeBaseUrl?: string | null
+    allowDevBootstrap?: boolean
+    requireWorkspaceAuth?: boolean
+    accessTokenTtlSeconds?: number
+    adminToken?: string | null
+    businessAssumptions?: Partial<DashboardBusinessAssumptions> | null
+}
+
+export interface ServerSettingsRecord {
+    adminBaseUrl: string | null
+    runtimeBaseUrl: string | null
+    allowDevBootstrap: boolean
+    requireWorkspaceAuth: boolean
+    accessTokenTtlSeconds: number
+    adminToken: string | null
+    businessAssumptions: DashboardBusinessAssumptions
+}
+
+export interface UpdateServerSettingsInput {
+    adminBaseUrl?: string | null
+    runtimeBaseUrl?: string | null
+    allowDevBootstrap?: boolean
+    requireWorkspaceAuth?: boolean
+    accessTokenTtlSeconds?: number
+    adminToken?: string | null
+    businessAssumptions?: Partial<DashboardBusinessAssumptions> | null
 }
 
 export interface WorkspaceDescriptor {
@@ -113,6 +173,17 @@ export interface WorkspaceProvisioningResult {
     }
 }
 
+export interface WorkspaceShareLinkProvisioningResult {
+    workspace: WorkspaceDescriptor
+    shareSession: {
+        id: string
+        label: string
+        expiresAt: string
+        ttlMinutes: number
+    }
+    shareLinkUrl: string
+}
+
 export interface WorkspaceUserProvisioningResult {
     workspace: WorkspaceDescriptor
     user: {
@@ -131,9 +202,54 @@ export interface CreateWorkspaceInput {
     apiKeyLabel?: string
 }
 
+export interface UpdateWorkspaceInput {
+    slug?: string
+    name: string
+}
+
 export interface CreateWorkspaceUserInput {
     label: string
     role?: WorkspaceUserRole
+}
+
+export interface WorkspaceUpdateResult {
+    workspace: WorkspaceDescriptor
+    previousSlug: string
+}
+
+export interface WorkspaceUserRoleUpdateResult {
+    workspace: WorkspaceDescriptor
+    userId: string
+    role: WorkspaceUserRole
+}
+
+export type WorkspaceIngestionHealthStatus = 'healthy' | 'warning' | 'critical' | 'stale' | 'idle'
+
+export interface WorkspaceIngestionHealthItem {
+    slug: string
+    name: string
+    status: WorkspaceIngestionHealthStatus
+    runCount: number
+    lastIngestionAt: string | null
+    staleHours: number | null
+    latestPassRate: number | null
+    latestFailedTests: number | null
+    latestFlakyTests: number | null
+    latestDurationMs: number | null
+    latestSourceFile: string | null
+}
+
+export interface AdminIngestionHealthReport {
+    generatedAt: string
+    totals: {
+        total: number
+        healthy: number
+        warning: number
+        critical: number
+        stale: number
+        idle: number
+    }
+    items: WorkspaceIngestionHealthItem[]
 }
 
 export interface WorkspacePaths {

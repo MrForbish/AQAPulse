@@ -26,6 +26,7 @@ export type FrontendRouteDescriptor =
     | { kind: 'admin-login' }
     | { kind: 'workspace-login'; workspaceSlug: string }
     | { kind: 'workspace-api-key-exchange'; workspaceSlug: string }
+    | { kind: 'workspace-share-link-error'; workspaceSlug: string; title: string; message: string }
     | { kind: 'static-dashboard'; workspaceSlug: null }
 
 export interface FrontendBootstrapData {
@@ -109,6 +110,15 @@ function normalizeRouteDescriptor(route: FrontendBootstrapData['route'] | undefi
 
     if (route.kind === 'admin-dashboard' || route.kind === 'admin-login') {
         return route
+    }
+
+    if (route.kind === 'workspace-share-link-error') {
+        return {
+            kind: 'workspace-share-link-error',
+            workspaceSlug: normalizeRequiredWorkspaceSlug(route.workspaceSlug),
+            title: typeof route.title === 'string' && route.title.trim().length > 0 ? route.title.trim() : 'Ссылка больше недоступна',
+            message: typeof route.message === 'string' && route.message.trim().length > 0 ? route.message.trim() : 'Срок действия временной ссылки истёк или она была отозвана.',
+        }
     }
 
     if (route.kind === 'workspace-login' || route.kind === 'workspace-api-key-exchange') {

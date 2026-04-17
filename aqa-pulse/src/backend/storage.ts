@@ -59,6 +59,8 @@ export interface BackendStorage {
     readonly registry: WorkspaceRegistryStorage
     createDashboardReadStorage(paths?: Partial<DashboardStoragePaths>): DashboardReadStorage
     getWorkspaceStorage(slug: string): WorkspaceRunStorage
+    renameWorkspaceData(previousSlug: string, nextSlug: string): void
+    deleteWorkspaceData(slug: string): void
 }
 
 export class FileSystemDashboardReadStorage implements DashboardReadStorage {
@@ -130,6 +132,8 @@ export class FileSystemWorkspaceRegistryStorage implements WorkspaceRegistryStor
             schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : REGISTRY_SCHEMA_VERSION,
             updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
             adminSessions: Array.isArray(parsed.adminSessions) ? parsed.adminSessions : [],
+            adminAuditLog: Array.isArray(parsed.adminAuditLog) ? parsed.adminAuditLog : [],
+            serverSettings: parsed.serverSettings && typeof parsed.serverSettings === 'object' ? parsed.serverSettings : null,
             workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces : [],
         }
     }
@@ -166,6 +170,35 @@ export class FileSystemBackendStorage implements BackendStorage {
     getWorkspaceStorage(slug: string): FileSystemWorkspaceRunStorage {
         return this.createWorkspaceStorage(slug)
     }
+
+    renameWorkspaceData(previousSlug: string, nextSlug: string): void {
+        if (previousSlug === nextSlug) {
+            return
+        }
+
+        const previousPaths = getWorkspacePathsFromDataRoot(previousSlug, this.dataRoot)
+        const nextPaths = getWorkspacePathsFromDataRoot(nextSlug, this.dataRoot)
+
+        if (!fs.existsSync(previousPaths.rootPath)) {
+            return
+        }
+
+        fs.mkdirSync(path.dirname(nextPaths.rootPath), { recursive: true })
+
+        if (fs.existsSync(nextPaths.rootPath)) {
+            throw new Error(`Невозможно переименовать workspace data: путь "${nextPaths.rootPath}" уже существует.`)
+        }
+
+        fs.renameSync(previousPaths.rootPath, nextPaths.rootPath)
+    }
+
+    deleteWorkspaceData(slug: string): void {
+        const workspacePaths = getWorkspacePathsFromDataRoot(slug, this.dataRoot)
+
+        if (fs.existsSync(workspacePaths.rootPath)) {
+            fs.rmSync(workspacePaths.rootPath, { recursive: true, force: true })
+        }
+    }
 }
 
 export function createBackendStorage(config: Pick<SaasAppConfig, 'storageDriver' | 'sqlitePath' | 'postgresConnectionString' | 'dataRoot'>): BackendStorage {
@@ -199,6 +232,8 @@ function createEmptyRegistry(): WorkspaceRegistrySnapshot {
         schemaVersion: REGISTRY_SCHEMA_VERSION,
         updatedAt: new Date().toISOString(),
         adminSessions: [],
+        adminAuditLog: [],
+        serverSettings: null,
         workspaces: [],
     }
 }

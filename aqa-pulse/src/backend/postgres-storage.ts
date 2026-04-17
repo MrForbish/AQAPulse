@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { normalizeDashboardSummary, type DashboardSummary, type ReporterRoot } from '../dashboard-utils'
@@ -34,6 +35,8 @@ export class PostgresWorkspaceRegistryStorage implements WorkspaceRegistryStorag
             schemaVersion: typeof row.schemaVersion === 'number' ? row.schemaVersion : REGISTRY_SCHEMA_VERSION,
             updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : new Date().toISOString(),
             adminSessions: Array.isArray(row.adminSessions) ? row.adminSessions : [],
+            adminAuditLog: Array.isArray(row.adminAuditLog) ? row.adminAuditLog : [],
+            serverSettings: row.serverSettings && typeof row.serverSettings === 'object' ? row.serverSettings : null,
             workspaces: Array.isArray(row.workspaces) ? row.workspaces : [],
         }
     }
@@ -154,6 +157,35 @@ export class PostgresBackendStorage {
     getWorkspaceStorage(slug: string): PostgresWorkspaceRunStorage {
         return new PostgresWorkspaceRunStorage(this.connectionString, slug, this.dataRoot)
     }
+
+    renameWorkspaceData(previousSlug: string, nextSlug: string): void {
+        if (previousSlug === nextSlug) {
+            return
+        }
+
+        const escapedPreviousPrefix = escapeSqlLiteral(`workspace:${previousSlug}:`)
+        const escapedNextPrefix = escapeSqlLiteral(`workspace:${nextSlug}:`)
+
+        execPsql(this.connectionString, `
+            UPDATE aqa_kv
+            SET namespace = REPLACE(namespace, '${escapedPreviousPrefix}', '${escapedNextPrefix}'),
+                updated_at = NOW()
+            WHERE namespace LIKE '${escapedPreviousPrefix}%';
+        `)
+
+        moveWorkspaceDirectoryIfNeeded(this.dataRoot, previousSlug, nextSlug)
+    }
+
+    deleteWorkspaceData(slug: string): void {
+        const escapedPrefix = escapeSqlLiteral(`workspace:${slug}:`)
+
+        execPsql(this.connectionString, `
+            DELETE FROM aqa_kv
+            WHERE namespace LIKE '${escapedPrefix}%';
+        `)
+
+        deleteWorkspaceDirectoryIfPresent(this.dataRoot, slug)
+    }
 }
 
 function ensureSchema(connectionString: string): void {
@@ -260,7 +292,34 @@ function createEmptyRegistry(): WorkspaceRegistrySnapshot {
         schemaVersion: REGISTRY_SCHEMA_VERSION,
         updatedAt: new Date().toISOString(),
         adminSessions: [],
+        adminAuditLog: [],
+        serverSettings: null,
         workspaces: [],
+    }
+}
+
+function moveWorkspaceDirectoryIfNeeded(dataRoot: string, previousSlug: string, nextSlug: string): void {
+    const previousPaths = getWorkspacePathsFromDataRoot(previousSlug, dataRoot)
+    const nextPaths = getWorkspacePathsFromDataRoot(nextSlug, dataRoot)
+
+    if (!fs.existsSync(previousPaths.rootPath)) {
+        return
+    }
+
+    fs.mkdirSync(path.dirname(nextPaths.rootPath), { recursive: true })
+
+    if (fs.existsSync(nextPaths.rootPath)) {
+        throw new Error(`Невозможно переименовать workspace data: путь "${nextPaths.rootPath}" уже существует.`)
+    }
+
+    fs.renameSync(previousPaths.rootPath, nextPaths.rootPath)
+}
+
+function deleteWorkspaceDirectoryIfPresent(dataRoot: string, slug: string): void {
+    const workspacePaths = getWorkspacePathsFromDataRoot(slug, dataRoot)
+
+    if (fs.existsSync(workspacePaths.rootPath)) {
+        fs.rmSync(workspacePaths.rootPath, { recursive: true, force: true })
     }
 }
 

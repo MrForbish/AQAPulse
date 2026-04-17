@@ -42,6 +42,8 @@ export class SqliteWorkspaceRegistryStorage implements WorkspaceRegistryStorage 
             schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : REGISTRY_SCHEMA_VERSION,
             updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
             adminSessions: Array.isArray(parsed.adminSessions) ? parsed.adminSessions : [],
+            adminAuditLog: Array.isArray(parsed.adminAuditLog) ? parsed.adminAuditLog : [],
+            serverSettings: parsed.serverSettings && typeof parsed.serverSettings === 'object' ? parsed.serverSettings : null,
             workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces : [],
         }
     }
@@ -166,6 +168,33 @@ export class SqliteBackendStorage {
     getWorkspaceStorage(slug: string): SqliteWorkspaceRunStorage {
         return new SqliteWorkspaceRunStorage(this.sqlitePath, slug, this.dataRoot)
     }
+
+    renameWorkspaceData(previousSlug: string, nextSlug: string): void {
+        if (previousSlug === nextSlug) {
+            return
+        }
+
+        const database = openSqliteDatabase(this.sqlitePath)
+        ensureSchema(database)
+
+        const previousPrefix = `workspace:${previousSlug}:`
+        const nextPrefix = `workspace:${nextSlug}:`
+        const statement = database.prepare(`
+            UPDATE aqa_kv
+            SET namespace = REPLACE(namespace, ?, ?), updated_at = ?
+            WHERE namespace LIKE ?
+        `)
+
+        statement.run(previousPrefix, nextPrefix, new Date().toISOString(), `${previousPrefix}%`)
+        moveWorkspaceDirectoryIfNeeded(this.dataRoot, previousSlug, nextSlug)
+    }
+
+    deleteWorkspaceData(slug: string): void {
+        const database = openSqliteDatabase(this.sqlitePath)
+        ensureSchema(database)
+        database.prepare('DELETE FROM aqa_kv WHERE namespace LIKE ?').run(`workspace:${slug}:%`)
+        deleteWorkspaceDirectoryIfPresent(this.dataRoot, slug)
+    }
 }
 
 function ensureSchema(database: SqliteDatabase): void {
@@ -230,7 +259,34 @@ function createEmptyRegistry(): WorkspaceRegistrySnapshot {
         schemaVersion: REGISTRY_SCHEMA_VERSION,
         updatedAt: new Date().toISOString(),
         adminSessions: [],
+        adminAuditLog: [],
+        serverSettings: null,
         workspaces: [],
+    }
+}
+
+function moveWorkspaceDirectoryIfNeeded(dataRoot: string, previousSlug: string, nextSlug: string): void {
+    const previousPaths = getWorkspacePathsFromDataRoot(previousSlug, dataRoot)
+    const nextPaths = getWorkspacePathsFromDataRoot(nextSlug, dataRoot)
+
+    if (!fs.existsSync(previousPaths.rootPath)) {
+        return
+    }
+
+    fs.mkdirSync(path.dirname(nextPaths.rootPath), { recursive: true })
+
+    if (fs.existsSync(nextPaths.rootPath)) {
+        throw new Error(`Невозможно переименовать workspace data: путь "${nextPaths.rootPath}" уже существует.`)
+    }
+
+    fs.renameSync(previousPaths.rootPath, nextPaths.rootPath)
+}
+
+function deleteWorkspaceDirectoryIfPresent(dataRoot: string, slug: string): void {
+    const workspacePaths = getWorkspacePathsFromDataRoot(slug, dataRoot)
+
+    if (fs.existsSync(workspacePaths.rootPath)) {
+        fs.rmSync(workspacePaths.rootPath, { recursive: true, force: true })
     }
 }
 

@@ -4,7 +4,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 export type AuthScope = 'admin' | 'workspace:read' | 'workspace:ingest'
-export type AuthKind = 'admin' | 'workspace-user' | 'workspace-api-key'
+export type AuthKind = 'admin' | 'workspace-user' | 'workspace-api-key' | 'workspace-share-link'
 
 export interface AuthTokenClaims {
     sub: string

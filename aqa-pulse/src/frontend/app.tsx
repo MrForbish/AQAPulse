@@ -32,6 +32,10 @@ const WorkspaceApiKeyExchangePage = React.lazy(async () => ({
     default: (await import('./features/admin/workspace-api-key-page.js')).WorkspaceApiKeyExchangePage,
 }))
 
+const WorkspaceShareLinkErrorPage = React.lazy(async () => ({
+    default: (await import('./features/admin/workspace-share-link-error-page.js')).WorkspaceShareLinkErrorPage,
+}))
+
 /**
  * Читает bootstrap один раз из DOM и передаёт его во всё приложение через RuntimeProvider, чтобы клиентский роутинг стартовал из того же состояния, которое сервер или static export уже заложили в HTML shell.
  */
@@ -80,6 +84,7 @@ function AppBody(): React.JSX.Element {
                         <Route path="/w/:slug/login" element={<WorkspaceLoginRoute />} />
                         <Route path="/w/:slug/test/:name" element={<WorkspaceTestHistoryRoute />} />
                         <Route path="/auth/workspaces/:slug/api-keys/login" element={<WorkspaceApiKeyExchangeRoute />} />
+                        <Route path="/auth/workspaces/:slug/share-links/login" element={<WorkspaceShareLinkErrorRoute />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </React.Suspense>
@@ -121,4 +126,9 @@ function WorkspaceLoginRoute(): React.JSX.Element {
 function WorkspaceApiKeyExchangeRoute(): React.JSX.Element {
     const params = useParams<{ slug: string }>()
     return <WorkspaceApiKeyExchangePage workspaceSlug={params.slug ?? ''} />
+}
+
+function WorkspaceShareLinkErrorRoute(): React.JSX.Element {
+    const params = useParams<{ slug: string }>()
+    return <WorkspaceShareLinkErrorPage workspaceSlug={params.slug ?? ''} />
 }

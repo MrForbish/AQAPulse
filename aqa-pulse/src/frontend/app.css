@@ -741,6 +741,41 @@ input {
     gap: 18px;
 }
 
+.workspace-settings-actions,
+.checkbox-row-group,
+.access-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    align-items: center;
+}
+
+.server-settings-grid {
+    margin-bottom: 0;
+}
+
+.checkbox-row {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+.checkbox-row input {
+    width: 16px;
+    height: 16px;
+}
+
+.danger-button {
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fecaca;
+}
+
+.danger-button:hover:not(:disabled) {
+    border-color: rgba(248, 113, 113, 0.55);
+    background: rgba(127, 29, 29, 0.25);
+}
+
 .workspace-admin-header,
 .workspace-link-group {
     display: flex;
@@ -846,6 +881,10 @@ input {
     justify-content: flex-start;
 }
 
+.access-inline-form select {
+    min-height: 40px;
+}
+
 .detail-pairs {
     display: grid;
     gap: 10px;
@@ -874,6 +913,45 @@ input {
     padding: 10px 12px;
 }
 
+.admin-health-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 14px;
+}
+
+.admin-health-list,
+.admin-audit-list {
+    margin-bottom: 0;
+}
+
+.admin-audit-details {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.health-state-pill.is-healthy {
+    color: #0f172a;
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+}
+
+.health-state-pill.is-warning {
+    color: #111827;
+    background: linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%);
+}
+
+.health-state-pill.is-critical {
+    color: #fff1f2;
+    background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+.health-state-pill.is-stale {
+    color: #e2e8f0;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.4), rgba(14, 116, 144, 0.7));
+}
+
+.health-state-pill.is-idle {
+    color: #e2e8f0;
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.38), rgba(100, 116, 139, 0.48));
+}
+
 .span-2 {
     grid-column: 1 / -1;
 }
@@ -891,6 +969,10 @@ input {
 @media (max-width: 820px) {
     .workspace-admin-grid-3 {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-health-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

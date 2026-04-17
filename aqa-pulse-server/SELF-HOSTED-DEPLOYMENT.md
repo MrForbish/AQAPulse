@@ -206,7 +206,7 @@ https://your-domain.example.com/ui-assets/
 
 Если перед AQA Pulse стоит reverse proxy, убедись, что он пропускает не только `/w/<slug>` и `/api/*`, но и `/ui-assets/*`.
 
-Это относится и к admin/auth экранам: `/admin`, `/admin/login`, `/w/<slug>/login`, `/auth/workspaces/<slug>/api-keys/login` теперь тоже используют тот же frontend bundle.
+Это относится и к admin/auth экранам: `/admin`, `/admin/login`, `/w/<slug>/login`, `/auth/workspaces/<slug>/api-keys/login`, `/auth/workspaces/<slug>/share-links/login` теперь тоже используют тот же frontend bundle.
 
 Старый string-based HTML renderer flow больше не является deployment path для этих экранов. Browser-safe shared helpers/types для новых integrations вынесены в `aqa-pulse-browser`, а migration path на актуальные UI/runtime surface описан в `./MIGRATION.md`.
 
@@ -215,6 +215,51 @@ https://your-domain.example.com/ui-assets/
 ```text
 https://your-domain.example.com/w/autotests-main/login
 ```
+
+## Runbook: migration и post-deploy checks
+
+Если у тебя уже был развернутый self-hosted инстанс и ты обновляешь его до текущего control-plane UI, после `npm run update:docker` проверь не только `GET /api/health`, но и весь набор admin/runtime маршрутов.
+
+Минимальный post-deploy маршрутный smoke:
+
+```bash
+curl --silent --show-error --fail "https://your-domain.example.com/api/health"
+curl --silent --show-error --fail -I "https://your-domain.example.com/admin/login"
+curl --silent --show-error --fail -I "https://your-domain.example.com/ui-assets/"
+curl --silent --show-error --fail -I "https://your-domain.example.com/w/autotests-main/login"
+```
+
+Что должно открываться после логина в admin:
+
+- `/admin`
+- `/api/workspaces`
+- `/api/admin/settings`
+- `/api/admin/audit`
+- `/api/admin/ingestion-health`
+
+Что должно работать на runtime стороне:
+
+- `/w/<slug>`
+- `/api/workspaces/<slug>/summary`
+- `/api/workspaces/<slug>/test/<name>`
+- `/auth/workspaces/<slug>/api-keys/login`
+- `/auth/workspaces/<slug>/share-links/login?token=...`
+
+Если admin и runtime разведены по разным base URL, отдельно проверь, что в admin UI сохранены корректные `Admin base URL` и `Runtime base URL`. Именно `Runtime base URL` используется для короткоживущих dashboard share links на 5-10 минут.
+
+Проверка share-link после deploy:
+
+1. Залогинься в `/admin`.
+2. Создай временную ссылку в карточке workspace.
+3. Открой её в приватном окне браузера.
+4. Убедись, что происходит redirect на `/w/<slug>` и dashboard открывается без ручного ввода `workspace user token`.
+5. Через 5-10 минут проверь, что ссылка больше не даёт доступ и сессия больше не считается активной.
+
+Если этот поток не работает, почти всегда проблема в одном из трёх мест:
+
+- reverse proxy не пускает `/auth/workspaces/<slug>/share-links/login`;
+- `Runtime base URL` указывает не на тот host;
+- время на сервере смещено, и short-lived JWT истекают раньше ожидаемого.
 
 ## Операции
 
@@ -286,10 +331,13 @@ npm run update:docker -- --build-package
 
 - [ ] `docker compose up --build -d` выполнился без ошибки
 - [ ] `GET /api/health` отвечает успешно
+- [ ] `/admin/login` и `/ui-assets/` открываются через тот же внешний host
 - [ ] `bootstrap-workspace` вернул `workspace API key`
 - [ ] `bootstrap-workspace` вернул `workspace user token` или ты осознанно работаешь без него
 - [ ] в GitLab сохранены `AQA_PULSE_BASE_URL`, `AQA_PULSE_WORKSPACE_SLUG`, `AQA_PULSE_WORKSPACE_API_KEY`
 - [ ] первый ingestion прошёл успешно
 - [ ] dashboard открывается по `/w/<slug>`
+- [ ] admin UI открывает `/api/admin/settings`, `/api/admin/audit`, `/api/admin/ingestion-health`
+- [ ] короткая share link открывает dashboard и истекает по TTL
 
 Если нужен один короткий вывод: для первого production-like self-hosted запуска подними `aqa-pulse-server` через Docker Compose, создай workspace командой `bootstrap-workspace`, сохрани 3 GitLab variables и проверь первый upload вручную до интеграции в pipeline.

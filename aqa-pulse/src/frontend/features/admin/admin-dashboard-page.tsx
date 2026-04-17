@@ -8,7 +8,10 @@ import { useAdminDashboardState } from './admin-hooks'
 import {
     AdminDashboardActionResult,
     AdminDashboardHero,
+    AdminAuditTrailSection,
+    AdminIngestionHealthSection,
     AdminProvisioningIntro,
+    AdminServerSettingsSection,
     AdminWorkspaceRegistry,
 } from './admin-dashboard-sections'
 
@@ -19,16 +22,24 @@ export function AdminDashboardPage(): React.JSX.Element {
     const initialWorkspaces = useInitialAdminWorkspaces()
     const {
         workspaces,
+        serverSettings,
+        auditEntries,
+        ingestionHealth,
         isLoading,
         errorMessage,
         actionResult,
         busyKey,
         createWorkspace,
+        updateWorkspace,
+        deleteWorkspace,
         createApiKey,
+        createShareLink,
         createUser,
+        updateUserRole,
         disableApiKey,
         disableUser,
         revokeSession,
+        updateServerSettings,
         logout,
     } = useAdminDashboardState(initialWorkspaces)
 
@@ -39,17 +50,24 @@ export function AdminDashboardPage(): React.JSX.Element {
             {actionResult ? <AdminDashboardActionResult actionResult={actionResult} /> : null}
             {errorMessage ? <ErrorView title="Admin API недоступен" message={errorMessage} /> : null}
 
+            <AdminServerSettingsSection settings={serverSettings} busyKey={busyKey} onUpdateSettings={updateServerSettings} />
             <AdminProvisioningIntro isCreatingWorkspace={busyKey === 'workspace:create'} onCreateWorkspace={createWorkspace} />
+            <AdminIngestionHealthSection health={ingestionHealth} />
             <AdminWorkspaceRegistry
                 workspaces={workspaces}
                 isLoading={isLoading}
                 busyKey={busyKey}
+                onUpdateWorkspace={updateWorkspace}
+                onDeleteWorkspace={deleteWorkspace}
                 onCreateApiKey={createApiKey}
+                onCreateShareLink={createShareLink}
                 onCreateUser={createUser}
+                onUpdateUserRole={updateUserRole}
                 onDisableApiKey={disableApiKey}
                 onDisableUser={disableUser}
                 onRevokeSession={revokeSession}
             />
+            <AdminAuditTrailSection entries={auditEntries} />
         </PageFrame>
     )
 }

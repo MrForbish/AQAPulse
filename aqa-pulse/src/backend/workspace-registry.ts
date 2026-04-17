@@ -2,8 +2,14 @@ import { createHash, randomBytes } from 'node:crypto'
 import { normalizeOptionalText } from '../shared/text-utils'
 import type {
     AdminSessionRecord,
+    AdminAuditAction,
+    AdminAuditRecord,
     CreateWorkspaceInput,
     CreateWorkspaceUserInput,
+    PersistedServerSettingsRecord,
+    ServerSettingsRecord,
+    UpdateServerSettingsInput,
+    UpdateWorkspaceInput,
     WorkspaceApiAuthResult,
     WorkspaceApiKeyRecord,
     WorkspaceDescriptor,
@@ -12,7 +18,9 @@ import type {
     WorkspaceRegistrySnapshot,
     WorkspaceSessionKind,
     WorkspaceSessionRecord,
+    WorkspaceUpdateResult,
     WorkspaceUserAuthResult,
+    WorkspaceUserRoleUpdateResult,
     WorkspaceUserProvisioningResult,
     WorkspaceUserRecord,
 } from './contracts'
@@ -22,6 +30,7 @@ const DEFAULT_API_KEY_LABEL = 'Default ingestion key'
 const DEFAULT_WORKSPACE_USER_LABEL = 'Workspace owner'
 const DEFAULT_ADMIN_SESSION_LABEL = 'Admin session'
 const SESSION_ACTIVITY_REFRESH_MS = 60_000
+const MAX_ADMIN_AUDIT_LOG_ENTRIES = 250
 
 export class WorkspaceRegistry {
     constructor(private readonly storage: WorkspaceRegistryStorage = new FileSystemWorkspaceRegistryStorage()) {}
@@ -37,6 +46,14 @@ export class WorkspaceRegistry {
 
     getWorkspaceRecord(slug: string): WorkspaceRecord | null {
         return this.readRegistry().workspaces.find((item) => item.slug === slug) ?? null
+    }
+
+    getAdminSession(sessionId: string): AdminSessionRecord | null {
+        if (!sessionId) {
+            return null
+        }
+
+        return this.readRegistry().adminSessions.find((item) => item.id === sessionId) ?? null
     }
 
     createWorkspace(input: CreateWorkspaceInput): WorkspaceProvisioningResult {
@@ -147,6 +164,72 @@ export class WorkspaceRegistry {
                 tokenPreview: nextUser.tokenPreview,
                 createdAt: nextUser.createdAt,
             },
+        }
+    }
+
+    updateWorkspace(slug: string, input: UpdateWorkspaceInput): WorkspaceUpdateResult {
+        const registry = this.readRegistry()
+        const workspace = findWorkspaceOrThrow(registry, slug)
+        const nextName = normalizeRequiredText(input.name, 'name')
+        const nextSlug = normalizeWorkspaceSlug(input.slug ?? slug)
+
+        if (nextSlug !== slug && registry.workspaces.some((item) => item.slug === nextSlug)) {
+            throw new Error(`Workspace со slug "${nextSlug}" уже существует.`)
+        }
+
+        const now = new Date().toISOString()
+        workspace.name = nextName
+
+        if (nextSlug !== slug) {
+            workspace.slug = nextSlug
+            revokeAllWorkspaceSessions(workspace, now)
+        }
+
+        workspace.updatedAt = now
+        this.writeRegistry(registry)
+
+        return {
+            workspace: mapWorkspaceToDescriptor(workspace),
+            previousSlug: slug,
+        }
+    }
+
+    deleteWorkspace(slug: string): WorkspaceDescriptor {
+        const registry = this.readRegistry()
+        const workspaceIndex = registry.workspaces.findIndex((item) => item.slug === slug)
+
+        if (workspaceIndex < 0) {
+            throw new Error(`Workspace со slug "${slug}" не найден.`)
+        }
+
+        const [workspace] = registry.workspaces.splice(workspaceIndex, 1)
+        this.writeRegistry(registry)
+        return mapWorkspaceToDescriptor(workspace)
+    }
+
+    updateUserRole(slug: string, userId: string, role: 'owner' | 'viewer'): WorkspaceUserRoleUpdateResult {
+        const registry = this.readRegistry()
+        const workspace = findWorkspaceOrThrow(registry, slug)
+        const user = workspace.users.find((item) => item.id === userId)
+
+        if (!user) {
+            throw new Error(`Пользователь "${userId}" не найден в workspace "${slug}".`)
+        }
+
+        const nextRole = role === 'owner' ? 'owner' : 'viewer'
+
+        if (user.role !== nextRole) {
+            const now = new Date().toISOString()
+            user.role = nextRole
+            revokeWorkspaceSessionsBySubject(workspace, 'workspace-user', user.id, now)
+            workspace.updatedAt = now
+            this.writeRegistry(registry)
+        }
+
+        return {
+            workspace: mapWorkspaceToDescriptor(workspace),
+            userId: user.id,
+            role: user.role,
         }
     }
 
@@ -292,6 +375,53 @@ export class WorkspaceRegistry {
         this.writeRegistry(registry)
     }
 
+    getServerSettings(defaults: ServerSettingsRecord): ServerSettingsRecord {
+        return mergeServerSettings(this.readRegistry().serverSettings, defaults)
+    }
+
+    updateServerSettings(input: UpdateServerSettingsInput, defaults: ServerSettingsRecord): ServerSettingsRecord {
+        const registry = this.readRegistry()
+        registry.serverSettings = mergePersistedServerSettings(registry.serverSettings, input)
+        this.writeRegistry(registry)
+        return mergeServerSettings(registry.serverSettings, defaults)
+    }
+
+    listAdminAuditLog(limit = MAX_ADMIN_AUDIT_LOG_ENTRIES): AdminAuditRecord[] {
+        return this.readRegistry().adminAuditLog
+            .slice()
+            .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+            .slice(0, limit)
+    }
+
+    recordAdminAudit(input: {
+        action: AdminAuditAction
+        actorLabel: string
+        actorSessionId?: string | null
+        workspaceSlug?: string | null
+        targetType: AdminAuditRecord['targetType']
+        targetId?: string | null
+        summary: string
+        details?: Record<string, string | number | boolean | null | undefined>
+    }): AdminAuditRecord {
+        const registry = this.readRegistry()
+        const entry: AdminAuditRecord = {
+            id: randomBytes(8).toString('hex'),
+            action: input.action,
+            actorLabel: normalizeOptionalText(input.actorLabel) ?? DEFAULT_ADMIN_SESSION_LABEL,
+            actorSessionId: normalizeOptionalText(input.actorSessionId ?? null),
+            workspaceSlug: normalizeOptionalText(input.workspaceSlug ?? null),
+            targetType: input.targetType,
+            targetId: normalizeOptionalText(input.targetId ?? null),
+            summary: normalizeRequiredText(input.summary, 'summary'),
+            createdAt: new Date().toISOString(),
+            details: normalizeAuditDetails(input.details),
+        }
+
+        registry.adminAuditLog = [entry, ...registry.adminAuditLog].slice(0, MAX_ADMIN_AUDIT_LOG_ENTRIES)
+        this.writeRegistry(registry)
+        return entry
+    }
+
     isWorkspaceSessionActive(slug: string, sessionId: string, kind?: WorkspaceSessionKind): boolean {
         if (!sessionId) {
             return false
@@ -420,6 +550,8 @@ export class WorkspaceRegistry {
         return {
             ...registry,
             adminSessions: Array.isArray(registry.adminSessions) ? registry.adminSessions.map(normalizeAdminSessionRecord) : [],
+            adminAuditLog: Array.isArray(registry.adminAuditLog) ? registry.adminAuditLog.map(normalizeAdminAuditRecord) : [],
+            serverSettings: normalizePersistedServerSettings(registry.serverSettings),
             workspaces: registry.workspaces.map(normalizeWorkspaceRecord),
         }
     }
@@ -482,12 +614,38 @@ function normalizeAdminSessionRecord(session: Partial<AdminSessionRecord>): Admi
     }
 }
 
+function normalizeAdminAuditRecord(entry: Partial<AdminAuditRecord>): AdminAuditRecord {
+    return {
+        id: typeof entry.id === 'string' ? entry.id : randomBytes(8).toString('hex'),
+        action: normalizeAdminAuditAction(entry.action),
+        actorLabel: normalizeOptionalText(entry.actorLabel) ?? DEFAULT_ADMIN_SESSION_LABEL,
+        actorSessionId: typeof entry.actorSessionId === 'string' ? entry.actorSessionId : null,
+        workspaceSlug: typeof entry.workspaceSlug === 'string' ? entry.workspaceSlug : null,
+        targetType: entry.targetType === 'workspace'
+            || entry.targetType === 'api-key'
+            || entry.targetType === 'user'
+            || entry.targetType === 'session'
+            || entry.targetType === 'server-settings'
+            || entry.targetType === 'admin-session'
+            ? entry.targetType
+            : 'workspace',
+        targetId: typeof entry.targetId === 'string' ? entry.targetId : null,
+        summary: normalizeOptionalText(entry.summary) ?? 'Admin action',
+        createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : new Date().toISOString(),
+        details: normalizeAuditDetails(entry.details),
+    }
+}
+
 function normalizeWorkspaceSessionRecord(session: Partial<WorkspaceSessionRecord>): WorkspaceSessionRecord {
     const createdAt = typeof session.createdAt === 'string' ? session.createdAt : new Date().toISOString()
 
     return {
         id: typeof session.id === 'string' ? session.id : randomBytes(8).toString('hex'),
-        kind: session.kind === 'workspace-api-key' ? 'workspace-api-key' : 'workspace-user',
+        kind: session.kind === 'workspace-api-key'
+            ? 'workspace-api-key'
+            : session.kind === 'workspace-share-link'
+                ? 'workspace-share-link'
+                : 'workspace-user',
         subjectId: typeof session.subjectId === 'string' ? session.subjectId : randomBytes(8).toString('hex'),
         label: normalizeOptionalText(session.label) ?? 'Session',
         scope: session.scope === 'workspace:ingest' ? 'workspace:ingest' : 'workspace:read',
@@ -496,6 +654,68 @@ function normalizeWorkspaceSessionRecord(session: Partial<WorkspaceSessionRecord
         expiresAt: typeof session.expiresAt === 'string' ? session.expiresAt : createdAt,
         lastSeenAt: typeof session.lastSeenAt === 'string' ? session.lastSeenAt : createdAt,
         revokedAt: typeof session.revokedAt === 'string' ? session.revokedAt : null,
+    }
+}
+
+function normalizePersistedServerSettings(settings: Partial<PersistedServerSettingsRecord> | null | undefined): PersistedServerSettingsRecord | null {
+    if (!settings || typeof settings !== 'object') {
+        return null
+    }
+
+    const normalizedBusinessAssumptions = settings.businessAssumptions && typeof settings.businessAssumptions === 'object'
+        ? {
+            ciMinuteCostRub: normalizeNullableNonNegativeNumber(settings.businessAssumptions.ciMinuteCostRub),
+            developerHourlyCostRub: normalizeNullableNonNegativeNumber(settings.businessAssumptions.developerHourlyCostRub),
+            analysisMinutesPerUnstable: normalizeNullableNonNegativeNumber(settings.businessAssumptions.analysisMinutesPerUnstable),
+        }
+        : null
+
+    return {
+        adminBaseUrl: normalizeOptionalText(settings.adminBaseUrl ?? null),
+        runtimeBaseUrl: normalizeOptionalText(settings.runtimeBaseUrl ?? null),
+        allowDevBootstrap: typeof settings.allowDevBootstrap === 'boolean' ? settings.allowDevBootstrap : undefined,
+        requireWorkspaceAuth: typeof settings.requireWorkspaceAuth === 'boolean' ? settings.requireWorkspaceAuth : undefined,
+        accessTokenTtlSeconds: normalizeNullablePositiveInteger(settings.accessTokenTtlSeconds),
+        adminToken: normalizeOptionalText(settings.adminToken ?? null),
+        businessAssumptions: normalizedBusinessAssumptions,
+    }
+}
+
+function mergePersistedServerSettings(
+    currentSettings: PersistedServerSettingsRecord | null,
+    input: UpdateServerSettingsInput,
+): PersistedServerSettingsRecord {
+    const normalizedCurrentSettings = normalizePersistedServerSettings(currentSettings) ?? {}
+    const normalizedInput = normalizePersistedServerSettings(input) ?? {}
+
+    return {
+        ...normalizedCurrentSettings,
+        ...normalizedInput,
+        businessAssumptions: {
+            ...(normalizedCurrentSettings.businessAssumptions ?? {}),
+            ...(normalizedInput.businessAssumptions ?? {}),
+        },
+    }
+}
+
+function mergeServerSettings(
+    persistedSettings: PersistedServerSettingsRecord | null,
+    defaults: ServerSettingsRecord,
+): ServerSettingsRecord {
+    const normalizedPersistedSettings = normalizePersistedServerSettings(persistedSettings)
+
+    return {
+        adminBaseUrl: normalizedPersistedSettings?.adminBaseUrl ?? defaults.adminBaseUrl,
+        runtimeBaseUrl: normalizedPersistedSettings?.runtimeBaseUrl ?? defaults.runtimeBaseUrl,
+        allowDevBootstrap: normalizedPersistedSettings?.allowDevBootstrap ?? defaults.allowDevBootstrap,
+        requireWorkspaceAuth: normalizedPersistedSettings?.requireWorkspaceAuth ?? defaults.requireWorkspaceAuth,
+        accessTokenTtlSeconds: normalizedPersistedSettings?.accessTokenTtlSeconds ?? defaults.accessTokenTtlSeconds,
+        adminToken: normalizedPersistedSettings?.adminToken ?? defaults.adminToken,
+        businessAssumptions: {
+            ciMinuteCostRub: normalizedPersistedSettings?.businessAssumptions?.ciMinuteCostRub ?? defaults.businessAssumptions.ciMinuteCostRub,
+            developerHourlyCostRub: normalizedPersistedSettings?.businessAssumptions?.developerHourlyCostRub ?? defaults.businessAssumptions.developerHourlyCostRub,
+            analysisMinutesPerUnstable: normalizedPersistedSettings?.businessAssumptions?.analysisMinutesPerUnstable ?? defaults.businessAssumptions.analysisMinutesPerUnstable,
+        },
     }
 }
 
@@ -587,12 +807,59 @@ function findWorkspaceOrThrow(registry: WorkspaceRegistrySnapshot, slug: string)
     return workspace
 }
 
+function normalizeAdminAuditAction(value: unknown): AdminAuditAction {
+    switch (value) {
+        case 'admin-login':
+        case 'admin-logout':
+        case 'workspace-created':
+        case 'workspace-updated':
+        case 'workspace-deleted':
+        case 'workspace-api-key-created':
+        case 'workspace-api-key-disabled':
+        case 'workspace-user-created':
+        case 'workspace-user-disabled':
+        case 'workspace-user-role-updated':
+        case 'workspace-share-link-created':
+        case 'workspace-session-revoked':
+        case 'server-settings-updated':
+            return value
+        default:
+            return 'workspace-updated'
+    }
+}
+
+function normalizeAuditDetails(details: Record<string, string | number | boolean | null | undefined> | unknown): Record<string, string> {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) {
+        return {}
+    }
+
+    return Object.fromEntries(
+        Object.entries(details).flatMap(([key, value]) => value === null || value === undefined ? [] : [[key, String(value)]])
+    )
+}
+
 function revokeWorkspaceSessionsBySubject(workspace: WorkspaceRecord, kind: WorkspaceSessionKind, subjectId: string, revokedAt: string): void {
     for (const session of workspace.sessions) {
         if (session.kind === kind && session.subjectId === subjectId && !session.revokedAt) {
             session.revokedAt = revokedAt
         }
     }
+}
+
+function revokeAllWorkspaceSessions(workspace: WorkspaceRecord, revokedAt: string): void {
+    for (const session of workspace.sessions) {
+        if (!session.revokedAt) {
+            session.revokedAt = revokedAt
+        }
+    }
+}
+
+function normalizeNullablePositiveInteger(value: number | undefined): number | undefined {
+    return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
+}
+
+function normalizeNullableNonNegativeNumber(value: number | null | undefined): number | null | undefined {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : value === null ? null : undefined
 }
 
 function isSessionActive(session: Pick<AdminSessionRecord, 'expiresAt' | 'revokedAt'> | Pick<WorkspaceSessionRecord, 'expiresAt' | 'revokedAt'> | undefined): boolean {

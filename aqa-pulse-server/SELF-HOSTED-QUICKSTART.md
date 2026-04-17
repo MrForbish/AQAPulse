@@ -57,6 +57,8 @@ https://aqa-pulse.example.com/w/autotests-main
 
 Если включён `AQA_PULSE_REQUIRE_WORKSPACE_AUTH=true`, сначала используй `workspace user token` на `/w/<slug>/login`.
 
+Admin UI открывается на `/admin`. Из него можно выдать короткую dashboard share link на 5 или 10 минут. Для split deployment заранее проверь, что в server settings выставлен корректный `Runtime base URL`, иначе share link будет указывать не туда.
+
 ## Обновление
 
 ```bash

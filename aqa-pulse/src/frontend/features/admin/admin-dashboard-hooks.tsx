@@ -1,20 +1,34 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type {
+    AdminAuditRecord,
+    AdminIngestionHealthReport,
+    ServerSettingsRecord,
     WorkspaceDescriptor,
     WorkspaceProvisioningResult,
+    WorkspaceShareLinkProvisioningResult,
+    WorkspaceUpdateResult,
+    WorkspaceUserRoleUpdateResult,
     WorkspaceUserProvisioningResult,
 } from '../../../backend/contracts'
 import { isUnauthorizedError, readErrorMessage } from '../../shared/http'
 import {
     createWorkspace,
     createWorkspaceApiKey,
+    createWorkspaceShareLink,
     createWorkspaceUser,
+    deleteWorkspace,
     disableWorkspaceApiKey,
     disableWorkspaceUser,
+    fetchAdminAuditLog,
+    fetchAdminIngestionHealth,
+    fetchAdminServerSettings,
     fetchAdminWorkspaces,
     logoutAdmin,
     revokeWorkspaceSession,
+    updateAdminServerSettings,
+    updateWorkspace,
+    updateWorkspaceUserRole,
 } from './admin-api'
 
 export interface DashboardActionResult {
@@ -28,62 +42,113 @@ export interface DashboardActionResult {
  */
 export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] | null): {
     workspaces: WorkspaceDescriptor[]
+    serverSettings: ServerSettingsRecord | null
+    auditEntries: AdminAuditRecord[]
+    ingestionHealth: AdminIngestionHealthReport | null
     isLoading: boolean
     errorMessage: string | null
     actionResult: DashboardActionResult | null
     busyKey: string | null
     createWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
+    updateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    deleteWorkspace: (slug: string) => Promise<void>
     createApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    createShareLink: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     createUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
+    updateUserRole: (event: React.FormEvent<HTMLFormElement>, slug: string, userId: string) => Promise<void>
     disableApiKey: (slug: string, apiKeyId: string) => Promise<void>
     disableUser: (slug: string, userId: string) => Promise<void>
     revokeSession: (slug: string, sessionId: string) => Promise<void>
+    updateServerSettings: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
     logout: () => Promise<void>
 } {
     const navigate = useNavigate()
     const [workspaces, setWorkspaces] = React.useState<WorkspaceDescriptor[]>(initialWorkspaces ?? [])
+    const [serverSettings, setServerSettings] = React.useState<ServerSettingsRecord | null>(null)
+    const [auditEntries, setAuditEntries] = React.useState<AdminAuditRecord[]>([])
+    const [ingestionHealth, setIngestionHealth] = React.useState<AdminIngestionHealthReport | null>(null)
     const [isLoading, setIsLoading] = React.useState(initialWorkspaces === null)
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
     const [actionResult, setActionResult] = React.useState<DashboardActionResult | null>(null)
     const [busyKey, setBusyKey] = React.useState<string | null>(null)
 
-    React.useEffect(() => {
-        if (initialWorkspaces !== null) {
-            setWorkspaces(initialWorkspaces)
-            setIsLoading(false)
-            return
+    const handleUnauthorized = React.useCallback((error: unknown): boolean => {
+        if (isUnauthorizedError(error)) {
+            navigate('/admin/login', { replace: true })
+            return true
         }
 
+        return false
+    }, [navigate])
+
+    const refreshSupplementaryData = React.useCallback(async (): Promise<void> => {
+        try {
+            const [settings, entries, health] = await Promise.all([
+                fetchAdminServerSettings(),
+                fetchAdminAuditLog(),
+                fetchAdminIngestionHealth(),
+            ])
+
+            setServerSettings(settings)
+            setAuditEntries(entries)
+            setIngestionHealth(health)
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin telemetry.'))
+        }
+    }, [handleUnauthorized])
+
+    React.useEffect(() => {
         let isMounted = true
 
-        void fetchAdminWorkspaces()
-            .then((loadedWorkspaces) => {
-                if (isMounted) {
+        async function loadAdminState(): Promise<void> {
+            try {
+                if (initialWorkspaces === null) {
+                    const [loadedWorkspaces, settings, entries, health] = await Promise.all([
+                        fetchAdminWorkspaces(),
+                        fetchAdminServerSettings(),
+                        fetchAdminAuditLog(),
+                        fetchAdminIngestionHealth(),
+                    ])
+
+                    if (!isMounted) {
+                        return
+                    }
+
                     setWorkspaces(loadedWorkspaces)
+                    setServerSettings(settings)
+                    setAuditEntries(entries)
+                    setIngestionHealth(health)
+                } else {
+                    setWorkspaces(initialWorkspaces)
+                    await refreshSupplementaryData()
                 }
-            })
-            .catch((error) => {
+            } catch (error) {
                 if (!isMounted) {
                     return
                 }
 
-                if (isUnauthorizedError(error)) {
-                    navigate('/admin/login', { replace: true })
+                if (handleUnauthorized(error)) {
                     return
                 }
 
-                setErrorMessage(readErrorMessage(error, 'Не удалось загрузить список workspace.'))
-            })
-            .finally(() => {
+                setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin dashboard.'))
+            } finally {
                 if (isMounted) {
                     setIsLoading(false)
                 }
-            })
+            }
+        }
+
+        void loadAdminState()
 
         return () => {
             isMounted = false
         }
-    }, [initialWorkspaces, navigate])
+    }, [handleUnauthorized, initialWorkspaces, refreshSupplementaryData])
 
     async function logout(): Promise<void> {
         setBusyKey('logout')
@@ -99,7 +164,8 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
 
     async function createWorkspaceAction(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault()
-        const formData = new FormData(event.currentTarget)
+        const form = event.currentTarget
+        const formData = new FormData(form)
         const name = String(formData.get('name') ?? '').trim()
         const slug = String(formData.get('slug') ?? '').trim()
         const apiKeyLabel = String(formData.get('apiKeyLabel') ?? '').trim()
@@ -116,10 +182,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const createdWorkspace = await createWorkspace({ name, slug: slug || undefined, apiKeyLabel: apiKeyLabel || undefined })
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, createdWorkspace.workspace, true))
             setActionResult({ title: 'Workspace создан', tone: 'success', details: mapWorkspaceProvisioningDetails(createdWorkspace) })
-            event.currentTarget.reset()
+            form.reset()
+            await refreshSupplementaryData()
         } catch (error) {
-            if (isUnauthorizedError(error)) {
-                navigate('/admin/login', { replace: true })
+            if (handleUnauthorized(error)) {
                 return
             }
 
@@ -129,9 +195,67 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         }
     }
 
+    async function updateWorkspaceAction(event: React.FormEvent<HTMLFormElement>, slug: string): Promise<void> {
+        event.preventDefault()
+        const form = event.currentTarget
+        const formData = new FormData(form)
+        const name = String(formData.get('name') ?? '').trim()
+        const nextSlug = String(formData.get('slug') ?? '').trim()
+        const submitKey = `workspace:update:${slug}`
+
+        if (!name) {
+            setActionResult({ title: 'Ошибка обновления workspace', tone: 'error', details: { workspace: slug, error: 'Поле name обязательно.' } })
+            return
+        }
+
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const result = await updateWorkspace(slug, { name, slug: nextSlug || slug })
+            setWorkspaces((currentWorkspaces) => mergeWorkspaceByPreviousSlug(currentWorkspaces, result.previousSlug, result.workspace))
+            setActionResult({ title: 'Workspace обновлён', tone: 'success', details: mapWorkspaceUpdateDetails(result) })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка обновления workspace', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось обновить workspace.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
+    async function deleteWorkspaceAction(slug: string): Promise<void> {
+        if (typeof window !== 'undefined' && !window.confirm(`Удалить workspace ${slug} вместе с его history, raw reports и access records?`)) {
+            return
+        }
+
+        const submitKey = `workspace:delete:${slug}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            await deleteWorkspace(slug)
+            setWorkspaces((currentWorkspaces) => currentWorkspaces.filter((workspace) => workspace.slug !== slug))
+            setActionResult({ title: 'Workspace удалён', tone: 'info', details: { workspace: slug } })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка удаления workspace', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить workspace.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
     async function createApiKeyAction(event: React.FormEvent<HTMLFormElement>, slug: string): Promise<void> {
         event.preventDefault()
-        const formData = new FormData(event.currentTarget)
+        const form = event.currentTarget
+        const formData = new FormData(form)
         const label = String(formData.get('label') ?? '').trim()
         const submitKey = `api-key:${slug}`
 
@@ -151,10 +275,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                     apiKeyExchangeUrl: `/auth/workspaces/${slug}/api-keys/login`,
                 },
             })
-            event.currentTarget.reset()
+            form.reset()
+            await refreshSupplementaryData()
         } catch (error) {
-            if (isUnauthorizedError(error)) {
-                navigate('/admin/login', { replace: true })
+            if (handleUnauthorized(error)) {
                 return
             }
 
@@ -173,7 +297,8 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
 
     async function createUserAction(event: React.FormEvent<HTMLFormElement>, slug: string): Promise<void> {
         event.preventDefault()
-        const formData = new FormData(event.currentTarget)
+        const form = event.currentTarget
+        const formData = new FormData(form)
         const label = String(formData.get('label') ?? '').trim()
         const role = formData.get('role') === 'owner' ? 'owner' : 'viewer'
         const submitKey = `user:${slug}`
@@ -190,10 +315,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const createdUser = await createWorkspaceUser(slug, { label, role })
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, createdUser.workspace))
             setActionResult({ title: 'Workspace user token создан', tone: 'success', details: mapWorkspaceUserProvisioningDetails(createdUser) })
-            event.currentTarget.reset()
+            form.reset()
+            await refreshSupplementaryData()
         } catch (error) {
-            if (isUnauthorizedError(error)) {
-                navigate('/admin/login', { replace: true })
+            if (handleUnauthorized(error)) {
                 return
             }
 
@@ -210,6 +335,57 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         }
     }
 
+    async function createShareLinkAction(event: React.FormEvent<HTMLFormElement>, slug: string): Promise<void> {
+        event.preventDefault()
+        const form = event.currentTarget
+        const formData = new FormData(form)
+        const ttlMinutes = formData.get('ttlMinutes') === '5' ? 5 : 10
+        const submitKey = `share-link:${slug}`
+
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const result = await createWorkspaceShareLink(slug, ttlMinutes)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, result.workspace))
+            setActionResult({ title: 'Share link создан', tone: 'success', details: mapWorkspaceShareLinkDetails(result) })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка создания share link', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось создать временную ссылку.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
+    async function updateUserRoleAction(event: React.FormEvent<HTMLFormElement>, slug: string, userId: string): Promise<void> {
+        event.preventDefault()
+        const formData = new FormData(event.currentTarget)
+        const role = formData.get('role') === 'owner' ? 'owner' : 'viewer'
+        const submitKey = `user:role:${slug}:${userId}`
+
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const result = await updateWorkspaceUserRole(slug, userId, role)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, result.workspace))
+            setActionResult({ title: 'Роль пользователя обновлена', tone: 'info', details: mapWorkspaceUserRoleUpdateDetails(result) })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка обновления роли', tone: 'error', details: { workspace: slug, userId, error: readErrorMessage(error, 'Не удалось обновить роль пользователя.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
     async function disableApiKeyAction(slug: string, apiKeyId: string): Promise<void> {
         const submitKey = `api-key:disable:${slug}:${apiKeyId}`
         setBusyKey(submitKey)
@@ -219,9 +395,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const workspace = await disableWorkspaceApiKey(slug, apiKeyId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
             setActionResult({ title: 'Ключ загрузки отключён', tone: 'info', details: { workspace: slug, apiKeyId } })
+            await refreshSupplementaryData()
         } catch (error) {
-            if (isUnauthorizedError(error)) {
-                navigate('/admin/login', { replace: true })
+            if (handleUnauthorized(error)) {
                 return
             }
 
@@ -240,9 +416,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const workspace = await disableWorkspaceUser(slug, userId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
             setActionResult({ title: 'Доступ пользователя отключён', tone: 'info', details: { workspace: slug, userId } })
+            await refreshSupplementaryData()
         } catch (error) {
-            if (isUnauthorizedError(error)) {
-                navigate('/admin/login', { replace: true })
+            if (handleUnauthorized(error)) {
                 return
             }
 
@@ -261,9 +437,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const workspace = await revokeWorkspaceSession(slug, sessionId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
             setActionResult({ title: 'Сессия отозвана', tone: 'info', details: { workspace: slug, sessionId } })
+            await refreshSupplementaryData()
         } catch (error) {
-            if (isUnauthorizedError(error)) {
-                navigate('/admin/login', { replace: true })
+            if (handleUnauthorized(error)) {
                 return
             }
 
@@ -273,18 +449,77 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         }
     }
 
+    async function updateServerSettingsAction(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault()
+        const form = event.currentTarget
+        const formData = new FormData(form)
+        const accessTokenTtlSeconds = Number(String(formData.get('accessTokenTtlSeconds') ?? '').trim())
+
+        if (!Number.isInteger(accessTokenTtlSeconds) || accessTokenTtlSeconds <= 0) {
+            setActionResult({ title: 'Ошибка обновления настроек', tone: 'error', details: { error: 'TTL должен быть положительным целым числом.' } })
+            return
+        }
+
+        setBusyKey('settings:update')
+        setErrorMessage(null)
+
+        try {
+            const nextSettings = await updateAdminServerSettings({
+                adminBaseUrl: normalizeOptionalFormValue(formData.get('adminBaseUrl')),
+                runtimeBaseUrl: normalizeOptionalFormValue(formData.get('runtimeBaseUrl')),
+                allowDevBootstrap: formData.get('allowDevBootstrap') === 'on',
+                requireWorkspaceAuth: formData.get('requireWorkspaceAuth') === 'on',
+                accessTokenTtlSeconds,
+                adminToken: normalizeOptionalFormValue(formData.get('adminToken')),
+                businessAssumptions: {
+                    ciMinuteCostRub: normalizeOptionalNumberFormValue(formData.get('ciMinuteCostRub')),
+                    developerHourlyCostRub: normalizeOptionalNumberFormValue(formData.get('developerHourlyCostRub')),
+                    analysisMinutesPerUnstable: normalizeOptionalNumberFormValue(formData.get('analysisMinutesPerUnstable')),
+                },
+            })
+
+            setServerSettings(nextSettings)
+            setActionResult({
+                title: 'Server settings обновлены',
+                tone: 'success',
+                details: {
+                    requireWorkspaceAuth: String(nextSettings.requireWorkspaceAuth),
+                    allowDevBootstrap: String(nextSettings.allowDevBootstrap),
+                    accessTokenTtlSeconds: String(nextSettings.accessTokenTtlSeconds),
+                },
+            })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка обновления настроек', tone: 'error', details: { error: readErrorMessage(error, 'Не удалось обновить server settings.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
     return {
         workspaces,
+        serverSettings,
+        auditEntries,
+        ingestionHealth,
         isLoading,
         errorMessage,
         actionResult,
         busyKey,
         createWorkspace: createWorkspaceAction,
+        updateWorkspace: updateWorkspaceAction,
+        deleteWorkspace: deleteWorkspaceAction,
         createApiKey: createApiKeyAction,
+        createShareLink: createShareLinkAction,
         createUser: createUserAction,
+        updateUserRole: updateUserRoleAction,
         disableApiKey: disableApiKeyAction,
         disableUser: disableUserAction,
         revokeSession: revokeSessionAction,
+        updateServerSettings: updateServerSettingsAction,
         logout,
     }
 }
@@ -309,10 +544,57 @@ function mapWorkspaceUserProvisioningDetails(result: WorkspaceUserProvisioningRe
     }
 }
 
+function mapWorkspaceUpdateDetails(result: WorkspaceUpdateResult): Record<string, string> {
+    return {
+        previousSlug: result.previousSlug,
+        workspace: result.workspace.slug,
+        name: result.workspace.name,
+        workspaceLoginUrl: `/w/${result.workspace.slug}/login`,
+        dashboardUrl: `/w/${result.workspace.slug}`,
+    }
+}
+
+function mapWorkspaceShareLinkDetails(result: WorkspaceShareLinkProvisioningResult): Record<string, string> {
+    return {
+        workspace: result.workspace.slug,
+        sessionId: result.shareSession.id,
+        ttlMinutes: String(result.shareSession.ttlMinutes),
+        expiresAt: result.shareSession.expiresAt,
+        shareLinkUrl: result.shareLinkUrl,
+    }
+}
+
+function mapWorkspaceUserRoleUpdateDetails(result: WorkspaceUserRoleUpdateResult): Record<string, string> {
+    return {
+        workspace: result.workspace.slug,
+        userId: result.userId,
+        role: result.role,
+        note: 'Активные workspace sessions этого пользователя были перевыпущены через revoke.',
+    }
+}
+
 /**
  * Merge по slug позволяет переиспользовать один и тот же helper и для create-потока, и для обновления существующего workspace после выдачи новых ключей/пользователей.
  */
 function mergeWorkspace(currentWorkspaces: WorkspaceDescriptor[], nextWorkspace: WorkspaceDescriptor, placeFirst = false): WorkspaceDescriptor[] {
     const remainingWorkspaces = currentWorkspaces.filter((workspace) => workspace.slug !== nextWorkspace.slug)
     return placeFirst ? [nextWorkspace, ...remainingWorkspaces] : [...remainingWorkspaces, nextWorkspace]
+}
+
+function mergeWorkspaceByPreviousSlug(currentWorkspaces: WorkspaceDescriptor[], previousSlug: string, nextWorkspace: WorkspaceDescriptor): WorkspaceDescriptor[] {
+    const remainingWorkspaces = currentWorkspaces.filter((workspace) => workspace.slug !== previousSlug && workspace.slug !== nextWorkspace.slug)
+    return [nextWorkspace, ...remainingWorkspaces]
+}
+
+function normalizeOptionalFormValue(value: FormDataEntryValue | null): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function normalizeOptionalNumberFormValue(value: FormDataEntryValue | null): number | null {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        return null
+    }
+
+    const parsedValue = Number(value)
+    return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : null
 }

@@ -161,7 +161,7 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
 
         const claims = verifyJwtToken(token, config.jwtSecret)
 
-        if (!claims || claims.kind !== 'workspace-user' || claims.scope !== 'workspace:read') {
+        if (!claims || (claims.kind !== 'workspace-user' && claims.kind !== 'workspace-share-link') || claims.scope !== 'workspace:read') {
             handleUnauthorized(request, response, {
                 responseMode: unauthorizedResponseMode,
                 redirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
@@ -175,12 +175,19 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
             return
         }
 
-        if (!registry.isWorkspaceSessionActive(workspace.slug, claims.sessionId ?? '', 'workspace-user')) {
+        if (!registry.isWorkspaceSessionActive(workspace.slug, claims.sessionId ?? '', claims.kind)) {
             handleUnauthorized(request, response, {
                 responseMode: unauthorizedResponseMode,
                 redirectUrl: `/w/${encodeURIComponent(workspace.slug)}/login`,
                 jsonMessage: 'Workspace session отозвана, истекла или больше не активна.',
             })
+            return
+        }
+
+        if (claims.kind === 'workspace-share-link') {
+            registry.touchWorkspaceSession(workspace.slug, claims.sessionId ?? '')
+            setAuthClaimsToLocals(response, claims)
+            next()
             return
         }
 

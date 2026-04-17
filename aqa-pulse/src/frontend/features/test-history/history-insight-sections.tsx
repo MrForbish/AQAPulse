@@ -82,12 +82,12 @@ export function HistoryDiagnosticsPanels(props: {
     return (
         <>
             {latestRun ? (
-                <Panel title={HISTORY_TEXT.diagnostics.latestRunTitle} description={HISTORY_TEXT.diagnostics.latestRunDescription} className="span-2">
+                <Panel title={HISTORY_TEXT.diagnostics.latestRunTitle} description={HISTORY_TEXT.diagnostics.latestRunDescription} className="span-2 test-history-diagnostics-panel-react">
                     <AttemptDiagnostics runId={latestRun.runId} attempts={latestRun.attemptDetails} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} incidentSummary={props.payload.incidentSummary} />
                 </Panel>
             ) : null}
             {latestUnstableRun && (!latestRun || latestUnstableRun.runId !== latestRun.runId) ? (
-                <Panel title={HISTORY_TEXT.diagnostics.latestUnstableTitle} description={HISTORY_TEXT.diagnostics.latestUnstableDescription} className="span-2">
+                <Panel title={HISTORY_TEXT.diagnostics.latestUnstableTitle} description={HISTORY_TEXT.diagnostics.latestUnstableDescription} className="span-2 test-history-diagnostics-panel-react is-secondary-diagnostics">
                     <AttemptDiagnostics runId={latestUnstableRun.runId} attempts={latestUnstableRun.attemptDetails} artifactBasePath={props.artifactBasePath} isStaticMode={props.isStaticMode} incidentSummary={props.payload.incidentSummary} />
                 </Panel>
             ) : null}

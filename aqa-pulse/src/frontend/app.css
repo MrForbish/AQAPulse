@@ -96,7 +96,7 @@ input {
     letter-spacing: -0.04em;
 }
 
-.test-history-title-react {
+.hero-block .test-history-title-react {
     font-size: clamp(18px, 2.5vw, 28px);
     line-height: 1.08;
     letter-spacing: -0.025em;
@@ -558,6 +558,40 @@ input {
 
 .panel-title-react {
     color: var(--text-main);
+}
+
+.test-history-diagnostics-panel-react {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: min(1080px, 86vh);
+    padding: 0;
+    overflow: hidden;
+    border-color: rgba(125, 211, 252, 0.2);
+    background:
+        linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(6, 11, 19, 0.96)),
+        linear-gradient(90deg, rgba(125, 211, 252, 0.04), transparent 40%);
+}
+
+.test-history-diagnostics-panel-react.is-secondary-diagnostics {
+    min-height: min(920px, 78vh);
+}
+
+.test-history-diagnostics-panel-react .panel-header {
+    margin: 0;
+    padding: 18px 22px 16px;
+    border-bottom: 1px solid rgba(125, 211, 252, 0.16);
+    background:
+        linear-gradient(180deg, rgba(10, 19, 33, 0.98), rgba(7, 14, 25, 0.92));
+}
+
+.test-history-diagnostics-panel-react .panel-header h2 {
+    margin-bottom: 8px;
+    font-size: 24px;
+    letter-spacing: -0.03em;
+}
+
+.test-history-diagnostics-panel-react .panel-header p {
+    max-width: 78ch;
 }
 
 .page-grid {
@@ -1344,6 +1378,139 @@ th {
     scrollbar-gutter: stable;
 }
 
+.incident-console-react {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+    min-height: min(900px, 76vh);
+    max-height: min(980px, 80vh);
+    padding: 18px 18px 22px;
+    overflow: auto;
+    scrollbar-gutter: stable;
+}
+
+.incident-console-toolbar-react,
+.incident-console-alert-react {
+    display: grid;
+    gap: 10px;
+    padding: 16px 18px;
+    border-radius: 16px;
+}
+
+.incident-console-toolbar-react {
+    grid-template-columns: minmax(0, 1.35fr) auto;
+    align-items: start;
+    border: 1px solid rgba(125, 211, 252, 0.18);
+    background:
+        linear-gradient(180deg, rgba(11, 21, 37, 0.98), rgba(6, 13, 23, 0.96));
+}
+
+.incident-console-head-react {
+    display: grid;
+    gap: 6px;
+}
+
+.incident-console-kicker-react,
+.incident-console-attempt-kicker-react,
+.incident-console-alert-label-react {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.incident-console-kicker-react {
+    color: #7dd3fc;
+}
+
+.incident-console-title-react {
+    font-size: 18px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.incident-console-copy-react {
+    max-width: 72ch;
+}
+
+.incident-console-stats-react,
+.incident-console-alert-meta-react {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.incident-console-stats-react {
+    justify-content: flex-end;
+    align-content: start;
+}
+
+.incident-console-alert-react {
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(180deg, rgba(79, 18, 25, 0.56), rgba(16, 18, 29, 0.9));
+}
+
+.incident-console-alert-label-react {
+    color: #fecaca;
+}
+
+.incident-console-alert-react strong {
+    font-size: 18px;
+    line-height: 1.35;
+}
+
+.incident-console-note-react {
+    margin: 0;
+    border-radius: 16px;
+}
+
+.incident-console-card-react {
+    border-radius: 14px;
+    border-color: rgba(133, 157, 194, 0.18);
+    background: linear-gradient(180deg, rgba(8, 17, 31, 0.96), rgba(5, 11, 20, 0.94));
+}
+
+.incident-console-card-react[data-attempt-status='failed'],
+.incident-console-card-react[data-attempt-status='timedout'],
+.incident-console-card-react[data-attempt-status='interrupted'] {
+    border-left: 4px solid rgba(239, 68, 68, 0.9);
+}
+
+.incident-console-card-react[data-attempt-status='flaky'] {
+    border-left: 4px solid rgba(245, 158, 11, 0.9);
+}
+
+.incident-console-card-react[open] > summary {
+    border-bottom: 1px solid rgba(125, 211, 252, 0.12);
+    background: linear-gradient(180deg, rgba(12, 24, 43, 0.96), rgba(7, 15, 27, 0.92));
+}
+
+.incident-console-card-react > summary {
+    padding: 18px 18px 16px;
+}
+
+.incident-console-attempt-head-react {
+    display: grid;
+    gap: 4px;
+}
+
+.incident-console-attempt-kicker-react {
+    color: #93c5fd;
+}
+
+.incident-console-attempt-meta-react {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+}
+
+.incident-console-card-react .attempt-card-body {
+    gap: 14px;
+    padding: 0 18px 18px;
+}
+
 .attempt-card summary {
     display: flex;
     justify-content: space-between;
@@ -2093,13 +2260,31 @@ th {
         font-size: 34px;
     }
 
-    .test-history-title-react {
+    .hero-block .test-history-title-react {
         font-size: 18px;
     }
 
     .compact-action-link-react {
         min-height: 28px;
         padding: 0 10px;
+    }
+
+    .test-history-diagnostics-panel-react {
+        min-height: 0;
+    }
+
+    .test-history-diagnostics-panel-react .panel-header,
+    .incident-console-react {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .incident-console-toolbar-react {
+        grid-template-columns: 1fr;
+    }
+
+    .incident-console-stats-react {
+        justify-content: flex-start;
     }
 
     .step-node-summary-react,

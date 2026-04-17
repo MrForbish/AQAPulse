@@ -92,6 +92,18 @@ export function getScoreTone(value: number): DashboardMetricTone {
     return 'danger'
 }
 
+export function getInverseScoreTone(value: number): DashboardMetricTone {
+    if (value >= 70) {
+        return 'danger'
+    }
+
+    if (value >= 40) {
+        return 'warn'
+    }
+
+    return 'good'
+}
+
 export function formatDelta(value: number | null, label: string, comparisonMode: DashboardSummary['comparison']['mode'] = 'adjacent'): string {
     if (value === null) {
         return comparisonMode === 'comparable' ? 'Нет сопоставимого прогона для сравнения' : DASHBOARD_TEXT.states.noPreviousRun
@@ -180,6 +192,17 @@ export function getFlakyTopTestsEmptyState(summary: DashboardSummary): string {
     }
 
     return DASHBOARD_TEXT.states.flakyTestsEmpty
+}
+
+export function getCodeQualityFailureConcentration(summary: DashboardSummary): number | null {
+    const unsuccessfulTests = summary.kpis.failedTests + summary.kpis.timedOutTests + summary.kpis.interruptedTests
+
+    if (unsuccessfulTests === 0) {
+        return null
+    }
+
+    const hotspotFailures = summary.topProblematicTests.filter((test) => test.status === 'failed' || test.status === 'timedout' || test.status === 'interrupted').length
+    return roundOne((hotspotFailures / unsuccessfulTests) * 100)
 }
 
 export function buildReleaseConfidenceBreakdown(summary: DashboardSummary): {

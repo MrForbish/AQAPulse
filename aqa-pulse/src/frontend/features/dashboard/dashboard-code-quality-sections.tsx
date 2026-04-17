@@ -1,16 +1,18 @@
 import React from 'react'
 import type { DashboardSummary } from '../../../dashboard-utils'
-import { formatDuration, formatPercent } from '../../../shared/formatting'
 import {
+    formatNullablePercent,
+    formatRunsPerHundred,
     formatScore,
+    getCodeQualityFailureConcentration,
+    getInverseScoreTone,
     getScoreTone,
 } from '../../../shared/dashboard-helpers'
 import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
-import { MetricCard, Panel } from '../../shared/ui'
+import { MetricCard } from '../../shared/ui'
 import {
     DashboardProblematicTestRow,
-    DashboardSlowTestRow,
     DashboardTablePanel,
 } from './dashboard-test-table-parts'
 
@@ -18,13 +20,15 @@ const DASHBOARD_TEXT = ru.dashboard
 
 export function DashboardCodeQualityOverviewMetrics(props: { summary: DashboardSummary }): React.JSX.Element {
     const { summary } = props
+    const failureConcentration = getCodeQualityFailureConcentration(summary)
+    const retryDensity = summary.businessMetrics.developerFriction.rerunBurdenPer100Runs
 
     return (
         <>
-            <MetricCard label="Problem hotspots" labelMetricKey="problematicTests" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problematicTests} value={String(summary.topProblematicTests.length)} tone={summary.topProblematicTests.length > 0 ? 'warn' : 'good'} hint="Текущий backlog по тестам с максимальным риском" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.flakyScore} labelMetricKey="flakyScore" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.flakyScore} value={summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(summary.flakyAnalytics.averageFlakyScore)} tone={summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getScoreTone(summary.flakyAnalytics.averageFlakyScore)} hint="Средний исторический сигнал нестабильности" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.errorClusters} labelMetricKey="errorClusters" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.errorClusters} value={String(summary.errorClusters.length)} tone={summary.errorClusters.length > 0 ? 'warn' : 'good'} hint="Повторяемые patterns падений" />
-            <MetricCard label={DASHBOARD_TEXT.metrics.leadingPhase} labelMetricKey="leadingPhase" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} value={summary.performance.phaseBreakdown[0]?.label ?? '—'} hint={summary.performance.phaseBreakdown[0] ? formatPercent(summary.performance.phaseBreakdown[0].sharePercent) : DASHBOARD_TEXT.states.noChanges} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.problemHotspots} labelMetricKey="problemHotspots" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.problemHotspots} value={String(summary.topProblematicTests.length)} tone={summary.topProblematicTests.length > 0 ? 'warn' : 'good'} hint="Сценарии, которые формируют текущий backlog на разбор" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.brittlenessProxy} labelMetricKey="brittlenessProxy" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.brittlenessProxy} value={summary.flakyAnalytics.averageFlakyScore === null ? '—' : formatScore(summary.flakyAnalytics.averageFlakyScore)} tone={summary.flakyAnalytics.averageFlakyScore === null ? 'default' : getInverseScoreTone(summary.flakyAnalytics.averageFlakyScore)} hint="Средний historical flaky score по набору" />
+            <MetricCard label={DASHBOARD_TEXT.metrics.failureConcentration} labelMetricKey="failureConcentration" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.failureConcentration} value={formatNullablePercent(failureConcentration)} tone={failureConcentration === null ? 'default' : failureConcentration >= 80 ? 'danger' : failureConcentration >= 50 ? 'warn' : 'good'} hint={failureConcentration === null ? 'В текущем прогоне нет неуспешных тестов' : 'Какая доля текущих неуспешных тестов сосредоточена в hotspot-сценариях'} />
+            <MetricCard label={DASHBOARD_TEXT.metrics.retryDensity} labelMetricKey="retryDensity" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.retryDensity} value={formatRunsPerHundred(retryDensity)} tone={retryDensity >= 25 ? 'warn' : 'good'} hint={`${summary.businessMetrics.developerFriction.extraRetries} лишних повторов • ${summary.businessMetrics.developerFriction.observedRuns} наблюдений в истории`} />
         </>
     )
 }
@@ -56,55 +60,6 @@ export function DashboardCodeQualityFailureHotspotsSection(props: {
             emptyMessage={DASHBOARD_TEXT.states.problematicTestsEmpty}
         >
             {summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
-        </DashboardTablePanel>
-    )
-}
-
-export function DashboardCodeQualityPhaseBreakdownSection(props: { summary: DashboardSummary }): React.JSX.Element {
-    return (
-        <Panel title={DASHBOARD_TEXT.metrics.phaseBreakdown} titleMetricKey="phaseBreakdown" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription}>
-            <div className="stacked-bars compact-top">
-                {props.summary.performance.phaseBreakdown.map((item) => (
-                    <div key={item.label} className="stacked-bar-item">
-                        <div className="stacked-bar-copy stacked-bar-copy-spread">
-                            <span>{item.label}</span>
-                            <strong>{formatDuration(item.durationMs)} • {formatPercent(item.sharePercent)}</strong>
-                        </div>
-                        <div className="stacked-bar-track">
-                            <div className="stacked-bar-fill" style={{ width: `${Math.max(8, item.sharePercent)}%` }} />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </Panel>
-    )
-}
-
-export function DashboardCodeQualitySlowTestsSection(props: {
-    summary: DashboardSummary
-    workspaceSlug: string | null
-}): React.JSX.Element {
-    const { summary } = props
-
-    return (
-        <DashboardTablePanel
-            title={DASHBOARD_TEXT.metrics.topSlowestTests}
-            titleMetricKey="topSlowestTests"
-            titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests}
-            className="span-2"
-            headers={[
-                DASHBOARD_TEXT.tables.test,
-                DASHBOARD_TEXT.tables.file,
-                DASHBOARD_TEXT.tables.status,
-                DASHBOARD_TEXT.tables.flaky,
-                DASHBOARD_TEXT.tables.duration,
-                DASHBOARD_TEXT.tables.lastError,
-            ]}
-            rowCount={summary.performance.slowestTests.length}
-            emptyTitle="Медленные тесты не обнаружены"
-            emptyMessage={DASHBOARD_TEXT.states.slowTestsEmpty}
-        >
-            {summary.performance.slowestTests.map((test) => <DashboardSlowTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
         </DashboardTablePanel>
     )
 }

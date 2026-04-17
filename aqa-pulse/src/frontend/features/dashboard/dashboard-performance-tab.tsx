@@ -23,7 +23,16 @@ import {
 const DASHBOARD_TEXT = ru.dashboard
 
 export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
-    const leadingPhase = props.summary.performance.phaseBreakdown[0] ?? null
+    const leadingPhase = [...props.summary.performance.phaseBreakdown]
+        .sort((left, right) => {
+            const shareDelta = right.sharePercent - left.sharePercent
+
+            if (shareDelta !== 0) {
+                return shareDelta
+            }
+
+            return right.durationMs - left.durationMs
+        })[0] ?? null
     const topBrowser = props.summary.performance.durationPerBrowser[0] ?? null
     const topSuite = props.summary.performance.suiteDuration[0] ?? null
 
@@ -31,14 +40,14 @@ export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug
         <div className="page-grid">
             <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.p95Duration} labelMetricKey="p95Duration" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.p95Duration} value={formatDuration(props.summary.performance.p95DurationMs)} hint="95% тестов укладываются в это значение или быстрее" />
             <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.p99Duration} labelMetricKey="p99Duration" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.p99Duration} value={formatDuration(props.summary.performance.p99DurationMs)} hint="Хвост самых долгих 1% тестов текущего среза" />
-            <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.leadingPhase} labelMetricKey="leadingPhase" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} value={leadingPhase ? formatPerformancePhaseLabel(leadingPhase.label) : '—'} hint={leadingPhase ? `${formatPercent(leadingPhase.sharePercent)} от длительности прогона` : 'Нет данных по фазам'} />
+            <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.leadingPhase} labelMetricKey="leadingPhase" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} value={leadingPhase ? formatPerformancePhaseLabel(leadingPhase.label) : '—'} hint={leadingPhase ? `${formatPercent(leadingPhase.sharePercent)} в структуре фаз` : 'Нет данных по фазам'} />
             <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.durationPerBrowser} labelMetricKey="durationPerBrowser" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.durationPerBrowser} value={topBrowser?.label ?? '—'} hint={topBrowser ? `${formatDuration(topBrowser.durationMs)} • ${topBrowser.tests} тестов` : 'Нет данных по браузерам / проектам'} />
             <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.suiteDuration} labelMetricKey="suiteDuration" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.suiteDuration} value={topSuite?.label ?? '—'} hint={topSuite ? `${formatDuration(topSuite.durationMs)} • ${topSuite.tests} тестов` : 'Нет данных по наборам'} />
             <MetricCard className="metric-card--compact-value" label={DASHBOARD_TEXT.metrics.durationTrend} labelMetricKey="durationTrend" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.durationTrend} value={formatDuration(props.summary.performance.durationTrend.currentDurationMs)} tone={props.summary.performance.durationTrend.deltaPercent !== null && props.summary.performance.durationTrend.deltaPercent > 0 ? 'warn' : 'good'} hint={formatDashboardDurationDelta(props.summary.performance.durationTrend.deltaPercent, props.summary.comparison.mode)} />
 
             <ChartCard title={DASHBOARD_TEXT.metrics.durationTrend} titleMetricKey="durationTrend" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.durationTrend} description={DASHBOARD_METRIC_DESCRIPTIONS.durationTrend} valueHint="минуты прогона" type="line" data={buildDashboardLineChart(props.summary.charts.durationTrend.labels, props.summary.charts.durationTrend.values, '#1d4ed8')} />
             <ChartCard title={DASHBOARD_TEXT.metrics.topSlowestTests} titleMetricKey="topSlowestTests" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests} description={DASHBOARD_METRIC_DESCRIPTIONS.topSlowestTests} valueHint="секунды на тест" type="bar" data={buildDashboardBarChart(props.summary.charts.slowestTests.labels, props.summary.charts.slowestTests.values, '#f97316')} />
-            <ChartCard title={DASHBOARD_TEXT.metrics.phaseBreakdown} titleMetricKey="phaseBreakdown" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription} valueHint="доля времени, %" type="bar" data={buildDashboardBarChart(props.summary.performance.phaseBreakdown.map((item) => formatPerformancePhaseLabel(item.label)), props.summary.performance.phaseBreakdown.map((item) => roundOne(item.sharePercent)), '#f59e0b')} />
+            <ChartCard title={DASHBOARD_TEXT.metrics.phaseBreakdown} titleMetricKey="phaseBreakdown" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.phaseBreakdown} description={DASHBOARD_TEXT.performance.phaseBreakdownDescription} valueHint="структура фаз, %" type="bar" data={buildDashboardBarChart(props.summary.performance.phaseBreakdown.map((item) => formatPerformancePhaseLabel(item.label)), props.summary.performance.phaseBreakdown.map((item) => roundOne(item.sharePercent)), '#f59e0b')} />
 
             <Panel title={DASHBOARD_TEXT.performance.runtimeBreakdownTitle} titleMetricKey="durationPerBrowser" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.durationPerBrowser} description={DASHBOARD_TEXT.performance.durationPerBrowserDescription}>
                 <DashboardBreakdownTable labelColumn={DASHBOARD_TEXT.filters.project} items={props.summary.performance.durationPerBrowser} emptyMessage={DASHBOARD_TEXT.states.performanceBreakdownEmpty} />
@@ -52,7 +61,7 @@ export function PerformanceTab(props: { summary: DashboardSummary; workspaceSlug
                                 <strong>{formatDuration(item.durationMs)} • {item.tests}</strong>
                             </div>
                             <div className="stacked-bar-track">
-                                <div className="stacked-bar-fill is-warn" style={{ width: `${Math.max(8, item.sharePercent)}%` }} />
+                                <div className="stacked-bar-fill is-warn" style={{ width: `${Math.min(100, Math.max(8, item.sharePercent))}%` }} />
                             </div>
                         </div>
                     ))}

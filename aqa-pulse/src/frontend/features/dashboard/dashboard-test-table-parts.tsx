@@ -102,13 +102,17 @@ export function DashboardCurrentRunTestRow(props: {
 }): React.JSX.Element {
     return (
         <tr>
-            <td><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
-            <td>{props.test.file}</td>
-            <td>{props.test.project}</td>
-            <td><StatusBadge label={formatStatusLabel(props.test.status, props.test.flaky)} tone={getStatusTone(props.test.status, props.test.flaky)} /></td>
-            <td>{props.test.flaky ? props.yesLabel : props.noLabel}</td>
-            <td>{formatDuration(props.test.durationMs)}</td>
-            <DashboardTraceTableCell preview={props.test.errorMessage} details={props.test.errorDetails ?? props.test.errorMessage} wide />
+            <td className="dashboard-current-run-title-cell"><DashboardTestHistoryLink workspaceSlug={props.workspaceSlug} summary={props.summary} title={props.test.title} project={props.test.project} file={props.test.file} /></td>
+            <td className="dashboard-current-run-file-cell">
+                <OverflowText as="span" text={props.test.file} className="dashboard-current-run-file-copy" lines={2} />
+            </td>
+            <td className="dashboard-current-run-project-cell">
+                <OverflowText as="span" text={props.test.project} className="dashboard-current-run-project-copy" />
+            </td>
+            <td className="dashboard-current-run-status-cell"><StatusBadge label={formatStatusLabel(props.test.status, props.test.flaky)} tone={getStatusTone(props.test.status, props.test.flaky)} /></td>
+            <td className="dashboard-current-run-flaky-cell">{props.test.flaky ? props.yesLabel : props.noLabel}</td>
+            <td className="dashboard-current-run-duration-cell">{formatDuration(props.test.durationMs)}</td>
+            <DashboardTraceTableCell className="dashboard-current-run-trace-cell" preview={props.test.errorMessage} details={props.test.errorDetails ?? props.test.errorMessage} wide />
         </tr>
     )
 }
@@ -214,9 +218,15 @@ export function DashboardRecentRunCompactRow(props: { run: DashboardSummary['his
     )
 }
 
-function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined; dialogTitle?: string; wide?: boolean }): React.JSX.Element {
+function DashboardTraceTableCell(props: { preview: string | null | undefined; details: string | null | undefined; dialogTitle?: string; wide?: boolean; className?: string }): React.JSX.Element {
+    const className = [
+        props.className,
+        'dashboard-trace-cell',
+        props.wide ? 'is-wide' : '',
+    ].filter(Boolean).join(' ')
+
     return (
-        <td className={props.wide ? 'dashboard-trace-cell is-wide' : 'dashboard-trace-cell'}>
+        <td className={className}>
             <TraceDisclosure
                 previewText={props.preview}
                 text={props.details}

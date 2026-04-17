@@ -1470,7 +1470,8 @@ function buildPhaseBreakdown(tests: ReporterTest[], totalDurationMs: number): Da
         testsMs += Math.max(observedDurationMs - stepsDurationMs, 0)
     }
 
-    const normalizationBase = totalDurationMs > 0 ? totalDurationMs : (setupMs + testsMs + teardownMs)
+    const totalPhaseMs = setupMs + testsMs + teardownMs
+    const normalizationBase = totalPhaseMs > 0 ? totalPhaseMs : totalDurationMs
 
     return [
         buildPhaseBreakdownItem('Setup', setupMs, normalizationBase),
@@ -1521,11 +1522,14 @@ function buildDurationBreakdownItems(
     source: Map<string, { durationMs: number; tests: number }>,
     totalDurationMs: number,
 ): DashboardDurationBreakdownItem[] {
+    const totalBreakdownMs = [...source.values()].reduce((sum, entry) => sum + entry.durationMs, 0)
+    const normalizationBase = totalBreakdownMs > 0 ? totalBreakdownMs : totalDurationMs
+
     return [...source.entries()]
         .map(([label, entry]) => ({
             label,
             durationMs: roundToOneDigit(entry.durationMs),
-            sharePercent: totalDurationMs <= 0 ? 0 : roundToOneDigit((entry.durationMs / totalDurationMs) * 100),
+            sharePercent: normalizationBase <= 0 ? 0 : roundToOneDigit((entry.durationMs / normalizationBase) * 100),
             tests: entry.tests,
         }))
         .sort((left, right) => right.durationMs - left.durationMs)

@@ -12,7 +12,7 @@ import { HashRouter, MemoryRouter, Route, Routes, useParams } from 'react-router
 import { ApiStore, selectPrimaryFailureStepForDiagnostics, type TestHistoryResponse } from './api-store'
 import type { WorkspaceDescriptor } from './backend/contracts'
 import { FileSystemBackendStorage } from './backend/storage'
-import { buildDashboardSummary, enrichReporterReport, loadReporterReport, type ReporterRoot } from './dashboard-utils'
+import { buildDashboardSummary, enrichReporterReport, loadReporterReport, type DashboardSummary, type ReporterRoot } from './dashboard-utils'
 import type { ArchivedRunRecord, DashboardHistoryEntry } from './history-utils'
 import { buildStepAnchor, findIncidentStepAnchor } from './shared/test-history-helpers'
 import {
@@ -26,6 +26,7 @@ import { RuntimeProvider as FrontendRuntimeProvider } from './frontend/runtime'
 import { DashboardPage as FrontendDashboardPage } from './frontend/features/dashboard/dashboard-page'
 import { TestHistoryPage as FrontendTestHistoryPage } from './frontend/features/test-history/test-history-page'
 import { IncidentSummaryPanel } from './frontend/features/test-history/history-incident-panels'
+import { PerformanceTab } from './frontend/features/dashboard/dashboard-performance-tab'
 import { AttemptStepTree } from './frontend/features/test-history/attempt-diagnostic-steps'
 import { WorkspaceLoginPage as FrontendWorkspaceLoginPage } from './frontend/features/admin/workspace-login-page'
 
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
             },
         ),
         '/',
-    ), ['TestOps', summary.sourceFile, 'metric-info-button-react'])
+    ), ['TestOps', summary.sourceFile, 'metric-info-button-react', 'Успешные', 'Таймауты', 'Прерванные'])
 
     renderMarkup('dashboard transition tab', renderWithRouter(
         React.createElement(
@@ -253,6 +254,8 @@ async function main(): Promise<void> {
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     verifyIncidentEvidenceRendering()
+    verifyPerformanceLeadingPhaseUsesLargestShare(summary)
+    verifyPerformanceBrowserBreakdownUsesGroupedShare(summary)
     verifyDiagnosticPrimaryFailureHighlight()
     verifyDiagnosticTreeKeepsSecondaryErrorsWithoutFailurePoint()
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
@@ -360,6 +363,53 @@ function verifyIncidentEvidenceRendering(): void {
 
     renderMarkup('incident evidence panel', markup, ['Проблемные попытки', 'Артефакты'])
     assert(!markup.includes('Факты и подтверждения'), 'Incident evidence panel should not render the removed evidence heading.')
+}
+
+function verifyPerformanceLeadingPhaseUsesLargestShare(summary: DashboardSummary): void {
+    const phaseSummary: DashboardSummary = {
+        ...summary,
+        performance: {
+            ...summary.performance,
+            phaseBreakdown: [
+                { label: 'Setup', durationMs: 10_000, sharePercent: 10 },
+                { label: 'Tests', durationMs: 80_000, sharePercent: 80 },
+                { label: 'Teardown', durationMs: 10_000, sharePercent: 10 },
+            ],
+        },
+    }
+
+    const markup = renderWithRouter(
+        React.createElement(PerformanceTab, {
+            summary: phaseSummary,
+            workspaceSlug: null,
+        }),
+        '/',
+    )
+
+    renderMarkup('performance leading phase metric', markup, ['Доминирующая фаза', 'Тесты', '80.0% в структуре фаз'])
+}
+
+function verifyPerformanceBrowserBreakdownUsesGroupedShare(summary: DashboardSummary): void {
+    const browserSummary: DashboardSummary = {
+        ...summary,
+        performance: {
+            ...summary.performance,
+            durationPerBrowser: [
+                { label: 'chromium', durationMs: 120_000, sharePercent: 60, tests: 12 },
+                { label: 'webkit', durationMs: 80_000, sharePercent: 40, tests: 8 },
+            ],
+        },
+    }
+
+    const markup = renderWithRouter(
+        React.createElement(PerformanceTab, {
+            summary: browserSummary,
+            workspaceSlug: null,
+        }),
+        '/',
+    )
+
+    renderMarkup('performance browser breakdown metric', markup, ['Runtime-проекты / браузеры', 'chromium', '60.0%', '40.0%'])
 }
 
 function verifyDiagnosticPrimaryFailureHighlight(): void {

@@ -68,6 +68,7 @@ type ChartConstructor = new (
 
 export function ChartCard(props: ChartCardProps): React.JSX.Element {
     const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
+    const shouldShowLegend = props.showLegend ?? props.data.datasets.length > 1
 
     React.useEffect(() => {
         if (!canvasRef.current) {
@@ -103,7 +104,7 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: props.showLegend ?? true,
+                            display: shouldShowLegend,
                             labels: {
                                 color: '#d7deeb',
                             },
@@ -129,7 +130,7 @@ export function ChartCard(props: ChartCardProps): React.JSX.Element {
             isDisposed = true
             chart?.destroy()
         }
-    }, [props.data, props.showLegend, props.type])
+    }, [props.data, props.type, shouldShowLegend])
 
     return (
         <Panel title={props.title} description={props.description} titleTooltip={props.titleTooltip} titleMetricKey={props.titleMetricKey} className={['chart-panel', props.className].filter(Boolean).join(' ')}>

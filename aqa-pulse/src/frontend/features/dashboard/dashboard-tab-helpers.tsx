@@ -28,7 +28,6 @@ export function buildDashboardLineChart(labels: string[], values: number[], colo
         labels,
         datasets: [
             {
-                label: 'dataset',
                 data: values,
                 borderColor: color,
                 backgroundColor: `${color}33`,
@@ -44,7 +43,6 @@ export function buildDashboardBarChart(labels: string[], values: number[], color
         labels,
         datasets: [
             {
-                label: 'dataset',
                 data: values,
                 backgroundColor: color,
                 borderRadius: 12,

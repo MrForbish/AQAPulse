@@ -827,7 +827,7 @@ input {
 }
 
 .chart-layout.has-aside {
-    grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.95fr);
+    grid-template-columns: minmax(0, 1.45fr) minmax(176px, 0.72fr);
 }
 
 .chart-frame {
@@ -838,36 +838,48 @@ input {
 .chart-aside,
 .status-distribution-metrics {
     display: grid;
-    gap: 10px;
+    gap: 8px;
+}
+
+.status-distribution-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
 }
 
 .status-distribution-metric {
     display: grid;
-    gap: 6px;
-    padding: 10px 12px;
-    border-radius: 16px;
+    gap: 4px;
+    padding: 9px 10px;
+    border-radius: 14px;
     border: 1px solid rgba(133, 157, 194, 0.14);
     background: rgba(7, 15, 27, 0.72);
 }
 
 .status-distribution-metric-label {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 7px;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.35;
 }
 
 .status-distribution-metric-dot {
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     border-radius: 999px;
     flex: 0 0 auto;
+    margin-top: 3px;
 }
 
 .status-distribution-metric-value {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 21px;
+    font-size: 18px;
+}
+
+.status-distribution-metric-label > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .status-strip {
@@ -984,13 +996,67 @@ input {
     table-layout: fixed;
 }
 
-.current-run-tests-table-wrap th:last-child,
-.current-run-tests-table-wrap td:last-child {
-    width: 30%;
+.current-run-tests-table-wrap th:nth-child(2),
+.current-run-tests-table-wrap td.dashboard-current-run-file-cell {
+    width: 18%;
+}
+
+.current-run-tests-table-wrap th:nth-child(3),
+.current-run-tests-table-wrap td.dashboard-current-run-project-cell {
+    width: 10%;
+}
+
+.current-run-tests-table-wrap th:nth-child(4),
+.current-run-tests-table-wrap td.dashboard-current-run-status-cell {
+    width: 11%;
+}
+
+.current-run-tests-table-wrap th:nth-child(5),
+.current-run-tests-table-wrap td.dashboard-current-run-flaky-cell {
+    width: 7%;
+}
+
+.current-run-tests-table-wrap th:nth-child(6),
+.current-run-tests-table-wrap td.dashboard-current-run-duration-cell {
+    width: 8%;
+}
+
+.current-run-tests-table-wrap th:nth-child(7),
+.current-run-tests-table-wrap td.dashboard-current-run-trace-cell {
+    width: 28%;
 }
 
 .dashboard-trace-cell.is-wide .trace-disclosure-trigger-react.is-table {
     min-width: 0;
+}
+
+.current-run-tests-table-wrap td.dashboard-current-run-title-cell,
+.current-run-tests-table-wrap td.dashboard-current-run-file-cell,
+.current-run-tests-table-wrap td.dashboard-current-run-trace-cell {
+    min-width: 0;
+}
+
+.current-run-tests-table-wrap td.dashboard-current-run-project-cell,
+.current-run-tests-table-wrap td.dashboard-current-run-status-cell,
+.current-run-tests-table-wrap td.dashboard-current-run-flaky-cell,
+.current-run-tests-table-wrap td.dashboard-current-run-duration-cell {
+    white-space: nowrap;
+}
+
+.current-run-tests-table-wrap td.dashboard-current-run-title-cell .entity-link {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.current-run-tests-table-wrap .dashboard-current-run-file-copy {
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .current-run-tests-table-wrap thead th {

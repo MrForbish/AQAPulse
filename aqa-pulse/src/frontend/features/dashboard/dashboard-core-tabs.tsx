@@ -2,8 +2,8 @@ import React from 'react'
 import type {
     DashboardSummary,
 } from '../../../dashboard-utils'
-import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ru } from '../../../shared/i18n/ru'
+import { DASHBOARD_METRIC_DESCRIPTIONS } from '../../../shared/dashboard-metric-info'
 import { ChartCard } from '../../shared/chart-card'
 import { EmptyState } from '../../shared/ui'
 import {
@@ -21,7 +21,7 @@ const DASHBOARD_TEXT = ru.dashboard
 
 export function OverviewTab(props: { summary: DashboardSummary; workspaceSlug: string | null }): React.JSX.Element {
     const statusDistributionItems = props.summary.charts.statusDistribution.labels.map((label, index) => ({
-        label,
+        label: formatStatusDistributionLabel(label),
         value: props.summary.charts.statusDistribution.values[index] ?? 0,
         color: DASHBOARD_STATUS_CHART_COLORS[index] ?? '#94a3b8',
     }))
@@ -36,7 +36,7 @@ export function OverviewTab(props: { summary: DashboardSummary; workspaceSlug: s
                 titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.statusDistribution}
                 valueHint="количество тестов"
                 type="doughnut"
-                data={buildDashboardDoughnutChart(props.summary.charts.statusDistribution.labels, props.summary.charts.statusDistribution.values)}
+                data={buildDashboardDoughnutChart(statusDistributionItems.map((item) => item.label), props.summary.charts.statusDistribution.values)}
                 showLegend={false}
                 aside={(
                     <div className="status-distribution-metrics">
@@ -56,5 +56,9 @@ export function OverviewTab(props: { summary: DashboardSummary; workspaceSlug: s
             <DashboardLatestRunsSection summary={props.summary} />
         </div>
     )
+}
+
+function formatStatusDistributionLabel(label: string): string {
+    return DASHBOARD_TEXT.statusLabels[label as keyof typeof DASHBOARD_TEXT.statusLabels] ?? label
 }
 

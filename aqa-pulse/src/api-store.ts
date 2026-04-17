@@ -1121,32 +1121,73 @@ function selectPrimaryFailureStepFromSteps(steps: TestHistoryStep[]): TestHistor
         return null
     }
 
-    const exactFailureCandidates = steps
+    const stepCandidates = steps
         .map((step, stepIndex) => ({ step, stepIndex }))
+    const exactFailureCandidates = stepCandidates
         .filter((candidate) => candidate.step.isFailurePoint)
+    const explicitErrorCandidate = pickBestExplicitErrorCandidate(
+        stepCandidates.filter((candidate) => hasActionableDiagnosticStepError(candidate.step)),
+    )
     const bestExactFailure = pickBestDiagnosticStepCandidate(exactFailureCandidates)
+
+    if (explicitErrorCandidate && bestExactFailure && shouldPreferExplicitErrorCandidate(explicitErrorCandidate, bestExactFailure)) {
+        return explicitErrorCandidate.step
+    }
 
     if (bestExactFailure && !isGenericTeardownFailureStep(bestExactFailure.step)) {
         return bestExactFailure.step
     }
 
     if (bestExactFailure) {
-        const contextualCandidates = steps
+        const contextualCandidates = stepCandidates
             .slice(0, bestExactFailure.stepIndex)
-            .map((step, stepIndex) => ({ step, stepIndex }))
             .filter((candidate) => isMeaningfulFailureContextStep(candidate.step))
         const contextualStep = pickBestDiagnosticStepCandidate(contextualCandidates)
 
-        return contextualStep?.step ?? bestExactFailure.step
+        return explicitErrorCandidate?.step ?? contextualStep?.step ?? bestExactFailure.step
+    }
+
+    if (explicitErrorCandidate) {
+        return explicitErrorCandidate.step
     }
 
     const fallbackCandidate = pickBestDiagnosticStepCandidate(
-        steps
-            .map((step, stepIndex) => ({ step, stepIndex }))
-            .filter((candidate) => isMeaningfulFailureContextStep(candidate.step)),
+        stepCandidates.filter((candidate) => isMeaningfulFailureContextStep(candidate.step)),
     )
 
     return fallbackCandidate?.step ?? null
+}
+
+export function selectPrimaryFailureStepForDiagnostics(steps: TestHistoryStep[]): TestHistoryStep | null {
+    return selectPrimaryFailureStepFromSteps(steps)
+}
+
+function shouldPreferExplicitErrorCandidate(
+    explicitErrorCandidate: { step: TestHistoryStep; stepIndex: number },
+    exactFailureCandidate: { step: TestHistoryStep; stepIndex: number },
+): boolean {
+    if (isGenericTeardownFailureStep(exactFailureCandidate.step)) {
+        return true
+    }
+
+    if (!exactFailureCandidate.step.errorMessage && explicitErrorCandidate.step.errorMessage) {
+        return true
+    }
+
+    if (isGenericLifecycleStep(exactFailureCandidate.step) && !isGenericLifecycleStep(explicitErrorCandidate.step)) {
+        return true
+    }
+
+    if (
+        exactFailureCandidate.step.category === 'test.step'
+        && explicitErrorCandidate.step.category !== 'test.step'
+        && explicitErrorCandidate.step.depth >= exactFailureCandidate.step.depth
+    ) {
+        return true
+    }
+
+    return getDiagnosticStepPriority(explicitErrorCandidate.step, explicitErrorCandidate.stepIndex)
+        >= getDiagnosticStepPriority(exactFailureCandidate.step, exactFailureCandidate.stepIndex)
 }
 
 function pickBestDiagnosticStepCandidate(
@@ -1158,6 +1199,24 @@ function pickBestDiagnosticStepCandidate(
 
     return [...candidates].sort((left, right) => {
         const scoreDelta = getDiagnosticStepPriority(right.step, right.stepIndex) - getDiagnosticStepPriority(left.step, left.stepIndex)
+
+        if (scoreDelta !== 0) {
+            return scoreDelta
+        }
+
+        return right.stepIndex - left.stepIndex
+    })[0] ?? null
+}
+
+function pickBestExplicitErrorCandidate(
+    candidates: Array<{ step: TestHistoryStep; stepIndex: number }>,
+): { step: TestHistoryStep; stepIndex: number } | null {
+    if (candidates.length === 0) {
+        return null
+    }
+
+    return [...candidates].sort((left, right) => {
+        const scoreDelta = getExplicitErrorStepPriority(right.step, right.stepIndex) - getExplicitErrorStepPriority(left.step, left.stepIndex)
 
         if (scoreDelta !== 0) {
             return scoreDelta
@@ -1209,7 +1268,45 @@ function getDiagnosticStepPriority(step: TestHistoryStep, stepIndex: number): nu
         score -= 200
     }
 
+    if (isActionableAutomationErrorStep(step)) {
+        score += 36
+    }
+
     return score
+}
+
+function getExplicitErrorStepPriority(step: TestHistoryStep, stepIndex: number): number {
+    let score = getDiagnosticStepPriority(step, stepIndex)
+
+    if (step.category === 'test.step') {
+        score -= 70
+    } else {
+        score += 30
+    }
+
+    if (step.depth > 0) {
+        score += 24
+    }
+
+    return score
+}
+
+function hasActionableDiagnosticStepError(step: TestHistoryStep): boolean {
+    if (!(step.errorMessage?.trim())) {
+        return false
+    }
+
+    return !isGenericTeardownFailureStep(step)
+}
+
+function isActionableAutomationErrorStep(step: TestHistoryStep): boolean {
+    const titleCorpus = step.title.trim().toLowerCase()
+    const categoryCorpus = (step.category ?? '').trim().toLowerCase()
+    const errorCorpus = (step.errorMessage ?? '').trim().toLowerCase()
+    const combinedCorpus = `${titleCorpus} ${categoryCorpus} ${errorCorpus}`
+
+    return step.category === 'pw:api'
+        && /(timeouterror|timeout \d+ms exceeded|timed out|waitfor|wait for|locator\.|selector)/.test(combinedCorpus)
 }
 
 function isMeaningfulFailureContextStep(step: TestHistoryStep): boolean {

@@ -9,7 +9,7 @@ import { act } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createRoot, type Root } from 'react-dom/client'
 import { HashRouter, MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
-import { ApiStore, type TestHistoryResponse } from './api-store'
+import { ApiStore, selectPrimaryFailureStepForDiagnostics, type TestHistoryResponse } from './api-store'
 import type { WorkspaceDescriptor } from './backend/contracts'
 import { FileSystemBackendStorage } from './backend/storage'
 import { loadReporterReport } from './dashboard-utils'
@@ -248,6 +248,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryNestedDiagnosticsStructure(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentLightbox(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
+    verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     await verifyWorkspaceLoginBootstrapRedirect(workspaceSlug)
     await verifyErrorBoundaryRecovery(reactModule)
 
@@ -836,6 +837,11 @@ async function verifyTestHistoryAttachmentLightbox(
         const imagePreviewTrigger = container.querySelector('[data-image-lightbox-trigger]')
         assert(imagePreviewTrigger, `Attachment lightbox smoke expects at least one image preview trigger. Actual DOM: ${container.innerHTML}`)
 
+        const preloadedLightboxImage = dom.window.document.querySelector('[data-image-lightbox-image]') as HTMLImageElement | null
+        assert(preloadedLightboxImage, 'Attachment lightbox smoke expects the lightbox image node to exist before opening the dialog.')
+        Object.defineProperty(preloadedLightboxImage, 'complete', { configurable: true, get: () => true })
+        Object.defineProperty(preloadedLightboxImage, 'naturalWidth', { configurable: true, get: () => 1440 })
+
         await clickElement(imagePreviewTrigger, dom.window)
         await waitForCondition(() => {
             const lightbox = dom.window.document.querySelector('[data-image-lightbox]') as HTMLElement | null
@@ -847,6 +853,9 @@ async function verifyTestHistoryAttachmentLightbox(
 
         const lightboxImage = dom.window.document.querySelector('[data-image-lightbox-image]') as HTMLImageElement | null
         assert(lightboxImage?.getAttribute('src') && lightboxImage.getAttribute('src')!.length > 0, 'Attachment lightbox smoke expects image src in dialog body.')
+
+    const loadingStatus = dom.window.document.querySelector('.image-lightbox-status-react')
+    assert(!loadingStatus, `Attachment lightbox smoke expects loading text to disappear for an already loaded image. Actual DOM: ${dom.window.document.body.innerHTML}`)
 
         const lightboxClose = dom.window.document.querySelector('.image-lightbox-close-react')
         assert(lightboxClose, 'Attachment lightbox smoke expects close button.')
@@ -872,6 +881,43 @@ async function verifyTestHistoryAttachmentLightbox(
         setGlobalValue('MouseEvent', previousMouseEvent)
         dom.window.close()
     }
+}
+
+function verifyPrimaryFailureStepSelectionPrefersNestedErroredAction(): void {
+    const selectedStep = selectPrimaryFailureStepForDiagnostics([
+        {
+            title: 'Checkout flow',
+            category: 'test.step',
+            depth: 0,
+            offsetMs: 0,
+            durationMs: 7800,
+            status: 'failed',
+            errorMessage: 'TimeoutError: locator.waitFor: Timeout 800ms exceeded.',
+            isFailurePoint: true,
+        },
+        {
+            title: 'Wait for selector locator(\'mat-snack-bar-container, simple-snack-bar\').getByRole(\'button\', { name: /^close$/i })',
+            category: 'pw:api',
+            depth: 1,
+            offsetMs: 7060,
+            durationMs: 802,
+            status: 'failed',
+            errorMessage: 'TimeoutError: locator.waitFor: Timeout 800ms exceeded.',
+            isFailurePoint: false,
+        },
+        {
+            title: 'Worker Cleanup',
+            category: 'hook',
+            depth: 0,
+            offsetMs: 7900,
+            durationMs: 140,
+            status: 'failed',
+            errorMessage: null,
+            isFailurePoint: true,
+        },
+    ])
+
+    assert(selectedStep?.title === 'Wait for selector locator(\'mat-snack-bar-container, simple-snack-bar\').getByRole(\'button\', { name: /^close$/i })', `Primary failure-step selection should prefer the nested pw:api error over wrapper or cleanup steps. Actual step: ${selectedStep?.title ?? 'null'}`)
 }
 
 async function verifyTestHistoryAttachmentMarkdownPreview(

@@ -50,6 +50,7 @@ function AttachmentCard(props: {
     const [markdownState, setMarkdownState] = React.useState<{ status: 'idle' | 'loading' | 'success' | 'error'; content: string }>({ status: 'idle', content: '' })
     const previousActiveElementRef = React.useRef<HTMLElement | null>(null)
     const imageLightboxCloseRef = React.useRef<HTMLButtonElement | null>(null)
+    const imageLightboxImageRef = React.useRef<HTMLImageElement | null>(null)
     const lightboxHost = typeof document !== 'undefined' ? document.body : null
 
     React.useEffect(() => {
@@ -66,7 +67,14 @@ function AttachmentCard(props: {
         }
 
         previousActiveElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-        setImageLightboxStatus('loading')
+
+        const lightboxImage = imageLightboxImageRef.current
+
+        if (lightboxImage?.complete) {
+            setImageLightboxStatus(lightboxImage.naturalWidth > 0 ? 'loaded' : 'error')
+        } else {
+            setImageLightboxStatus('loading')
+        }
 
         const previousBodyOverflow = document.body.style.overflow
         document.body.style.overflow = 'hidden'
@@ -95,7 +103,7 @@ function AttachmentCard(props: {
             previousActiveElementRef.current = null
             previousActiveElement?.focus()
         }
-    }, [isImageLightboxOpen])
+    }, [imagePreviewHref, isImageLightboxOpen])
 
     React.useEffect(() => {
         if (!isMarkdownOpen || !markdownPreviewAvailable || !href || markdownState.status !== 'idle') {
@@ -176,6 +184,7 @@ function AttachmentCard(props: {
                     <div className="image-lightbox-body-react">
                         {imageLightboxStatus === 'loading' ? <div className="image-lightbox-status-react">{HISTORY_TEXT.diagnostics.loadingImagePreview}</div> : null}
                         <img
+                            ref={imageLightboxImageRef}
                             className="image-lightbox-image-react"
                             data-image-lightbox-image
                             src={imagePreviewHref}

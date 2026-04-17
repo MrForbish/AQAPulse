@@ -1799,7 +1799,7 @@ th {
     display: grid;
     grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.9fr);
     gap: 14px;
-    align-items: stretch;
+    align-items: start;
 }
 
 .overview-signal-hero,
@@ -1812,8 +1812,9 @@ th {
 
 .overview-signal-hero {
     display: grid;
-    gap: 12px;
-    padding: 18px 20px;
+    align-content: start;
+    gap: 8px;
+    padding: 16px 18px;
     border-radius: 22px;
     position: relative;
     overflow: hidden;
@@ -1890,7 +1891,7 @@ th {
     max-width: 48ch;
     color: #d9e3f4;
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
 .overview-signal-side-rail,

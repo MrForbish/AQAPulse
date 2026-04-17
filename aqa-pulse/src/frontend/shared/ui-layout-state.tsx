@@ -67,7 +67,6 @@ export function MetricCard(props: MetricCardProps): React.JSX.Element {
 
     return (
         <article className={['metric-card', props.className, props.tone && props.tone !== 'default' ? `is-${props.tone}` : ''].filter(Boolean).join(' ')}>
-            <div className="metric-card-slot">metric node</div>
             <div className="metric-label">
                 <MetricHeading
                     label={props.label}

@@ -4297,8 +4297,7 @@ tbody tr:hover td:first-child {
     white-space: nowrap;
 }
 
-.panel-kicker,
-.metric-card-slot {
+.panel-kicker {
     display: inline-flex;
     align-items: center;
     min-height: 18px;
@@ -4315,11 +4314,6 @@ tbody tr:hover td:first-child {
 
 .panel-kicker {
     margin-bottom: 8px;
-}
-
-.metric-card-slot {
-    margin-bottom: 10px;
-    width: fit-content;
 }
 
 @media (max-width: 820px) {

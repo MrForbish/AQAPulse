@@ -877,14 +877,17 @@ input {
     scrollbar-gutter: stable;
 }
 
+.current-run-tests-table-wrap table {
+    table-layout: fixed;
+}
+
 .current-run-tests-table-wrap th:last-child,
 .current-run-tests-table-wrap td:last-child {
     width: 30%;
-    min-width: 340px;
 }
 
 .dashboard-trace-cell.is-wide .trace-disclosure-trigger-react.is-table {
-    min-width: 300px;
+    min-width: 0;
 }
 
 .current-run-tests-table-wrap thead th {
@@ -1642,7 +1645,6 @@ th {
 .trace-disclosure-trigger-react.is-table {
     align-items: stretch;
     min-height: 56px;
-    min-width: 240px;
     padding: 10px 12px;
     gap: 12px;
     background: linear-gradient(180deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.06));

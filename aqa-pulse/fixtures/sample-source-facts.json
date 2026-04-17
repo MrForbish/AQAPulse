@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "analyzerVersion": "example-ci-analyzer@1.0.0",
+  "files": [
+    {
+      "file": "tests/UI/checkout/checkout.spec.ts",
+      "hasPomImports": true,
+      "beforeAllCount": 0,
+      "beforeEachCount": 1,
+      "serialModeCount": 0,
+      "topLevelMutableStateCount": 0,
+      "tests": [
+        {
+          "startLine": 18,
+          "endLine": 34,
+          "title": "Checkout > shows shipping summary for logged-in user",
+          "assertionCount": 3,
+          "smartWaitCount": 1,
+          "hardWaitCount": 0,
+          "stepCount": 2,
+          "directLocatorCount": 1,
+          "directPageActionCount": 1,
+          "stableSelectorCount": 2,
+          "textSelectorCount": 0,
+          "fragileSelectorCount": 0,
+          "pomReferenceCount": 2,
+          "pomFixtureReferenceCount": 0,
+          "sharedStateMutationCount": 0,
+          "usesPom": true
+        }
+      ]
+    },
+    {
+      "file": "tests/UI/checkout/payment.spec.ts",
+      "hasPomImports": false,
+      "beforeAllCount": 1,
+      "beforeEachCount": 0,
+      "serialModeCount": 0,
+      "topLevelMutableStateCount": 1,
+      "tests": [
+        {
+          "startLine": 44,
+          "endLine": 71,
+          "title": "Checkout > retries after payment gateway timeout",
+          "assertionCount": 1,
+          "smartWaitCount": 1,
+          "hardWaitCount": 1,
+          "stepCount": 1,
+          "directLocatorCount": 3,
+          "directPageActionCount": 2,
+          "stableSelectorCount": 1,
+          "textSelectorCount": 1,
+          "fragileSelectorCount": 1,
+          "pomReferenceCount": 0,
+          "pomFixtureReferenceCount": 0,
+          "sharedStateMutationCount": 1,
+          "usesPom": false
+        }
+      ]
+    }
+  ]
+}

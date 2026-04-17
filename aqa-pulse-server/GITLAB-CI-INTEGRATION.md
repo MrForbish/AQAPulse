@@ -101,6 +101,20 @@ CLI читает из env:
 - `AQA_PULSE_WORKSPACE_API_KEY`
 - `PW_LLM_REPORT` как fallback для пути к report
 
+Если у тебя есть отдельный analyzer step, который считает code-quality facts рядом с тестами, можно добавить ещё:
+
+- `AQA_PULSE_SOURCE_FACTS_PATH` — путь к JSON с precomputed source facts
+
+Встроенный вариант теперь тоже есть: `aqa-pulse-server generate-source-facts`.
+
+Минимальные требования к `source-facts.json`:
+
+- `files[*].file` должен совпадать с `report.tests[*].location.file`
+- `tests[*].startLine` / `endLine` должны попадать в диапазон теста из исходника
+- payload должен содержать counts и сигналы, а не готовые score
+
+Референсный пример смотри в [../aqa-pulse/fixtures/sample-source-facts.json](../aqa-pulse/fixtures/sample-source-facts.json).
+
 А metadata по умолчанию берёт из CI env (`CI_COMMIT_REF_NAME`, `CI_COMMIT_SHA`, `GITLAB_USER_NAME` и т.д.).
 
 Если рядом с report лежат Playwright artifacts/output directories, CLI сам попробует подтянуть screenshot и markdown attachments в payload перед ingestion. Это как раз путь для project-level aggregation job, где нужен не только summary JSON, но и контекст падения.
@@ -125,7 +139,31 @@ node ./merge-aqa-pulse-reports.js --project-kind ui --allow-missing --output tes
 export PW_LLM_REPORT="test-results/dashboard/ui-merged.json"
 export AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY="true"
 export AQA_PULSE_PREPARED_REPORT_PATH="test-results/dashboard/ui-merged.prepared.json"
-aqa-pulse-server upload-report --report "$PW_LLM_REPORT"
+aqa-pulse-server generate-source-facts --report "$PW_LLM_REPORT" --repo-root "$CI_PROJECT_DIR/Playwright" --out "test-results/dashboard/ui-merged.source-facts.json"
+aqa-pulse-server upload-report --report "$PW_LLM_REPORT" --source-facts "test-results/dashboard/ui-merged.source-facts.json"
+```
+
+Практически это выглядит так:
+
+1. test job или aggregation job строит `ui-merged.json`
+2. соседний analyzer step или `aqa-pulse-server generate-source-facts` строит `ui-merged.source-facts.json`
+3. upload job отправляет оба файла одним вызовом `aqa-pulse-server upload-report`
+
+На сервере repo автотестов уже не нужен: code-quality считается из присланных facts.
+
+Минимальный пример отдельного analyzer шага:
+
+```bash
+cd "$CI_PROJECT_DIR/Playwright"
+export PW_LLM_REPORT="test-results/dashboard/data.json"
+export AQA_PULSE_SOURCE_FACTS_PATH="test-results/dashboard/source-facts.json"
+aqa-pulse-server generate-source-facts --repo-root "$CI_PROJECT_DIR/Playwright"
+```
+
+После этого в upload job достаточно вызвать:
+
+```bash
+aqa-pulse-server upload-report --report "$PW_LLM_REPORT" --source-facts "$AQA_PULSE_SOURCE_FACTS_PATH"
 ```
 
 Для API aggregation аналогично, только без UI-specific merge списка.

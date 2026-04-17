@@ -1,7 +1,7 @@
 /**
  * Назначение: backend-доменные контракты для workspace registry, provisioning, storage и ingestion. Это слой типов и протоколов сервера, а не React UI.
  */
-import type { DashboardBusinessAssumptions, DashboardRunMetadata, ReporterRoot } from '../dashboard-utils'
+import type { DashboardBusinessAssumptions, DashboardRunMetadata, PrecomputedCodeQualitySourceFacts, ReporterRoot } from '../dashboard-utils'
 
 export interface WorkspaceRecord {
     slug: string
@@ -293,6 +293,7 @@ export interface IngestionRequestPayload {
     report: ReporterRoot
     sourceFile?: string
     metadata?: Partial<DashboardRunMetadata>
+    precomputedSourceFacts?: PrecomputedCodeQualitySourceFacts
 }
 
 export interface IngestionResult {

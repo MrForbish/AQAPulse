@@ -129,6 +129,42 @@ export interface ReporterRoot {
     summary?: ReporterSummary
     environment?: ReporterEnvironment
     tests?: ReporterTest[]
+    aqaPulseSourceFacts?: PrecomputedCodeQualitySourceFacts
+}
+
+export interface PrecomputedCodeQualityTestFacts {
+    startLine: number
+    endLine: number
+    title: string | null
+    assertionCount: number
+    smartWaitCount: number
+    hardWaitCount: number
+    stepCount: number
+    directLocatorCount: number
+    directPageActionCount: number
+    stableSelectorCount: number
+    textSelectorCount: number
+    fragileSelectorCount: number
+    pomReferenceCount: number
+    pomFixtureReferenceCount: number
+    sharedStateMutationCount: number
+    usesPom: boolean
+}
+
+export interface PrecomputedCodeQualityFileFacts {
+    file: string
+    tests: PrecomputedCodeQualityTestFacts[]
+    hasPomImports: boolean
+    beforeAllCount: number
+    beforeEachCount: number
+    serialModeCount: number
+    topLevelMutableStateCount: number
+}
+
+export interface PrecomputedCodeQualitySourceFacts {
+    schemaVersion: number
+    analyzerVersion?: string
+    files: PrecomputedCodeQualityFileFacts[]
 }
 
 export interface DashboardKpis {
@@ -1665,20 +1701,154 @@ function getTypeScriptModule(): typeof TypeScript | null {
     return cachedTypeScriptModule
 }
 
-function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string | null): DashboardCodeQualityMetrics {
-    const tests = report.tests ?? []
-    const analyzableTests = tests.filter((test) => typeof test.location?.file === 'string' && test.location.file.trim().length > 0).length
-
-    if (analyzableTests === 0) {
-        return buildEmptyCodeQualityMetrics(0)
+export function normalizePrecomputedSourceFacts(value: unknown): PrecomputedCodeQualitySourceFacts | null {
+    if (!value || typeof value !== 'object') {
+        return null
     }
 
-    const typeScriptModule = getTypeScriptModule()
+    const sourceFactsRecord = value as Record<string, unknown>
+    const files = Array.isArray(sourceFactsRecord.files)
+        ? sourceFactsRecord.files
+            .map((fileFacts) => normalizePrecomputedSourceFileFacts(fileFacts))
+            .filter((fileFacts): fileFacts is PrecomputedCodeQualityFileFacts => fileFacts !== null)
+        : []
 
-    if (!typeScriptModule) {
-        return buildEmptyCodeQualityMetrics(analyzableTests)
+    if (files.length === 0) {
+        return null
     }
 
+    return {
+        schemaVersion: pickPositiveInteger(sourceFactsRecord.schemaVersion) ?? 1,
+        analyzerVersion: pickTrimmedString(sourceFactsRecord.analyzerVersion) ?? undefined,
+        files,
+    }
+}
+
+function normalizePrecomputedSourceFileFacts(value: unknown): PrecomputedCodeQualityFileFacts | null {
+    if (!value || typeof value !== 'object') {
+        return null
+    }
+
+    const fileFactsRecord = value as Record<string, unknown>
+    const file = pickTrimmedString(fileFactsRecord.file)
+
+    if (!file) {
+        return null
+    }
+
+    const tests = Array.isArray(fileFactsRecord.tests)
+        ? fileFactsRecord.tests
+            .map((testFacts) => normalizePrecomputedSourceTestFacts(testFacts))
+            .filter((testFacts): testFacts is PrecomputedCodeQualityTestFacts => testFacts !== null)
+        : []
+
+    return {
+        file,
+        tests,
+        hasPomImports: pickBoolean(fileFactsRecord.hasPomImports) ?? false,
+        beforeAllCount: normalizeNonNegativeInteger(fileFactsRecord.beforeAllCount),
+        beforeEachCount: normalizeNonNegativeInteger(fileFactsRecord.beforeEachCount),
+        serialModeCount: normalizeNonNegativeInteger(fileFactsRecord.serialModeCount),
+        topLevelMutableStateCount: normalizeNonNegativeInteger(fileFactsRecord.topLevelMutableStateCount),
+    }
+}
+
+function normalizePrecomputedSourceTestFacts(value: unknown): PrecomputedCodeQualityTestFacts | null {
+    if (!value || typeof value !== 'object') {
+        return null
+    }
+
+    const testFactsRecord = value as Record<string, unknown>
+    const startLine = pickPositiveInteger(testFactsRecord.startLine)
+
+    if (startLine === null) {
+        return null
+    }
+
+    const endLine = Math.max(startLine, pickPositiveInteger(testFactsRecord.endLine) ?? startLine)
+    const pomReferenceCount = normalizeNonNegativeInteger(testFactsRecord.pomReferenceCount)
+    const pomFixtureReferenceCount = normalizeNonNegativeInteger(testFactsRecord.pomFixtureReferenceCount)
+
+    return {
+        startLine,
+        endLine,
+        title: pickTrimmedString(testFactsRecord.title),
+        assertionCount: normalizeNonNegativeInteger(testFactsRecord.assertionCount),
+        smartWaitCount: normalizeNonNegativeInteger(testFactsRecord.smartWaitCount),
+        hardWaitCount: normalizeNonNegativeInteger(testFactsRecord.hardWaitCount),
+        stepCount: normalizeNonNegativeInteger(testFactsRecord.stepCount),
+        directLocatorCount: normalizeNonNegativeInteger(testFactsRecord.directLocatorCount),
+        directPageActionCount: normalizeNonNegativeInteger(testFactsRecord.directPageActionCount),
+        stableSelectorCount: normalizeNonNegativeInteger(testFactsRecord.stableSelectorCount),
+        textSelectorCount: normalizeNonNegativeInteger(testFactsRecord.textSelectorCount),
+        fragileSelectorCount: normalizeNonNegativeInteger(testFactsRecord.fragileSelectorCount),
+        pomReferenceCount,
+        pomFixtureReferenceCount,
+        sharedStateMutationCount: normalizeNonNegativeInteger(testFactsRecord.sharedStateMutationCount),
+        usesPom: pickBoolean(testFactsRecord.usesPom) ?? (pomReferenceCount + pomFixtureReferenceCount > 0),
+    }
+}
+
+function pickTrimmedString(value: unknown): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function pickPositiveInteger(value: unknown): number | null {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return null
+    }
+
+    const normalizedValue = Math.trunc(value)
+    return normalizedValue > 0 ? normalizedValue : null
+}
+
+function normalizeNonNegativeInteger(value: unknown): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return 0
+    }
+
+    return Math.max(0, Math.trunc(value))
+}
+
+function pickBoolean(value: unknown): boolean | null {
+    return typeof value === 'boolean' ? value : null
+}
+
+function normalizeSourceFactsFileIdentity(filePath: string): string {
+    return filePath.trim().replace(/\\/g, '/').toLowerCase()
+}
+
+function buildParsedAnalysisFromPrecomputedFacts(fileFacts: PrecomputedCodeQualityFileFacts): ParsedSourceFileAnalysis {
+    return {
+        tests: fileFacts.tests.map((testFacts) => ({
+            startLine: testFacts.startLine,
+            endLine: testFacts.endLine,
+            title: testFacts.title,
+            assertionCount: testFacts.assertionCount,
+            smartWaitCount: testFacts.smartWaitCount,
+            hardWaitCount: testFacts.hardWaitCount,
+            stepCount: testFacts.stepCount,
+            directLocatorCount: testFacts.directLocatorCount,
+            directPageActionCount: testFacts.directPageActionCount,
+            stableSelectorCount: testFacts.stableSelectorCount,
+            textSelectorCount: testFacts.textSelectorCount,
+            fragileSelectorCount: testFacts.fragileSelectorCount,
+            pomReferenceCount: testFacts.pomReferenceCount,
+            pomFixtureReferenceCount: testFacts.pomFixtureReferenceCount,
+            sharedStateMutationCount: testFacts.sharedStateMutationCount,
+            usesPom: testFacts.usesPom,
+        })),
+        hasPomImports: fileFacts.hasPomImports,
+        pomImportIdentifiers: [],
+        beforeAllCount: fileFacts.beforeAllCount,
+        beforeEachCount: fileFacts.beforeEachCount,
+        serialModeCount: fileFacts.serialModeCount,
+        topLevelMutableStateCount: fileFacts.topLevelMutableStateCount,
+        topLevelMutableIdentifiers: [],
+    }
+}
+
+function collectReporterTestsByFile(tests: ReporterTest[]): Map<string, ReporterTest[]> {
     const testsByFile = new Map<string, ReporterTest[]>()
 
     for (const test of tests) {
@@ -1693,6 +1863,14 @@ function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string 
         testsByFile.set(filePath, fileTests)
     }
 
+    return testsByFile
+}
+
+function buildCodeQualityMetricsFromResolvedAnalyses(options: {
+    testsByFile: Map<string, ReporterTest[]>
+    analyzableTests: number
+    resolveAnalysis(file: string): ParsedSourceFileAnalysis | null
+}): DashboardCodeQualityMetrics | null {
     const weightedTotals = {
         smellScore: 0,
         pomCompliancePercent: 0,
@@ -1715,15 +1893,9 @@ function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string 
     let analyzedFiles = 0
     let matchedTests = 0
 
-    const topRiskFiles: DashboardCodeQualityFileMetric[] = [...testsByFile.entries()]
+    const topRiskFiles: DashboardCodeQualityFileMetric[] = [...options.testsByFile.entries()]
         .map(([file, fileTests]) => {
-            const resolvedPath = resolveTestSourcePath(file, reportSourceFile)
-
-            if (!resolvedPath) {
-                return null
-            }
-
-            const parsedAnalysis = analyzeSourceFile(resolvedPath, typeScriptModule)
+            const parsedAnalysis = options.resolveAnalysis(file)
 
             if (!parsedAnalysis || parsedAnalysis.tests.length === 0) {
                 return null
@@ -1786,14 +1958,14 @@ function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string 
         .slice(0, 6)
 
     if (matchedTests === 0) {
-        return buildEmptyCodeQualityMetrics(analyzableTests)
+        return null
     }
 
     return {
         analyzedFiles,
         matchedTests,
-        analyzableTests,
-        sourceCoveragePercent: analyzableTests === 0 ? 0 : roundToOneDigit((matchedTests / analyzableTests) * 100),
+        analyzableTests: options.analyzableTests,
+        sourceCoveragePercent: options.analyzableTests === 0 ? 0 : roundToOneDigit((matchedTests / options.analyzableTests) * 100),
         testSmellScore: roundToOneDigit(weightedTotals.smellScore / matchedTests),
         pomCompliancePercent: roundToOneDigit(weightedTotals.pomCompliancePercent / matchedTests),
         assertionDensity: roundToTwoDigits(weightedTotals.assertionDensity / matchedTests),
@@ -1804,6 +1976,60 @@ function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string 
         drivers: buildCodeQualityDrivers(driverCounts, matchedTests),
         topRiskFiles,
     }
+}
+
+function buildCodeQualityMetrics(report: ReporterRoot, reportSourceFile: string | null): DashboardCodeQualityMetrics {
+    const tests = report.tests ?? []
+    const analyzableTests = tests.filter((test) => typeof test.location?.file === 'string' && test.location.file.trim().length > 0).length
+
+    if (analyzableTests === 0) {
+        return buildEmptyCodeQualityMetrics(0)
+    }
+
+    const testsByFile = collectReporterTestsByFile(tests)
+    const precomputedSourceFacts = normalizePrecomputedSourceFacts(report.aqaPulseSourceFacts)
+
+    if (precomputedSourceFacts) {
+        const parsedAnalysesByFile = new Map<string, ParsedSourceFileAnalysis>()
+
+        for (const fileFacts of precomputedSourceFacts.files) {
+            parsedAnalysesByFile.set(normalizeSourceFactsFileIdentity(fileFacts.file), buildParsedAnalysisFromPrecomputedFacts(fileFacts))
+        }
+
+        const precomputedMetrics = buildCodeQualityMetricsFromResolvedAnalyses({
+            testsByFile,
+            analyzableTests,
+            resolveAnalysis(file) {
+                return parsedAnalysesByFile.get(normalizeSourceFactsFileIdentity(file)) ?? null
+            },
+        })
+
+        if (precomputedMetrics) {
+            return precomputedMetrics
+        }
+    }
+
+    const typeScriptModule = getTypeScriptModule()
+
+    if (!typeScriptModule) {
+        return buildEmptyCodeQualityMetrics(analyzableTests)
+    }
+
+    const sourceAnalysisMetrics = buildCodeQualityMetricsFromResolvedAnalyses({
+        testsByFile,
+        analyzableTests,
+        resolveAnalysis(file) {
+            const resolvedPath = resolveTestSourcePath(file, reportSourceFile)
+
+            if (!resolvedPath) {
+                return null
+            }
+
+            return analyzeSourceFile(resolvedPath, typeScriptModule)
+        },
+    })
+
+    return sourceAnalysisMetrics ?? buildEmptyCodeQualityMetrics(analyzableTests)
 }
 
 function analyzeSourceFile(filePath: string, typeScriptModule: typeof TypeScript): ParsedSourceFileAnalysis | null {

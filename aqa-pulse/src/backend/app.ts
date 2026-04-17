@@ -6,7 +6,7 @@ import * as path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ApiStore, type ApiFilters } from '../api-store'
-import { applyBusinessAssumptionsToSummary, buildDashboardSummary, type ReporterRoot } from '../dashboard-utils'
+import { applyBusinessAssumptionsToSummary, buildDashboardSummary, normalizePrecomputedSourceFacts, type ReporterRoot } from '../dashboard-utils'
 import { type FrontendBootstrapData } from '../frontend-bootstrap'
 import { createEmptyHistory } from '../history-utils'
 import { getErrorMessage } from '../shared/error-utils'
@@ -1640,7 +1640,7 @@ function normalizeIngestionPayload(body: unknown): IngestionRequestPayload | nul
 
     if (explicitReport && isReporterRoot(explicitReport)) {
         return {
-            report: explicitReport,
+            report: attachNormalizedSourceFacts(explicitReport, bodyRecord.precomputedSourceFacts),
             sourceFile: pickOptionalString(bodyRecord.sourceFile) ?? undefined,
             metadata: normalizeMetadata(bodyRecord.metadata),
         }
@@ -1648,12 +1648,26 @@ function normalizeIngestionPayload(body: unknown): IngestionRequestPayload | nul
 
     if (isReporterRoot(bodyRecord)) {
         return {
-            report: bodyRecord,
+            report: attachNormalizedSourceFacts(bodyRecord, undefined),
             metadata: undefined,
         }
     }
 
     return null
+}
+
+function attachNormalizedSourceFacts(report: ReporterRoot, explicitSourceFacts: unknown): ReporterRoot {
+    const normalizedSourceFacts = normalizePrecomputedSourceFacts(explicitSourceFacts ?? report.aqaPulseSourceFacts)
+
+    if (!normalizedSourceFacts) {
+        const { aqaPulseSourceFacts: _ignoredSourceFacts, ...reportWithoutSourceFacts } = report
+        return reportWithoutSourceFacts
+    }
+
+    return {
+        ...report,
+        aqaPulseSourceFacts: normalizedSourceFacts,
+    }
 }
 
 function isReporterRoot(value: unknown): value is ReporterRoot {

@@ -11,6 +11,7 @@ const commandMap = {
     'bootstrap-demo': '../dist/backend/bootstrap-demo.js',
     'sqlite-migrate': '../dist/backend/sqlite-migrate.js',
     'sqlite-backup': '../dist/backend/sqlite-backup.js',
+    'generate-source-facts': '../dist/backend/generate-source-facts.js',
     'upload-report': '../dist/backend/upload-report.js',
 }
 
@@ -29,7 +30,7 @@ if (command === '--help' || command === '-h') {
 }
 
 function printHelp() {
-    console.log('Использование: aqa-pulse-server [start, init, bootstrap-workspace, bootstrap-demo, sqlite-migrate, sqlite-backup, upload-report]')
+    console.log('Использование: aqa-pulse-server [start, init, bootstrap-workspace, bootstrap-demo, sqlite-migrate, sqlite-backup, generate-source-facts, upload-report]')
     console.log('')
     console.log('Команды:')
     console.log('  aqa-pulse-server start')
@@ -38,7 +39,8 @@ function printHelp() {
     console.log('  aqa-pulse-server bootstrap-demo')
     console.log('  aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]')
     console.log('  aqa-pulse-server sqlite-backup [backupDirectory]')
-    console.log('  aqa-pulse-server upload-report [--report <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
+    console.log('  aqa-pulse-server generate-source-facts [--report <path>] [--out <path>] [--repo-root <path>] [--json]')
+    console.log('  aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
     console.log('')
     console.log('Подсказка: AQA_PULSE_DATA_ROOT и AQA_PULSE_ADMIN_TOKEN задаются через env.')
 }
@@ -80,9 +82,15 @@ function printCommandHelp(commandName) {
         return
     }
 
+    if (commandName === 'generate-source-facts') {
+        console.log('aqa-pulse-server generate-source-facts [--report <path>] [--out <path>] [--repo-root <path>] [--json]')
+        console.log('Читает Playwright report JSON, анализирует test source по report.tests[*].location.file и сохраняет precomputed source facts для code-quality.')
+        return
+    }
+
     if (commandName === 'upload-report') {
-        console.log('aqa-pulse-server upload-report [--report <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
-        console.log('Делает exchange workspace API key -> ingestion JWT, подготавливает local Playwright attachments и отправляет report в backend ingestion endpoint.')
+        console.log('aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
+        console.log('Делает exchange workspace API key -> ingestion JWT, подготавливает local Playwright attachments и отправляет report в backend ingestion endpoint. Если передан --source-facts, code-quality будет рассчитан из precomputed source facts без repo на сервере.')
     }
 }
 

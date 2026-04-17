@@ -1,8 +1,9 @@
+import * as fs from 'node:fs'
 /**
  * Назначение: CLI/helper для backend-first upload из CI/manual flow. Он делает exchange workspace API key -> ingestion JWT и отправляет report в self-hosted ingestion endpoint без участия React runtime.
  */
 import { getErrorMessage } from '../shared/error-utils'
-import { loadReporterReport, type DashboardRunMetadata } from '../dashboard-utils'
+import { loadReporterReport, type DashboardRunMetadata, type PrecomputedCodeQualitySourceFacts } from '../dashboard-utils'
 import type { IngestionRequestPayload, IngestionResult } from './contracts'
 import { prepareReporterReportForUpload } from './upload-report-artifacts'
 
@@ -12,6 +13,8 @@ export interface UploadReportOptions {
     workspaceApiKey: string
     reportPath: string
     sourceFile: string
+    sourceFactsPath: string | null
+    precomputedSourceFacts: PrecomputedCodeQualitySourceFacts | null
     metadata: Partial<DashboardRunMetadata>
 }
 
@@ -21,6 +24,7 @@ interface CliOptions {
     workspaceApiKey?: string
     reportPath?: string
     sourceFile?: string
+    sourceFactsPath?: string
     branch?: string | null
     commit?: string | null
     author?: string | null
@@ -46,6 +50,7 @@ async function main(): Promise<void> {
                 baseUrl: resolvedOptions.baseUrl,
                 reportPath: resolvedOptions.reportPath,
                 sourceFile: resolvedOptions.sourceFile,
+                sourceFactsPath: resolvedOptions.sourceFactsPath,
                 result,
             }, null, 2)}\n`)
         } else {
@@ -73,6 +78,7 @@ export async function uploadReportToWorkspace(options: UploadReportOptions): Pro
             author: normalizeOptionalText(options.metadata.author),
         },
         sourceFile: options.sourceFile,
+        precomputedSourceFacts: options.precomputedSourceFacts ?? undefined,
     }
 
     return postJson<IngestionResult>(
@@ -136,6 +142,12 @@ function parseCliOptions(args: string[]): CliOptions {
             continue
         }
 
+        if (currentArg === '--source-facts') {
+            options.sourceFactsPath = nextArg
+            index += 1
+            continue
+        }
+
         if (currentArg === '--branch') {
             options.branch = nextArg
             index += 1
@@ -166,6 +178,7 @@ function resolveUploadOptions(options: CliOptions): UploadReportOptions {
     const workspaceApiKey = requireNonEmptyText(options.workspaceApiKey ?? process.env.AQA_PULSE_WORKSPACE_API_KEY, 'AQA_PULSE_WORKSPACE_API_KEY')
     const reportPath = requireNonEmptyText(options.reportPath ?? process.env.PW_LLM_REPORT ?? 'test-results/dashboard/data.json', '--report / PW_LLM_REPORT')
     const sourceFile = normalizeOptionalText(options.sourceFile) ?? buildDefaultSourceFile(reportPath)
+    const sourceFactsPath = normalizeOptionalText(options.sourceFactsPath ?? process.env.AQA_PULSE_SOURCE_FACTS_PATH)
 
     return {
         baseUrl,
@@ -173,6 +186,8 @@ function resolveUploadOptions(options: CliOptions): UploadReportOptions {
         workspaceApiKey,
         reportPath,
         sourceFile,
+        sourceFactsPath,
+        precomputedSourceFacts: sourceFactsPath ? readJsonFile<PrecomputedCodeQualitySourceFacts>(sourceFactsPath, '--source-facts / AQA_PULSE_SOURCE_FACTS_PATH') : null,
         metadata: {
             branch: normalizeOptionalText(options.branch ?? process.env.CI_COMMIT_REF_NAME ?? process.env.GITHUB_REF_NAME),
             commit: normalizeOptionalText(options.commit ?? process.env.CI_COMMIT_SHA ?? process.env.GITHUB_SHA),
@@ -241,6 +256,9 @@ function printHumanReadableOutput(options: UploadReportOptions, result: Ingestio
     console.log(`Base URL: ${options.baseUrl}`)
     console.log(`Report path: ${options.reportPath}`)
     console.log(`Source file: ${options.sourceFile}`)
+    if (options.sourceFactsPath) {
+        console.log(`Source facts path: ${options.sourceFactsPath}`)
+    }
     console.log(`Run id: ${result.runId}`)
     console.log(`Summary generated at: ${result.summaryGeneratedAt}`)
     console.log(`Dashboard summary path: ${result.summaryPath}`)
@@ -256,12 +274,14 @@ function printHelp(): void {
     console.log('  --workspace-api-key <key>       Raw workspace API key, иначе AQA_PULSE_WORKSPACE_API_KEY')
     console.log('  --report <path>                 Путь к report JSON, иначе PW_LLM_REPORT или test-results/dashboard/data.json')
     console.log('  --source-file <value>           Явный sourceFile для ingestion payload')
+    console.log('  --source-facts <path>           JSON с precomputed source facts для code-quality metrics')
     console.log('  --branch <value>                Явная branch metadata')
     console.log('  --commit <value>                Явная commit metadata')
     console.log('  --author <value>                Явный author metadata')
     console.log('  --json                          Печатать результат в JSON')
     console.log('')
     console.log('Дополнительные env для attachment-aware upload:')
+    console.log('  AQA_PULSE_SOURCE_FACTS_PATH                     Путь к JSON с precomputed source facts')
     console.log('  AQA_PULSE_PREPARED_REPORT_PATH                   Сохранить подготовленный payload report в JSON')
     console.log('  AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY=true         Печатать debug summary по найденным attachment')
     console.log('  AQA_PULSE_INLINE_ATTACHMENTS_TOTAL_MAX_SIZE_BYTES Общий budget inline attachment в байтах')
@@ -323,4 +343,10 @@ function parsePositiveInteger(value: string | undefined): number | null {
 function isEnabledFlag(value: string | undefined): boolean {
     const normalized = normalizeOptionalText(value)?.toLowerCase()
     return normalized === '1' || normalized === 'true' || normalized === 'yes'
+}
+
+function readJsonFile<T>(filePath: string, label: string): T {
+    const resolvedFilePath = requireNonEmptyText(filePath, label)
+    const fileContent = fs.readFileSync(resolvedFilePath, 'utf8')
+    return JSON.parse(fileContent) as T
 }

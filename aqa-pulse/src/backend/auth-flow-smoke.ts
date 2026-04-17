@@ -5,7 +5,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadReporterReport, type ReporterRoot } from '../dashboard-utils'
+import { loadReporterReport, type PrecomputedCodeQualitySourceFacts, type ReporterRoot } from '../dashboard-utils'
 import { parseFrontendBootstrap, type FrontendBootstrapData, type FrontendSessionStatus } from '../frontend-bootstrap'
 import { getErrorMessage } from '../shared/error-utils'
 import { createSaasApp } from './app'
@@ -322,6 +322,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
                     author: 'aqa-pulse smoke',
                 },
                 sourceFile: fixturePath,
+                precomputedSourceFacts: buildSmokeSourceFacts(report),
             }),
         })
         assert(ingestionResult.workspace.slug === workspaceSlug, 'ingestion должен сохраняться в целевой workspace.')
@@ -360,6 +361,10 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
             },
         })
         assert(typeof summaryPayload === 'object' && summaryPayload !== null, 'workspace summary должен возвращать JSON payload.')
+        const codeQualityPayload = summaryPayload.codeQuality as Record<string, unknown> | undefined
+        assert(codeQualityPayload && typeof codeQualityPayload === 'object', 'workspace summary должен содержать codeQuality payload.')
+        assert(typeof codeQualityPayload.matchedTests === 'number' && codeQualityPayload.matchedTests > 0, 'precomputed source facts должны давать matchedTests > 0 в codeQuality.')
+        assert(typeof codeQualityPayload.sourceCoveragePercent === 'number' && codeQualityPayload.sourceCoveragePercent > 0, 'precomputed source facts должны давать sourceCoveragePercent > 0.')
 
         const historyPayload = await fetchJson<Record<string, unknown>>(`${baseUrl}/api/workspaces/${workspaceSlug}/test/${encodeURIComponent(sampleTestTitle)}`, {
             headers: {
@@ -549,6 +554,58 @@ function requireFirstTestTitle(report: ReporterRoot): string {
     const title = report.tests?.[0]?.title
     assert(typeof title === 'string' && title.length > 0, 'fixture report должен содержать хотя бы один тест с title.')
     return title
+}
+
+function buildSmokeSourceFacts(report: ReporterRoot): PrecomputedCodeQualitySourceFacts {
+    const fileFacts = new Map<string, PrecomputedCodeQualitySourceFacts['files'][number]>()
+
+    for (const [index, test] of (report.tests ?? []).entries()) {
+        const filePath = typeof test.location?.file === 'string' ? test.location.file.trim() : ''
+
+        if (!filePath) {
+            continue
+        }
+
+        const existingFileFacts = fileFacts.get(filePath) ?? {
+            file: filePath,
+            tests: [],
+            hasPomImports: true,
+            beforeAllCount: 0,
+            beforeEachCount: 1,
+            serialModeCount: 0,
+            topLevelMutableStateCount: 0,
+        }
+        const startLine = typeof test.location?.line === 'number' && Number.isFinite(test.location.line)
+            ? Math.max(1, Math.trunc(test.location.line))
+            : (index + 1) * 10
+
+        existingFileFacts.tests.push({
+            startLine,
+            endLine: startLine + 4,
+            title: typeof test.title === 'string' ? test.title : null,
+            assertionCount: 2,
+            smartWaitCount: 1,
+            hardWaitCount: 0,
+            stepCount: 2,
+            directLocatorCount: 0,
+            directPageActionCount: 1,
+            stableSelectorCount: 1,
+            textSelectorCount: 0,
+            fragileSelectorCount: 0,
+            pomReferenceCount: 1,
+            pomFixtureReferenceCount: 0,
+            sharedStateMutationCount: 0,
+            usesPom: true,
+        })
+
+        fileFacts.set(filePath, existingFileFacts)
+    }
+
+    return {
+        schemaVersion: 1,
+        analyzerVersion: 'auth-flow-smoke',
+        files: [...fileFacts.values()],
+    }
 }
 
 function assertOk(response: Response, label: string): void {

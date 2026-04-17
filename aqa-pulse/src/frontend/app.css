@@ -1800,6 +1800,32 @@ th {
     gap: 12px;
 }
 
+.overview-signals-grid {
+    gap: 10px;
+}
+
+.overview-signals-grid .metric-card {
+    padding: 12px 13px;
+    border-radius: 14px;
+}
+
+.overview-signals-grid .metric-label .overflow-text-react {
+    line-clamp: 1;
+    -webkit-line-clamp: 1;
+}
+
+.overview-signals-grid .metric-value {
+    margin: 6px 0 5px;
+    font-size: clamp(20px, 2.1vw, 28px);
+    letter-spacing: -0.03em;
+}
+
+.overview-signals-grid .metric-hint {
+    padding-top: 4px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
 .code-quality-drivers-grid .readiness-item {
     padding: 11px 12px;
     border-radius: 14px;

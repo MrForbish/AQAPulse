@@ -24,7 +24,7 @@ const DASHBOARD_TEXT = ru.dashboard
 export function DashboardManagerOverviewSection(props: { summary: DashboardSummary }): React.JSX.Element {
     return (
         <Panel title={DASHBOARD_TEXT.manager.summaryTitle} titleMetricKey="managerSummary" titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.managerSummary} description={DASHBOARD_TEXT.manager.summaryDescription} className="span-2">
-            <div className="signal-grid compact-top">
+            <div className="signal-grid compact-top overview-signals-grid">
                 <MetricCard label={DASHBOARD_TEXT.manager.releaseReadiness} labelMetricKey="releaseReadiness" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.releaseReadiness} value={formatScore(props.summary.managerSummary.releaseReadiness.score)} tone={mapManagerTone(props.summary.managerSummary.releaseReadiness.level)} hint={getManagerReadinessLabel(props.summary.managerSummary.releaseReadiness.level)} />
                 <MetricCard label={DASHBOARD_TEXT.manager.qualityRisk} labelMetricKey="qualityRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.qualityRisk} value={formatScore(props.summary.managerSummary.qualityRisk.score)} tone={mapManagerTone(props.summary.managerSummary.qualityRisk.level)} hint={getManagerRiskLabel(props.summary.managerSummary.qualityRisk.level)} />
                 <MetricCard label={DASHBOARD_TEXT.manager.deliveryRisk} labelMetricKey="deliveryRisk" labelTooltip={DASHBOARD_METRIC_DESCRIPTIONS.deliveryRisk} value={formatScore(props.summary.managerSummary.deliveryRisk.score)} tone={mapManagerTone(props.summary.managerSummary.deliveryRisk.level)} hint={getManagerRiskLabel(props.summary.managerSummary.deliveryRisk.level)} />

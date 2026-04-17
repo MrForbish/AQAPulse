@@ -254,6 +254,7 @@ async function main(): Promise<void> {
     await verifyTestHistoryAttachmentMarkdownPreview(reactModule, attachmentTestTitle, attachmentTestHistoryPayload)
     verifyIncidentEvidenceRendering()
     verifyDiagnosticPrimaryFailureHighlight()
+    verifyDiagnosticTreeSuppressesDuplicatedTeardownError()
     verifyPrimaryFailureStepSelectionPrefersNestedErroredAction()
     verifyPrimaryFailureStepSelectionIgnoresTeardownCloseNoise()
     verifyIncidentAnchorUsesFailureMetadata()
@@ -409,6 +410,60 @@ function verifyDiagnosticPrimaryFailureHighlight(): void {
     )
 
     renderMarkup('diagnostic primary failure highlight', markup, ['is-primary-failure', 'Основная причина', 'is-failure'])
+}
+
+function verifyDiagnosticTreeSuppressesDuplicatedTeardownError(): void {
+    const duplicatedError = 'Error: expect(locator).toBeVisible() failed Locator: getByRole(\'tablist\').getByRole(\'tab\', { name: /^(Security|Безопасность)$/ })'
+    const markup = renderToStaticMarkup(
+        React.createElement(AttemptStepTree, {
+            runId: 'run-duplicate-cleanup',
+            attemptNumber: 1,
+            initiallyOpen: true,
+            primaryFailure: {
+                runId: 'run-duplicate-cleanup',
+                attemptNumber: 1,
+                offsetMs: 5010,
+                title: 'Expect "toBeVisible"',
+                errorMessage: duplicatedError,
+            },
+            steps: [
+                {
+                    title: 'Open security tab',
+                    category: 'test.step',
+                    depth: 0,
+                    offsetMs: 0,
+                    durationMs: 5400,
+                    status: 'failed',
+                    errorMessage: null,
+                    isFailurePoint: true,
+                },
+                {
+                    title: 'Expect "toBeVisible"',
+                    category: 'expect',
+                    depth: 1,
+                    offsetMs: 5010,
+                    durationMs: 5000,
+                    status: 'failed',
+                    errorMessage: duplicatedError,
+                    isFailurePoint: true,
+                },
+                {
+                    title: 'Worker Cleanup',
+                    category: 'hook',
+                    depth: 0,
+                    offsetMs: 10020,
+                    durationMs: 40,
+                    status: 'failed',
+                    errorMessage: duplicatedError,
+                    isFailurePoint: true,
+                },
+            ],
+        }),
+    )
+
+    const traceDisclosureOccurrences = markup.split('data-trace-disclosure-trigger').length - 1
+    assert(traceDisclosureOccurrences === 1, `Duplicated teardown assertion error should produce only one rendered step trace disclosure. Actual disclosures: ${traceDisclosureOccurrences}`)
+    assert(markup.includes('Worker Cleanup'), 'Worker Cleanup step should still be rendered in diagnostics.')
 }
 
 /**

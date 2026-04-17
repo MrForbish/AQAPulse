@@ -156,6 +156,17 @@ export async function runAdminControlPlaneSmoke(configOverrides: Partial<SaasApp
         })
         assert(renamedWorkspace.workspace.slug === renamedSlug, 'Workspace rename должен сменить slug.')
 
+        const extraApiKey = await fetchJson<WorkspaceProvisioningResult>(`${baseUrl}/api/workspaces/${renamedSlug}/api-keys`, {
+            method: 'POST',
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({ label: 'Smoke deletable key' }),
+        })
+        assert(extraApiKey.apiKey.label === 'Smoke deletable key', 'Дополнительный API key должен создаваться для delete smoke.')
+
         const createdUser = await fetchJson<WorkspaceUserProvisioningResult>(`${baseUrl}/api/workspaces/${renamedSlug}/users`, {
             method: 'POST',
             headers: {
@@ -188,6 +199,8 @@ export async function runAdminControlPlaneSmoke(configOverrides: Partial<SaasApp
             body: JSON.stringify({ ttlMinutes: 5 }),
         })
         assert(shareLinkResult.shareSession.ttlMinutes === 5, 'Share link должен выдаваться на запрошенный TTL.')
+        assert(shareLinkResult.shareLinkUrl.startsWith(`${baseUrl}/s/`), 'Share link должна возвращаться как короткий абсолютный URL на основной домен.')
+        assert(!shareLinkResult.shareLinkUrl.includes('token='), 'Короткая share link не должна раскрывать длинный JWT в query string.')
 
         const invalidShareLinkPage = await fetch(`${baseUrl}/auth/workspaces/${renamedSlug}/share-links/login?token=bad-token`, {
             headers: { accept: 'text/html' },
@@ -212,6 +225,24 @@ export async function runAdminControlPlaneSmoke(configOverrides: Partial<SaasApp
         })
         assert(workspaceSession.authenticated === true, 'Share link должен открывать authenticated workspace session.')
 
+        const workspaceAfterApiKeyDelete = await fetchJson<{ workspace: WorkspaceDescriptor }>(`${baseUrl}/api/workspaces/${renamedSlug}/api-keys/${extraApiKey.apiKey.id}`, {
+            method: 'DELETE',
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+            },
+        })
+        assert(!workspaceAfterApiKeyDelete.workspace.apiKeys.some((item) => item.id === extraApiKey.apiKey.id), 'Удалённый API key не должен оставаться в workspace descriptor.')
+
+        const workspaceAfterUserDelete = await fetchJson<{ workspace: WorkspaceDescriptor }>(`${baseUrl}/api/workspaces/${renamedSlug}/users/${createdUser.user.id}`, {
+            method: 'DELETE',
+            headers: {
+                accept: 'application/json',
+                cookie: adminCookie,
+            },
+        })
+        assert(!workspaceAfterUserDelete.workspace.users.some((item) => item.id === createdUser.user.id), 'Удалённый пользователь не должен оставаться в workspace descriptor.')
+
         const healthReport = await fetchJson<AdminIngestionHealthReport>(`${baseUrl}/api/admin/ingestion-health`, {
             headers: {
                 accept: 'application/json',
@@ -230,6 +261,8 @@ export async function runAdminControlPlaneSmoke(configOverrides: Partial<SaasApp
         })
         assert(auditLog.entries.some((entry) => entry.action === 'workspace-updated' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать workspace update.')
         assert(auditLog.entries.some((entry) => entry.action === 'workspace-user-role-updated' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать user role update.')
+        assert(auditLog.entries.some((entry) => entry.action === 'workspace-user-deleted' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать user delete.')
+        assert(auditLog.entries.some((entry) => entry.action === 'workspace-api-key-deleted' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать api key delete.')
         assert(auditLog.entries.some((entry) => entry.action === 'workspace-share-link-created' && entry.workspaceSlug === renamedSlug), 'Audit log должен содержать share link creation.')
         assert(auditLog.entries.some((entry) => entry.action === 'server-settings-updated'), 'Audit log должен содержать settings update.')
 

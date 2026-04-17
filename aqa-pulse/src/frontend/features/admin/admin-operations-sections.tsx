@@ -19,7 +19,7 @@ export function AdminServerSettingsSection(props: {
 
     return (
         <section className="admin-grid">
-            <Panel className="span-2" title="Server settings" description="Эти настройки живут на сервере и применяются к текущему runtime без ручного редактирования .env.">
+            <Panel className="span-2" title="Server settings" description="Этот раздел управляет server-side поведением self-hosted инстанса: base URL, auth policy, TTL токенов и базовыми business assumptions для runtime API.">
                 <form className="stack admin-form" onSubmit={props.onUpdateSettings}>
                     <div className="admin-grid server-settings-grid">
                         <label><span>Admin base URL</span><input type="text" name="adminBaseUrl" defaultValue={props.settings.adminBaseUrl ?? ''} placeholder="https://admin.example.com" /></label>
@@ -31,8 +31,20 @@ export function AdminServerSettingsSection(props: {
                         <label><span>Analysis minutes per unstable</span><input type="number" min="0" step="0.01" name="analysisMinutesPerUnstable" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.analysisMinutesPerUnstable)} /></label>
                     </div>
                     <div className="checkbox-row-group">
-                        <label className="checkbox-row"><input type="checkbox" name="requireWorkspaceAuth" defaultChecked={props.settings.requireWorkspaceAuth} /><span>Требовать workspace login для чтения dashboard/API</span></label>
-                        <label className="checkbox-row"><input type="checkbox" name="allowDevBootstrap" defaultChecked={props.settings.allowDevBootstrap} /><span>Разрешить dev bootstrap route</span></label>
+                        <label className="checkbox-row checkbox-card-row">
+                            <input type="checkbox" name="requireWorkspaceAuth" defaultChecked={props.settings.requireWorkspaceAuth} />
+                            <span className="checkbox-copy">
+                                <strong>Требовать workspace login для чтения dashboard/API</strong>
+                                <small>Если включено, `/w/&lt;slug&gt;` и read-only API доступны только после входа по workspace user token, admin session или временной share link.</small>
+                            </span>
+                        </label>
+                        <label className="checkbox-row checkbox-card-row">
+                            <input type="checkbox" name="allowDevBootstrap" defaultChecked={props.settings.allowDevBootstrap} />
+                            <span className="checkbox-copy">
+                                <strong>Разрешить dev bootstrap route</strong>
+                                <small>Если включено, сервер оставляет доступным dev-only endpoint `/api/dev/bootstrap` для быстрого локального создания demo workspace и ключей.</small>
+                            </span>
+                        </label>
                     </div>
                     <button type="submit" className="primary-link auth-submit" disabled={props.busyKey === 'settings:update'}>
                         {props.busyKey === 'settings:update' ? 'Сохраняем...' : 'Сохранить server settings'}

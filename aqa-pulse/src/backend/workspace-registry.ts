@@ -255,6 +255,24 @@ export class WorkspaceRegistry {
         return mapWorkspaceToDescriptor(workspace)
     }
 
+    deleteApiKey(slug: string, apiKeyId: string): WorkspaceDescriptor {
+        const registry = this.readRegistry()
+        const workspace = findWorkspaceOrThrow(registry, slug)
+        const apiKeyIndex = workspace.apiKeys.findIndex((item) => item.id === apiKeyId)
+
+        if (apiKeyIndex < 0) {
+            throw new Error(`API key "${apiKeyId}" не найден в workspace "${slug}".`)
+        }
+
+        const now = new Date().toISOString()
+        const [apiKey] = workspace.apiKeys.splice(apiKeyIndex, 1)
+        revokeWorkspaceSessionsBySubject(workspace, 'workspace-api-key', apiKey.id, now)
+        workspace.updatedAt = now
+        this.writeRegistry(registry)
+
+        return mapWorkspaceToDescriptor(workspace)
+    }
+
     disableUser(slug: string, userId: string): WorkspaceDescriptor {
         const registry = this.readRegistry()
         const workspace = findWorkspaceOrThrow(registry, slug)
@@ -270,6 +288,24 @@ export class WorkspaceRegistry {
 
         const now = new Date().toISOString()
         user.disabledAt = now
+        revokeWorkspaceSessionsBySubject(workspace, 'workspace-user', user.id, now)
+        workspace.updatedAt = now
+        this.writeRegistry(registry)
+
+        return mapWorkspaceToDescriptor(workspace)
+    }
+
+    deleteUser(slug: string, userId: string): WorkspaceDescriptor {
+        const registry = this.readRegistry()
+        const workspace = findWorkspaceOrThrow(registry, slug)
+        const userIndex = workspace.users.findIndex((item) => item.id === userId)
+
+        if (userIndex < 0) {
+            throw new Error(`Пользователь "${userId}" не найден в workspace "${slug}".`)
+        }
+
+        const now = new Date().toISOString()
+        const [user] = workspace.users.splice(userIndex, 1)
         revokeWorkspaceSessionsBySubject(workspace, 'workspace-user', user.id, now)
         workspace.updatedAt = now
         this.writeRegistry(registry)
@@ -326,6 +362,24 @@ export class WorkspaceRegistry {
         this.writeRegistry(registry)
 
         return session
+    }
+
+    findWorkspaceSession(sessionId: string, kind?: WorkspaceSessionKind): { workspace: WorkspaceRecord; session: WorkspaceSessionRecord } | null {
+        if (!sessionId) {
+            return null
+        }
+
+        const registry = this.readRegistry()
+
+        for (const workspace of registry.workspaces) {
+            const session = workspace.sessions.find((item) => item.id === sessionId && (!kind || item.kind === kind))
+
+            if (session) {
+                return { workspace, session }
+            }
+        }
+
+        return null
     }
 
     isAdminSessionActive(sessionId: string): boolean {
@@ -816,8 +870,10 @@ function normalizeAdminAuditAction(value: unknown): AdminAuditAction {
         case 'workspace-deleted':
         case 'workspace-api-key-created':
         case 'workspace-api-key-disabled':
+        case 'workspace-api-key-deleted':
         case 'workspace-user-created':
         case 'workspace-user-disabled':
+        case 'workspace-user-deleted':
         case 'workspace-user-role-updated':
         case 'workspace-share-link-created':
         case 'workspace-session-revoked':

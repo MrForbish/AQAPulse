@@ -130,9 +130,25 @@ export async function disableWorkspaceApiKey(slug: string, apiKeyId: string): Pr
     return payload.workspace
 }
 
+export async function deleteWorkspaceApiKey(slug: string, apiKeyId: string): Promise<WorkspaceDescriptor> {
+    const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/api-keys/${encodeURIComponent(apiKeyId)}`, {
+        method: 'DELETE',
+    })
+
+    return payload.workspace
+}
+
 export async function disableWorkspaceUser(slug: string, userId: string): Promise<WorkspaceDescriptor> {
     const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/users/${encodeURIComponent(userId)}/disable`, {
         method: 'POST',
+    })
+
+    return payload.workspace
+}
+
+export async function deleteWorkspaceUser(slug: string, userId: string): Promise<WorkspaceDescriptor> {
+    const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/users/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
     })
 
     return payload.workspace

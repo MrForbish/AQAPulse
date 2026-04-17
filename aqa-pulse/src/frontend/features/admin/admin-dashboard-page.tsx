@@ -28,6 +28,7 @@ export function AdminDashboardPage(): React.JSX.Element {
         isLoading,
         errorMessage,
         actionResult,
+        dismissActionResult,
         busyKey,
         createWorkspace,
         updateWorkspace,
@@ -37,7 +38,9 @@ export function AdminDashboardPage(): React.JSX.Element {
         createUser,
         updateUserRole,
         disableApiKey,
+        deleteApiKey,
         disableUser,
+        deleteUser,
         revokeSession,
         updateServerSettings,
         logout,
@@ -47,7 +50,7 @@ export function AdminDashboardPage(): React.JSX.Element {
         <PageFrame>
             <AdminDashboardHero workspaceCount={workspaces.length} isLoggingOut={busyKey === 'logout'} onLogout={logout} />
 
-            {actionResult ? <AdminDashboardActionResult actionResult={actionResult} /> : null}
+            {actionResult ? <AdminDashboardActionResult actionResult={actionResult} onClose={dismissActionResult} /> : null}
             {errorMessage ? <ErrorView title="Admin API недоступен" message={errorMessage} /> : null}
 
             <AdminServerSettingsSection settings={serverSettings} busyKey={busyKey} onUpdateSettings={updateServerSettings} />
@@ -64,7 +67,9 @@ export function AdminDashboardPage(): React.JSX.Element {
                 onCreateUser={createUser}
                 onUpdateUserRole={updateUserRole}
                 onDisableApiKey={disableApiKey}
+                onDeleteApiKey={deleteApiKey}
                 onDisableUser={disableUser}
+                onDeleteUser={deleteUser}
                 onRevokeSession={revokeSession}
             />
             <AdminAuditTrailSection entries={auditEntries} />

@@ -14,7 +14,9 @@ export function AdminWorkspaceRegistry(props: {
     onCreateUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onUpdateUserRole: (event: React.FormEvent<HTMLFormElement>, slug: string, userId: string) => Promise<void>
     onDisableApiKey: (slug: string, apiKeyId: string) => Promise<void>
+    onDeleteApiKey: (slug: string, apiKeyId: string) => Promise<void>
     onDisableUser: (slug: string, userId: string) => Promise<void>
+    onDeleteUser: (slug: string, userId: string) => Promise<void>
     onRevokeSession: (slug: string, sessionId: string) => Promise<void>
 }): React.JSX.Element {
     const runtimeBaseUrl = useRuntimeBaseUrl()
@@ -51,7 +53,9 @@ function WorkspaceCard(props: {
     onCreateUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onUpdateUserRole: (event: React.FormEvent<HTMLFormElement>, slug: string, userId: string) => Promise<void>
     onDisableApiKey: (slug: string, apiKeyId: string) => Promise<void>
+    onDeleteApiKey: (slug: string, apiKeyId: string) => Promise<void>
     onDisableUser: (slug: string, userId: string) => Promise<void>
+    onDeleteUser: (slug: string, userId: string) => Promise<void>
     onRevokeSession: (slug: string, sessionId: string) => Promise<void>
 }): React.JSX.Element {
     const { workspace } = props
@@ -105,6 +109,7 @@ function WorkspaceCard(props: {
                         {workspace.apiKeys.length > 0 ? workspace.apiKeys.map((apiKey) => {
                             const isDisabled = Boolean(apiKey.disabledAt)
                             const disableKey = `api-key:disable:${workspace.slug}:${apiKey.id}`
+                            const deleteApiKey = `api-key:delete:${workspace.slug}:${apiKey.id}`
 
                             return (
                                 <li key={apiKey.id} className="access-list-item">
@@ -127,6 +132,14 @@ function WorkspaceCard(props: {
                                         >
                                             {props.busyKey === disableKey ? 'Отключаем...' : 'Отключить'}
                                         </button>
+                                        <button
+                                            type="button"
+                                            className="secondary-button danger-button"
+                                            disabled={props.busyKey === deleteApiKey}
+                                            onClick={() => void props.onDeleteApiKey(workspace.slug, apiKey.id)}
+                                        >
+                                            {props.busyKey === deleteApiKey ? 'Удаляем...' : 'Удалить'}
+                                        </button>
                                     </div>
                                 </li>
                             )
@@ -145,6 +158,7 @@ function WorkspaceCard(props: {
                         {workspace.users.length > 0 ? workspace.users.map((user) => {
                             const isDisabled = Boolean(user.disabledAt)
                             const disableKey = `user:disable:${workspace.slug}:${user.id}`
+                            const deleteUser = `user:delete:${workspace.slug}:${user.id}`
 
                             return (
                                 <li key={user.id} className="access-list-item">
@@ -160,7 +174,7 @@ function WorkspaceCard(props: {
                                     </div>
                                     <div className="access-item-actions">
                                         <form className="access-inline-form" onSubmit={(event) => void props.onUpdateUserRole(event, workspace.slug, user.id)}>
-                                            <select name="role" defaultValue={user.role} disabled={isDisabled || props.busyKey === `user:role:${workspace.slug}:${user.id}`}>
+                                            <select className="admin-inline-select" name="role" defaultValue={user.role} disabled={isDisabled || props.busyKey === `user:role:${workspace.slug}:${user.id}`}>
                                                 <option value="viewer">Наблюдатель</option>
                                                 <option value="owner">Владелец</option>
                                             </select>
@@ -176,6 +190,14 @@ function WorkspaceCard(props: {
                                         >
                                             {props.busyKey === disableKey ? 'Отключаем...' : 'Отключить'}
                                         </button>
+                                        <button
+                                            type="button"
+                                            className="secondary-button danger-button"
+                                            disabled={props.busyKey === deleteUser}
+                                            onClick={() => void props.onDeleteUser(workspace.slug, user.id)}
+                                        >
+                                            {props.busyKey === deleteUser ? 'Удаляем...' : 'Удалить'}
+                                        </button>
                                     </div>
                                 </li>
                             )
@@ -185,7 +207,7 @@ function WorkspaceCard(props: {
                         <label><span>Имя или описание</span><input type="text" name="label" placeholder="Наблюдатель команды" required /></label>
                         <label>
                             <span>Права</span>
-                            <select name="role" defaultValue="viewer">
+                            <select className="admin-inline-select" name="role" defaultValue="viewer">
                                 <option value="viewer">Наблюдатель</option>
                                 <option value="owner">Владелец</option>
                             </select>

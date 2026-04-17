@@ -521,7 +521,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                     workspaceSlug: workspace.slug,
                     sessionId: session.id,
                 })
-                const shareLinkUrl = buildWorkspaceShareLinkUrl(config, workspace.slug, issuedToken.token)
+                const shareLinkUrl = buildWorkspaceShareLinkUrl(request, config, workspace.slug, issuedToken.token, session.id)
 
                 registry.recordAdminAudit({
                     action: 'workspace-share-link-created',
@@ -607,6 +607,32 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             }
         })
 
+        app.delete('/api/workspaces/:slug/api-keys/:apiKeyId', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
+            const workspace = requireWorkspaceFromLocals(response)
+            const actor = resolveAdminActor(response, registry)
+
+            try {
+                const nextWorkspace = registry.deleteApiKey(workspace.slug, getRouteParam(request, 'apiKeyId'))
+                registry.recordAdminAudit({
+                    action: 'workspace-api-key-deleted',
+                    actorLabel: actor.label,
+                    actorSessionId: actor.sessionId,
+                    workspaceSlug: workspace.slug,
+                    targetType: 'api-key',
+                    targetId: getRouteParam(request, 'apiKeyId'),
+                    summary: 'Workspace API key deleted',
+                    details: {
+                        workspace: workspace.slug,
+                        apiKeyId: getRouteParam(request, 'apiKeyId'),
+                    },
+                })
+
+                response.json({ workspace: nextWorkspace })
+            } catch (error) {
+                response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
+            }
+        })
+
         app.post('/api/workspaces/:slug/users/:userId/disable', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const actor = resolveAdminActor(response, registry)
@@ -621,6 +647,32 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                     targetType: 'user',
                     targetId: getRouteParam(request, 'userId'),
                     summary: 'Workspace user disabled',
+                    details: {
+                        workspace: workspace.slug,
+                        userId: getRouteParam(request, 'userId'),
+                    },
+                })
+
+                response.json({ workspace: nextWorkspace })
+            } catch (error) {
+                response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
+            }
+        })
+
+        app.delete('/api/workspaces/:slug/users/:userId', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
+            const workspace = requireWorkspaceFromLocals(response)
+            const actor = resolveAdminActor(response, registry)
+
+            try {
+                const nextWorkspace = registry.deleteUser(workspace.slug, getRouteParam(request, 'userId'))
+                registry.recordAdminAudit({
+                    action: 'workspace-user-deleted',
+                    actorLabel: actor.label,
+                    actorSessionId: actor.sessionId,
+                    workspaceSlug: workspace.slug,
+                    targetType: 'user',
+                    targetId: getRouteParam(request, 'userId'),
+                    summary: 'Workspace user deleted',
                     details: {
                         workspace: workspace.slug,
                         userId: getRouteParam(request, 'userId'),
@@ -698,6 +750,57 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                 initialAdminWorkspaces: null,
                 initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, registry, config),
             })
+        })
+
+        app.get('/s/:shareId', (request: Request, response: Response) => {
+            const shareId = getRouteParam(request, 'shareId')
+            const resolvedShareSession = registry.findWorkspaceSession(shareId, 'workspace-share-link')
+
+            if (!resolvedShareSession) {
+                sendUnknownWorkspaceShareLinkErrorHtml(response)
+                return
+            }
+
+            const workspaceSlug = resolvedShareSession.workspace.slug
+
+            if (!registry.isWorkspaceSessionActive(workspaceSlug, resolvedShareSession.session.id, 'workspace-share-link')) {
+                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspaceSlug, {
+                    statusCode: 401,
+                    title: 'Ссылка отозвана',
+                    message: 'Эта временная ссылка уже отозвана или её сессия истекла. Запроси новую share link в админке.',
+                })
+                return
+            }
+
+            const maxAgeSeconds = getSessionRemainingSeconds(resolvedShareSession.session.expiresAt)
+
+            if (maxAgeSeconds <= 0) {
+                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspaceSlug, {
+                    statusCode: 401,
+                    title: 'Ссылка истекла или некорректна',
+                    message: 'Эта временная ссылка больше не даёт доступ к dashboard. Запроси новую share link или войди через workspace user token.',
+                })
+                return
+            }
+
+            const issuedToken = issueJwtToken({
+                subject: resolvedShareSession.session.subjectId,
+                kind: 'workspace-share-link',
+                scope: 'workspace:read',
+                secret: config.jwtSecret,
+                ttlSeconds: maxAgeSeconds,
+                workspaceSlug,
+                sessionId: resolvedShareSession.session.id,
+            })
+
+            response.setHeader('Set-Cookie', buildCookieHeader({
+                name: getWorkspaceSessionCookieName(config, workspaceSlug),
+                value: issuedToken.token,
+                maxAgeSeconds,
+                path: '/',
+            }))
+            registry.touchWorkspaceSession(workspaceSlug, resolvedShareSession.session.id)
+            response.redirect(`/w/${encodeURIComponent(workspaceSlug)}`)
         })
 
         app.get('/auth/workspaces/:slug/share-links/login', workspaceResolver, (request: Request, response: Response) => {
@@ -1375,14 +1478,50 @@ function normalizeShareLinkTtlMinutes(value: unknown): number {
     return value === 5 ? 5 : 10
 }
 
-function buildWorkspaceShareLinkUrl(config: SaasAppConfig, workspaceSlug: string, token: string): string {
-    const pathname = `/auth/workspaces/${encodeURIComponent(workspaceSlug)}/share-links/login?token=${encodeURIComponent(token)}`
+function buildWorkspaceShareLinkUrl(request: Request, config: SaasAppConfig, workspaceSlug: string, token: string, sessionId?: string): string {
+    const pathname = sessionId
+        ? `/s/${encodeURIComponent(sessionId)}`
+        : `/auth/workspaces/${encodeURIComponent(workspaceSlug)}/share-links/login?token=${encodeURIComponent(token)}`
 
-    if (!config.runtimeBaseUrl) {
+    const serviceBaseUrl = config.runtimeBaseUrl ?? resolveRequestOrigin(request)
+
+    if (!serviceBaseUrl) {
         return pathname
     }
 
-    return `${config.runtimeBaseUrl.replace(/\/+$/g, '')}${pathname}`
+    return `${serviceBaseUrl.replace(/\/+$/g, '')}${pathname}`
+}
+
+function resolveRequestOrigin(request: Request): string | null {
+    const forwardedProto = pickForwardedValue(request.header('x-forwarded-proto'))
+    const forwardedHost = pickForwardedValue(request.header('x-forwarded-host'))
+    const host = forwardedHost ?? request.header('host')?.trim() ?? null
+    const protocol = forwardedProto ?? request.protocol ?? 'http'
+
+    if (!host) {
+        return null
+    }
+
+    return `${protocol}://${host}`
+}
+
+function pickForwardedValue(value: string | undefined): string | null {
+    if (!value) {
+        return null
+    }
+
+    const normalizedValue = value.split(',')[0]?.trim()
+    return normalizedValue && normalizedValue.length > 0 ? normalizedValue : null
+}
+
+function getSessionRemainingSeconds(expiresAt: string): number {
+    const expiresAtMs = Date.parse(expiresAt)
+
+    if (!Number.isFinite(expiresAtMs)) {
+        return 0
+    }
+
+    return Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000))
 }
 
 function sendWorkspaceShareLinkErrorShell(
@@ -1408,6 +1547,31 @@ function sendWorkspaceShareLinkErrorShell(
         initialAdminWorkspaces: null,
         initialSessionStatus: readWorkspaceBootstrapSession(request, workspaceSlug, registry, config),
     }, options.statusCode)
+}
+
+function sendUnknownWorkspaceShareLinkErrorHtml(response: Response): void {
+        response.status(404).type('html').send(`<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Share link не найдена</title>
+    <style>
+        body { margin: 0; font-family: "Segoe UI", sans-serif; background: #08111f; color: #edf2fb; display: grid; min-height: 100vh; place-items: center; }
+        main { width: min(560px, calc(100vw - 32px)); padding: 32px; border: 1px solid rgba(148,163,184,.24); border-radius: 24px; background: rgba(15,23,42,.92); box-shadow: 0 24px 80px rgba(2,6,23,.42); }
+        h1 { margin: 0 0 12px; font-size: 28px; }
+        p { margin: 0 0 20px; line-height: 1.6; color: #cbd5e1; }
+        a { color: #7dd3fc; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Share link не найдена</h1>
+        <p>Короткая ссылка не существует, уже была удалена или введена с ошибкой. Запроси новую ссылку в админке.</p>
+        <a href="/">Открыть главную страницу</a>
+    </main>
+</body>
+</html>`)
 }
 
 function randomTokenId(): string {

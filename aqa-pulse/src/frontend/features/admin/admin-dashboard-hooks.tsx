@@ -18,6 +18,8 @@ import {
     createWorkspaceShareLink,
     createWorkspaceUser,
     deleteWorkspace,
+    deleteWorkspaceApiKey,
+    deleteWorkspaceUser,
     disableWorkspaceApiKey,
     disableWorkspaceUser,
     fetchAdminAuditLog,
@@ -35,6 +37,12 @@ export interface DashboardActionResult {
     title: string
     tone: 'success' | 'error' | 'info'
     details: Record<string, string>
+    copyItems?: DashboardCopyItem[]
+}
+
+export interface DashboardCopyItem {
+    label: string
+    value: string
 }
 
 /**
@@ -48,6 +56,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     isLoading: boolean
     errorMessage: string | null
     actionResult: DashboardActionResult | null
+    dismissActionResult: () => void
     busyKey: string | null
     createWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
     updateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
@@ -57,7 +66,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     createUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     updateUserRole: (event: React.FormEvent<HTMLFormElement>, slug: string, userId: string) => Promise<void>
     disableApiKey: (slug: string, apiKeyId: string) => Promise<void>
+    deleteApiKey: (slug: string, apiKeyId: string) => Promise<void>
     disableUser: (slug: string, userId: string) => Promise<void>
+    deleteUser: (slug: string, userId: string) => Promise<void>
     revokeSession: (slug: string, sessionId: string) => Promise<void>
     updateServerSettings: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
     logout: () => Promise<void>
@@ -71,6 +82,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
     const [actionResult, setActionResult] = React.useState<DashboardActionResult | null>(null)
     const [busyKey, setBusyKey] = React.useState<string | null>(null)
+
+    const dismissActionResult = React.useCallback(() => {
+        setActionResult(null)
+    }, [])
 
     const handleUnauthorized = React.useCallback((error: unknown): boolean => {
         if (isUnauthorizedError(error)) {
@@ -181,7 +196,16 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const createdWorkspace = await createWorkspace({ name, slug: slug || undefined, apiKeyLabel: apiKeyLabel || undefined })
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, createdWorkspace.workspace, true))
-            setActionResult({ title: 'Workspace создан', tone: 'success', details: mapWorkspaceProvisioningDetails(createdWorkspace) })
+            setActionResult({
+                title: 'Workspace создан',
+                tone: 'success',
+                details: mapWorkspaceProvisioningDetails(createdWorkspace),
+                copyItems: [
+                    { label: 'API key token', value: createdWorkspace.apiKey.token },
+                    { label: 'Workspace login path', value: `/w/${createdWorkspace.workspace.slug}/login` },
+                    { label: 'API key exchange path', value: `/auth/workspaces/${createdWorkspace.workspace.slug}/api-keys/login` },
+                ],
+            })
             form.reset()
             await refreshSupplementaryData()
         } catch (error) {
@@ -274,6 +298,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                     apiKeyToken: createdApiKey.apiKey.token,
                     apiKeyExchangeUrl: `/auth/workspaces/${slug}/api-keys/login`,
                 },
+                copyItems: [
+                    { label: 'API key token', value: createdApiKey.apiKey.token },
+                    { label: 'API key exchange path', value: `/auth/workspaces/${slug}/api-keys/login` },
+                ],
             })
             form.reset()
             await refreshSupplementaryData()
@@ -314,7 +342,15 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const createdUser = await createWorkspaceUser(slug, { label, role })
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, createdUser.workspace))
-            setActionResult({ title: 'Workspace user token создан', tone: 'success', details: mapWorkspaceUserProvisioningDetails(createdUser) })
+            setActionResult({
+                title: 'Workspace user token создан',
+                tone: 'success',
+                details: mapWorkspaceUserProvisioningDetails(createdUser),
+                copyItems: [
+                    { label: 'Workspace user token', value: createdUser.user.token },
+                    { label: 'Workspace login path', value: `/w/${createdUser.workspace.slug}/login` },
+                ],
+            })
             form.reset()
             await refreshSupplementaryData()
         } catch (error) {
@@ -348,7 +384,12 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const result = await createWorkspaceShareLink(slug, ttlMinutes)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, result.workspace))
-            setActionResult({ title: 'Share link создан', tone: 'success', details: mapWorkspaceShareLinkDetails(result) })
+            setActionResult({
+                title: 'Share link создан',
+                tone: 'success',
+                details: mapWorkspaceShareLinkDetails(result),
+                copyItems: [{ label: 'Short share link', value: result.shareLinkUrl }],
+            })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
@@ -407,6 +448,31 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         }
     }
 
+    async function deleteApiKeyAction(slug: string, apiKeyId: string): Promise<void> {
+        if (typeof window !== 'undefined' && !window.confirm(`Удалить ключ загрузки ${apiKeyId} из workspace ${slug}?`)) {
+            return
+        }
+
+        const submitKey = `api-key:delete:${slug}:${apiKeyId}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const workspace = await deleteWorkspaceApiKey(slug, apiKeyId)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
+            setActionResult({ title: 'Ключ загрузки удалён', tone: 'info', details: { workspace: slug, apiKeyId } })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка удаления ключа', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить ключ загрузки.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
     async function disableUserAction(slug: string, userId: string): Promise<void> {
         const submitKey = `user:disable:${slug}:${userId}`
         setBusyKey(submitKey)
@@ -423,6 +489,31 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             }
 
             setActionResult({ title: 'Ошибка отключения пользователя', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отключить пользователя.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
+    async function deleteUserAction(slug: string, userId: string): Promise<void> {
+        if (typeof window !== 'undefined' && !window.confirm(`Удалить пользователя ${userId} из workspace ${slug}?`)) {
+            return
+        }
+
+        const submitKey = `user:delete:${slug}:${userId}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const workspace = await deleteWorkspaceUser(slug, userId)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
+            setActionResult({ title: 'Пользователь удалён', tone: 'info', details: { workspace: slug, userId } })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Ошибка удаления пользователя', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить пользователя.') } })
         } finally {
             setBusyKey(null)
         }
@@ -508,6 +599,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         isLoading,
         errorMessage,
         actionResult,
+        dismissActionResult,
         busyKey,
         createWorkspace: createWorkspaceAction,
         updateWorkspace: updateWorkspaceAction,
@@ -517,7 +609,9 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         createUser: createUserAction,
         updateUserRole: updateUserRoleAction,
         disableApiKey: disableApiKeyAction,
+        deleteApiKey: deleteApiKeyAction,
         disableUser: disableUserAction,
+        deleteUser: deleteUserAction,
         revokeSession: revokeSessionAction,
         updateServerSettings: updateServerSettingsAction,
         logout,
@@ -529,8 +623,8 @@ function mapWorkspaceProvisioningDetails(result: WorkspaceProvisioningResult): R
         workspace: result.workspace.slug,
         apiKeyLabel: result.apiKey.label,
         apiKeyToken: result.apiKey.token,
-        workspaceLoginUrl: `/w/${result.workspace.slug}/login`,
-        apiKeyExchangeUrl: `/auth/workspaces/${result.workspace.slug}/api-keys/login`,
+        workspaceLoginPath: `/w/${result.workspace.slug}/login`,
+        apiKeyExchangePath: `/auth/workspaces/${result.workspace.slug}/api-keys/login`,
     }
 }
 
@@ -540,7 +634,7 @@ function mapWorkspaceUserProvisioningDetails(result: WorkspaceUserProvisioningRe
         label: result.user.label,
         role: result.user.role,
         workspaceUserToken: result.user.token,
-        workspaceLoginUrl: `/w/${result.workspace.slug}/login`,
+        workspaceLoginPath: `/w/${result.workspace.slug}/login`,
     }
 }
 
@@ -549,8 +643,8 @@ function mapWorkspaceUpdateDetails(result: WorkspaceUpdateResult): Record<string
         previousSlug: result.previousSlug,
         workspace: result.workspace.slug,
         name: result.workspace.name,
-        workspaceLoginUrl: `/w/${result.workspace.slug}/login`,
-        dashboardUrl: `/w/${result.workspace.slug}`,
+        workspaceLoginPath: `/w/${result.workspace.slug}/login`,
+        dashboardPath: `/w/${result.workspace.slug}`,
     }
 }
 

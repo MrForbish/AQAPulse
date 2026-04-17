@@ -45,6 +45,7 @@ export function DashboardTablePanel(props: {
     titleMetricKey?: string
     titleTooltip?: string
     description?: string
+    intro?: React.ReactNode
     className?: string
     headers: React.ReactNode[]
     rowCount: number
@@ -60,6 +61,7 @@ export function DashboardTablePanel(props: {
             description={props.description}
             className={props.className}
         >
+            {props.intro ? <div className="compact-top">{props.intro}</div> : null}
             {props.rowCount > 0 ? (
                 <DashboardTable headers={props.headers}>{props.children}</DashboardTable>
             ) : (

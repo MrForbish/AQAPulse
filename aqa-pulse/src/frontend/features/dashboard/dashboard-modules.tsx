@@ -3,10 +3,9 @@
  */
 import React from 'react'
 import {
-    applyBusinessAssumptionsToSummary,
-    type DashboardBusinessAssumptions,
     type DashboardSummary,
 } from '../../../dashboard-utils'
+import { applyBusinessAssumptionsToSummary, type DashboardBusinessAssumptions } from '../../../shared/business-assumptions'
 import { ru } from '../../../shared/i18n/ru'
 import {
     DashboardBusinessConfigAssumptionsSection,
@@ -28,7 +27,6 @@ import {
 import {
     DashboardCodeQualityFailureHotspotsSection,
     DashboardCodeQualityOverviewMetrics,
-    DashboardCodeQualityPhaseBreakdownSection,
     DashboardCodeQualitySlowTestsSection,
     DashboardCodeQualitySuiteDurationSection,
 } from './dashboard-code-quality-sections'
@@ -261,7 +259,6 @@ export function CodeQualityModule(props: { summary: DashboardSummary; workspaceS
         <div className="page-grid">
             <DashboardCodeQualityOverviewMetrics summary={summary} />
             <DashboardCodeQualityFailureHotspotsSection summary={summary} workspaceSlug={props.workspaceSlug} />
-            <DashboardCodeQualityPhaseBreakdownSection summary={summary} />
             <DashboardCodeQualitySuiteDurationSection summary={summary} />
             <DashboardCodeQualitySlowTestsSection summary={summary} workspaceSlug={props.workspaceSlug} />
         </div>

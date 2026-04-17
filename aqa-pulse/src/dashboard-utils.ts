@@ -1,5 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import {
+    applyBusinessAssumptionsToSummary,
+    normalizeDashboardBusinessAssumptions,
+    recalculateCostOfFlakinessMetrics,
+    type DashboardBusinessAssumptions,
+} from './shared/business-assumptions'
 import { formatDate, formatDuration, formatPercent } from './shared/formatting'
 import {
     findArchivedRunDirectory,
@@ -8,6 +14,11 @@ import {
 } from './history-utils'
 
 export { formatDate, formatDuration, formatPercent } from './shared/formatting'
+export {
+    applyBusinessAssumptionsToSummary,
+    normalizeDashboardBusinessAssumptions,
+    type DashboardBusinessAssumptions,
+} from './shared/business-assumptions'
 
 export interface DashboardRunMetadata {
     branch: string | null
@@ -228,12 +239,6 @@ export interface DashboardBusinessTimeToFixMetric {
 export interface DashboardBusinessAutomationRoiMetric {
     percent: number | null
     source: 'pendingAssumptions'
-}
-
-export interface DashboardBusinessAssumptions {
-    ciMinuteCostRub: number | null
-    developerHourlyCostRub: number | null
-    analysisMinutesPerUnstable: number | null
 }
 
 export interface DashboardPhaseBreakdownItem {
@@ -705,40 +710,6 @@ export function normalizeDashboardSummary(summary: DashboardSummary): DashboardS
             topProblematicTests,
             errorClusters,
         }),
-    }
-}
-
-export function normalizeDashboardBusinessAssumptions(
-    assumptions: Partial<DashboardBusinessAssumptions> | null | undefined,
-): DashboardBusinessAssumptions {
-    return {
-        ciMinuteCostRub: normalizeOptionalNonNegativeNumber(assumptions?.ciMinuteCostRub),
-        developerHourlyCostRub: normalizeOptionalNonNegativeNumber(assumptions?.developerHourlyCostRub),
-        analysisMinutesPerUnstable: normalizeOptionalNonNegativeNumber(assumptions?.analysisMinutesPerUnstable),
-    }
-}
-
-export function applyBusinessAssumptionsToSummary(
-    summary: DashboardSummary,
-    assumptions: Partial<DashboardBusinessAssumptions> | null | undefined,
-): DashboardSummary {
-    const normalizedSummary = normalizeDashboardSummary(summary)
-    const mergedAssumptions = normalizeDashboardBusinessAssumptions({
-        ...normalizedSummary.businessMetrics.costOfFlakiness.assumptions,
-        ...(assumptions ?? {}),
-    })
-
-    return {
-        ...normalizedSummary,
-        businessMetrics: {
-            ...normalizedSummary.businessMetrics,
-            costOfFlakiness: recalculateCostOfFlakinessMetrics({
-                extraRetryMinutes: normalizedSummary.businessMetrics.costOfFlakiness.extraRetryMinutes,
-                extraRetries: normalizedSummary.businessMetrics.costOfFlakiness.extraRetries,
-                unstableRuns: normalizedSummary.businessMetrics.costOfFlakiness.unstableRuns,
-                activeDays: normalizedSummary.businessMetrics.costOfFlakiness.activeDays,
-            }, mergedAssumptions),
-        },
     }
 }
 
@@ -2161,45 +2132,6 @@ function readDashboardBusinessAssumptionsFromEnv(): DashboardBusinessAssumptions
         developerHourlyCostRub: readOptionalNumberFromEnv('AQA_PULSE_DEV_HOURLY_COST'),
         analysisMinutesPerUnstable: readOptionalNumberFromEnv('AQA_PULSE_ANALYSIS_MINUTES_PER_UNSTABLE'),
     }
-}
-
-function recalculateCostOfFlakinessMetrics(
-    baseMetrics: {
-        extraRetryMinutes: number
-        extraRetries: number
-        unstableRuns: number
-        activeDays: number
-    },
-    assumptions: DashboardBusinessAssumptions,
-): DashboardAdvancedMetrics['businessMetrics']['costOfFlakiness'] {
-    const ciCostRub = assumptions.ciMinuteCostRub === null
-        ? null
-        : roundToTwoDigits(baseMetrics.extraRetryMinutes * assumptions.ciMinuteCostRub)
-    const developerCostRub = assumptions.developerHourlyCostRub === null || assumptions.analysisMinutesPerUnstable === null
-        ? null
-        : roundToTwoDigits(baseMetrics.unstableRuns * (assumptions.analysisMinutesPerUnstable / 60) * assumptions.developerHourlyCostRub)
-    const totalRub = ciCostRub === null && developerCostRub === null
-        ? null
-        : roundToTwoDigits((ciCostRub ?? 0) + (developerCostRub ?? 0))
-    const costPerActiveDayRub = totalRub === null || baseMetrics.activeDays === 0
-        ? null
-        : roundToTwoDigits(totalRub / baseMetrics.activeDays)
-
-    return {
-        totalRub,
-        ciCostRub,
-        developerCostRub,
-        extraRetryMinutes: baseMetrics.extraRetryMinutes,
-        extraRetries: baseMetrics.extraRetries,
-        unstableRuns: baseMetrics.unstableRuns,
-        activeDays: baseMetrics.activeDays,
-        costPerActiveDayRub,
-        assumptions,
-    }
-}
-
-function normalizeOptionalNonNegativeNumber(value: number | null | undefined): number | null {
-    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
 function calculateReleaseConfidenceScore(

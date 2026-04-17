@@ -161,17 +161,16 @@ export function buildFlakyHistoryInsight(summary: DashboardSummary): {
     body: string
 } {
     const hasHistoricalRanking = summary.flakyAnalytics.topFlakyTests.length > 0
-    const currentRunLine = DASHBOARD_TEXT.flakyInsights.currentRunLine.replace('{count}', String(summary.kpis.flakyTests))
-    const finalLine = hasHistoricalRanking
+    const followupLine = hasHistoricalRanking
         ? DASHBOARD_TEXT.flakyInsights.historyReady
         : summary.kpis.flakyTests > 0
             ? DASHBOARD_TEXT.flakyInsights.historyMissing
-            : DASHBOARD_TEXT.flakyInsights.historyLine
+            : null
 
     return {
         tone: hasHistoricalRanking ? 'info' : summary.kpis.flakyTests > 0 ? 'warn' : 'default',
         title: DASHBOARD_TEXT.flakyInsights.title,
-        body: `${currentRunLine} ${DASHBOARD_TEXT.flakyInsights.historyLine} ${finalLine}`,
+        body: [DASHBOARD_TEXT.flakyInsights.historyLine, followupLine].filter(Boolean).join(' '),
     }
 }
 

@@ -55,16 +55,17 @@ export function FlakyTab(props: { summary: DashboardSummary; workspaceSlug: stri
                 {props.summary.topProblematicTests.map((test) => <DashboardProblematicTestRow key={`${test.project}-${test.file}-${test.title}`} test={test} summary={props.summary} workspaceSlug={props.workspaceSlug} yesLabel={DASHBOARD_TEXT.states.yes} noLabel={DASHBOARD_TEXT.states.no} />)}
             </DashboardTablePanel>
 
-            <div className={`inline-note${flakyInsight.tone === 'warn' ? ' is-warning' : flakyInsight.tone === 'info' ? ' is-info' : ''} span-2`}>
-                <strong>{flakyInsight.title}</strong>
-                <div className="compact-top">{flakyInsight.body}</div>
-            </div>
-
             <DashboardTablePanel
                 title={DASHBOARD_TEXT.metrics.topFlakyTests}
                 titleMetricKey="topFlakyTests"
                 titleTooltip={DASHBOARD_METRIC_DESCRIPTIONS.topFlakyTests}
                 className="span-2"
+                intro={(
+                    <div className={`inline-note${flakyInsight.tone === 'warn' ? ' is-warning' : flakyInsight.tone === 'info' ? ' is-info' : ''}`}>
+                        <strong>{flakyInsight.title}</strong>
+                        <div className="compact-top">{flakyInsight.body}</div>
+                    </div>
+                )}
                 headers={[
                     DASHBOARD_TEXT.tables.test,
                     DASHBOARD_TEXT.tables.file,

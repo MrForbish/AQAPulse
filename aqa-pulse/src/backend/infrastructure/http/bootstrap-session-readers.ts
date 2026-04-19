@@ -3,16 +3,9 @@ import type { FrontendBootstrapData } from '../../../frontend-bootstrap'
 import type { AdminAuthRegistryPort, AuthSessionConfig } from '../../application/auth-session-use-cases'
 import { readAdminBootstrapSessionState } from '../../application/admin'
 import { readWorkspaceBootstrapSessionState } from '../../application/runtime'
-import { extractAccessToken, getWorkspaceSessionCookieName } from '../security'
 import type { SaasAppConfig } from '../../config'
+import { extractAccessToken, getWorkspaceSessionCookieName } from '../security'
 import { readCookieValue } from './cookies'
-
-export function buildFrontendServiceUrls(config: Pick<SaasAppConfig, 'adminBaseUrl' | 'runtimeBaseUrl'>): FrontendBootstrapData['serviceUrls'] {
-    return {
-        adminBaseUrl: config.adminBaseUrl,
-        runtimeBaseUrl: config.runtimeBaseUrl,
-    }
-}
 
 export function readAdminBootstrapSession(
     request: Request,

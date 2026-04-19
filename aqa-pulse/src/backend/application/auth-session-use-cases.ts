@@ -1,7 +1,7 @@
 import type { FrontendSessionStatus } from '../../frontend-bootstrap'
 import { buildSessionExpiresAt, isWorkspaceReadSessionKind } from '../domain/session-rules'
 import type { WorkspaceDescriptor, WorkspaceSessionKind, WorkspaceUserRole } from '../contracts'
-import { issueJwtToken, verifyJwtToken } from '../jwt'
+import { issueApplicationAuthToken, verifyApplicationAuthToken } from './auth-token-service'
 
 export interface AdminAuthRegistryPort {
     createAdminSession(expiresAt: string, label?: string): { id: string; label: string; expiresAt: string }
@@ -88,7 +88,7 @@ export function loginAdmin(
     }
 
     const adminSession = registry.createAdminSession(buildSessionExpiresAt(config.accessTokenTtlSeconds))
-    const issuedToken = issueJwtToken({
+    const issuedToken = issueApplicationAuthToken({
         subject: 'admin',
         kind: 'admin',
         scope: 'admin',
@@ -126,7 +126,7 @@ export function logoutAdmin(
     config: Pick<AuthSessionConfig, 'jwtSecret'>,
     sessionToken: string | null,
 ): void {
-    const claims = sessionToken ? verifyJwtToken(sessionToken, config.jwtSecret) : null
+    const claims = sessionToken ? verifyApplicationAuthToken(sessionToken, config.jwtSecret) : null
 
     if (claims?.kind === 'admin' && claims.scope === 'admin') {
         registry.revokeAdminSession(claims.sessionId ?? '')
@@ -166,7 +166,7 @@ export function loginWorkspaceUser(
         role: authResult.user.role,
         expiresAt: buildSessionExpiresAt(config.accessTokenTtlSeconds),
     })
-    const issuedToken = issueJwtToken({
+    const issuedToken = issueApplicationAuthToken({
         subject: authResult.user.id,
         kind: 'workspace-user',
         scope: 'workspace:read',
@@ -213,7 +213,7 @@ export function loginWorkspaceApiKey(
         scope: 'workspace:ingest',
         expiresAt: buildSessionExpiresAt(config.accessTokenTtlSeconds),
     })
-    const issuedToken = issueJwtToken({
+    const issuedToken = issueApplicationAuthToken({
         subject: authResult.apiKey.id,
         kind: 'workspace-api-key',
         scope: 'workspace:ingest',
@@ -242,7 +242,7 @@ export function logoutWorkspaceReadSession(
     workspaceSlug: string,
     sessionToken: string | null,
 ): void {
-    const claims = sessionToken ? verifyJwtToken(sessionToken, config.jwtSecret) : null
+    const claims = sessionToken ? verifyApplicationAuthToken(sessionToken, config.jwtSecret) : null
 
     if ((claims?.kind === 'workspace-user' || claims?.kind === 'workspace-share-link') && claims.workspaceSlug === workspaceSlug) {
         registry.revokeWorkspaceSession(workspaceSlug, claims.sessionId ?? '')
@@ -259,7 +259,7 @@ export function readAdminBootstrapSessionState(
     }
 
     const token = tokens.headerToken ?? tokens.cookieToken ?? null
-    const claims = token ? verifyJwtToken(token, config.jwtSecret) : null
+    const claims = token ? verifyApplicationAuthToken(token, config.jwtSecret) : null
 
     return {
         scope: 'admin',
@@ -287,14 +287,14 @@ export function readWorkspaceBootstrapSessionState(
     }
 
     const adminToken = tokens.adminHeaderToken ?? tokens.adminCookieToken ?? null
-    const adminClaims = adminToken ? verifyJwtToken(adminToken, config.jwtSecret) : null
+    const adminClaims = adminToken ? verifyApplicationAuthToken(adminToken, config.jwtSecret) : null
 
     if (adminClaims?.scope === 'admin' && adminClaims.kind === 'admin' && registry.isAdminSessionActive(adminClaims.sessionId ?? '')) {
         return { scope: 'workspace', authenticated: true, authRequired: true, workspaceSlug }
     }
 
     const workspaceToken = tokens.workspaceHeaderToken ?? tokens.workspaceCookieToken ?? null
-    const workspaceClaims = workspaceToken ? verifyJwtToken(workspaceToken, config.jwtSecret) : null
+    const workspaceClaims = workspaceToken ? verifyApplicationAuthToken(workspaceToken, config.jwtSecret) : null
 
     return {
         scope: 'workspace',

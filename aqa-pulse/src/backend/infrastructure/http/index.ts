@@ -1,12 +1,12 @@
 export { registerAdminRoutes, type AdminRoutesContext } from './admin-routes'
+export {
+    readAdminBootstrapSession,
+    readWorkspaceBootstrapSession,
+} from './bootstrap-session-readers'
 export { readCookieValue } from './cookies'
 export { ensureDevBootstrapEnabled } from './dev-bootstrap-middleware'
 export { registerCommonHttpErrorHandlers } from './error-handlers'
-export {
-    buildFrontendServiceUrls,
-    readAdminBootstrapSession,
-    readWorkspaceBootstrapSession,
-} from './frontend-bootstrap'
+export { buildFrontendServiceUrls } from './frontend-service-urls'
 export { sendArtifactFile } from './artifact-file-response'
 export { normalizeIngestionPayload } from './ingestion-payload'
 export {

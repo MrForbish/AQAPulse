@@ -39,7 +39,7 @@ Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale
 
 `npm run smoke:full` теперь тоже не зависит от retired renderer path: negative checks в export-surface smoke следят, чтобы main package и self-hosted packaging не тянули удалённый renderer обратно.
 
-Файлы уровня `src/backend/contracts.ts`, `src/backend/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
+Файлы уровня `src/backend/contracts.ts`, `src/backend/infrastructure/security/jwt.ts`, `src/backend/sqlite-migrate.ts` также не должны переезжать во frontend: это domain/backend/infra слой, который React только использует через bootstrap, API и shared types.
 
 Основной продуктовый UI развивается через React runtime и self-hosted/server flow.
 

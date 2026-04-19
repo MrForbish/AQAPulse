@@ -1,7 +1,7 @@
 import type express from 'express'
 import type { Request, Response } from 'express'
 import { queryTestHistoryForShell } from '../../application/runtime'
-import { buildFrontendServiceUrls } from './frontend-bootstrap'
+import { buildFrontendServiceUrls } from './frontend-service-urls'
 import { getFiltersFromRequest, getRouteParam } from './request-inputs'
 import type { RuntimeRoutesContext } from './runtime-routes'
 

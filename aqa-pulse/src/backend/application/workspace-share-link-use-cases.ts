@@ -1,6 +1,6 @@
 import type { WorkspaceSessionKind } from '../contracts'
 import { getSessionRemainingSeconds } from '../domain/share-link-rules'
-import { issueJwtToken, verifyJwtToken } from '../jwt'
+import { issueApplicationAuthToken, verifyApplicationAuthToken } from './auth-token-service'
 
 interface ShareLinkSession {
     id: string
@@ -74,7 +74,7 @@ export function openWorkspaceShareLink(
         }
     }
 
-    const issuedToken = issueJwtToken({
+    const issuedToken = issueApplicationAuthToken({
         subject: shareSession.subjectId,
         kind: 'workspace-share-link',
         scope: 'workspace:read',
@@ -111,7 +111,7 @@ export function loginViaWorkspaceShareLinkToken(
         }
     }
 
-    const claims = verifyJwtToken(token, config.jwtSecret)
+    const claims = verifyApplicationAuthToken(token, config.jwtSecret)
 
     if (!claims || claims.kind !== 'workspace-share-link' || claims.scope !== 'workspace:read' || claims.workspaceSlug !== workspaceSlug) {
         return {

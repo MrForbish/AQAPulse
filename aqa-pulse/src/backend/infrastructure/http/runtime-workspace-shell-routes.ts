@@ -7,7 +7,8 @@ import {
 	queryTestHistoryForShell,
 } from '../../application/runtime'
 import { buildCookieHeader, getWorkspaceSessionCookieName, requireWorkspaceFromLocals } from '../security'
-import { buildFrontendServiceUrls, readWorkspaceBootstrapSession } from './frontend-bootstrap'
+import { readWorkspaceBootstrapSession } from './bootstrap-session-readers'
+import { buildFrontendServiceUrls } from './frontend-service-urls'
 import { getFiltersFromRequest, getRouteParam, pickOptionalString } from './request-inputs'
 import { sendUnknownWorkspaceShareLinkErrorHtml, sendWorkspaceShareLinkErrorShell } from './workspace-share-link-http'
 import type { RuntimeRoutesContext } from './runtime-routes'

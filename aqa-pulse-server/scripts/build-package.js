@@ -105,6 +105,7 @@ function cleanDir(dirPath) {
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(distRoot, 'backend', 'app.js')
     const compiledAppRuntimePath = path.resolve(distRoot, 'backend', 'infrastructure', 'app-runtime.js')
+    const compiledAppHttpRuntimePath = path.resolve(distRoot, 'backend', 'infrastructure', 'app-http-runtime.js')
     const compiledRuntimeRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-routes.js')
     const compiledRuntimeShellRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-shell-routes.js')
     const compiledRuntimePublicShellRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-public-shell-routes.js')
@@ -115,6 +116,7 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledFrontendShellPath = path.resolve(distRoot, 'backend', 'frontend-shell.js')
     const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
     const compiledAppRuntime = fs.readFileSync(compiledAppRuntimePath, 'utf8')
+    const compiledAppHttpRuntime = fs.readFileSync(compiledAppHttpRuntimePath, 'utf8')
     const compiledRuntimeRoutes = fs.readFileSync(compiledRuntimeRoutesPath, 'utf8')
     const compiledRuntimeShellRoutes = fs.readFileSync(compiledRuntimeShellRoutesPath, 'utf8')
     const compiledRuntimePublicShellRoutes = fs.readFileSync(compiledRuntimePublicShellRoutesPath, 'utf8')
@@ -131,13 +133,18 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
     )
     assertIncludes(
         compiledApp,
-        'registerRuntimeRoutes',
+        'configureAppHttpRuntime',
         compiledAppPath,
     )
     assertIncludes(
-        compiledApp,
+        compiledAppHttpRuntime,
+        'registerRuntimeRoutes',
+        compiledAppHttpRuntimePath,
+    )
+    assertIncludes(
+        compiledAppHttpRuntime,
         'registerCommonHttpErrorHandlers',
-        compiledAppPath,
+        compiledAppHttpRuntimePath,
     )
     assertIncludes(
         compiledAppRuntime,

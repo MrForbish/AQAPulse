@@ -2,9 +2,7 @@
  * Назначение файла: выполняет начальную настройку workspace
  * и выпуск первых учётных данных для доступа.
  */
-import { ensureWorkspaceReadModelInitialized } from './application/admin'
-import { resolveSaasAppConfig } from './config'
-import { createBackendStorage, type BackendStorage, type BootstrapWorkspaceRegistry, WorkspaceRegistry } from './infrastructure/persistence'
+import { bootstrapWorkspace, type BootstrapWorkspaceOutput } from './bootstrap-workspace-runtime'
 
 interface CliOptions {
     name: string
@@ -17,85 +15,9 @@ interface CliOptions {
     json: boolean
 }
 
-interface BootstrapOutput {
-    workspace: {
-        name: string
-        slug: string
-        dashboardUrl: string
-        loginUrl: string
-    }
-    tokens: {
-        workspaceApiKey: string
-        workspaceUserToken: string | null
-    }
-    gitlabVariables: Record<string, string>
-    server: {
-        baseUrl: string
-        storageDriver: string
-        dataRoot: string
-        sqlitePath: string | null
-        requireWorkspaceAuth: boolean
-    }
-    notes: string[]
-}
-
 try {
     const options = parseCliOptions(process.argv.slice(2))
-    const config = resolveSaasAppConfig()
-    const backendStorage = createBackendStorage(config)
-    const registry: BootstrapWorkspaceRegistry = new WorkspaceRegistry(backendStorage.registry)
-    const createdWorkspace = registry.createWorkspace({
-        name: options.name,
-        slug: options.slug,
-        apiKeyLabel: options.apiKeyLabel,
-    })
-
-    ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage, config)
-
-    const shouldCreateWorkspaceUser = config.requireWorkspaceAuth && !options.skipUser
-    const createdUser = shouldCreateWorkspaceUser
-        ? registry.createUser(createdWorkspace.workspace.slug, {
-            label: options.userLabel ?? 'GitLab dashboard viewer',
-            role: options.userRole ?? 'viewer',
-        })
-        : null
-
-    const baseUrl = normalizeBaseUrl(options.baseUrl ?? `http://127.0.0.1:${config.port}`)
-    const slug = createdWorkspace.workspace.slug
-    const dashboardUrl = `${baseUrl}/w/${encodeURIComponent(slug)}`
-    const loginUrl = `${dashboardUrl}/login`
-    const gitlabVariables = {
-        AQA_PULSE_BASE_URL: baseUrl,
-        AQA_PULSE_WORKSPACE_SLUG: slug,
-        AQA_PULSE_WORKSPACE_API_KEY: createdWorkspace.apiKey.token,
-    }
-
-    const notes = buildNotes({
-        requireWorkspaceAuth: config.requireWorkspaceAuth,
-        createdWorkspaceUser: Boolean(createdUser),
-    })
-
-    const output: BootstrapOutput = {
-        workspace: {
-            name: createdWorkspace.workspace.name,
-            slug,
-            dashboardUrl,
-            loginUrl,
-        },
-        tokens: {
-            workspaceApiKey: createdWorkspace.apiKey.token,
-            workspaceUserToken: createdUser?.user.token ?? null,
-        },
-        gitlabVariables,
-        server: {
-            baseUrl,
-            storageDriver: config.storageDriver,
-            dataRoot: config.dataRoot,
-            sqlitePath: config.sqlitePath,
-            requireWorkspaceAuth: config.requireWorkspaceAuth,
-        },
-        notes,
-    }
+    const output = bootstrapWorkspace(options)
 
     if (options.json) {
         process.stdout.write(`${JSON.stringify(output, null, 2)}\n`)
@@ -218,28 +140,7 @@ function parseCliOptions(args: string[]): CliOptions {
     }
 }
 
-function buildNotes(options: { requireWorkspaceAuth: boolean; createdWorkspaceUser: boolean }): string[] {
-    const notes = [
-        'Сохрани plaintext токены в секретное хранилище: сервер хранит только hash/preview и не сможет показать их повторно.',
-        'В GitLab CI достаточно хранить только AQA_PULSE_WORKSPACE_API_KEY: upload-скрипт сам делает exchange raw key -> ingestion JWT.',
-        'Admin token не нужен в GitLab CI: он нужен только для первичного provisioning/admin операций.',
-    ]
-
-    if (!options.requireWorkspaceAuth) {
-        notes.push('AQA_PULSE_REQUIRE_WORKSPACE_AUTH=false: dashboard read-routes открыты, workspace user token можно не создавать.')
-        return notes
-    }
-
-    if (options.createdWorkspaceUser) {
-        notes.push('Dashboard защищён: используй workspace user token только для /w/<slug>/login, а не для CI upload.')
-    } else {
-        notes.push('Dashboard защищён, но workspace user token не создан из-за --skip-user. Создай его позже через admin UI/API, если потребуется закрытый доступ.')
-    }
-
-    return notes
-}
-
-function printHumanReadableOutput(output: BootstrapOutput): void {
+function printHumanReadableOutput(output: BootstrapWorkspaceOutput): void {
     console.log('AQA Pulse workspace bootstrap завершён.')
     console.log('')
     console.log('Workspace:')
@@ -290,10 +191,6 @@ function printHelp(): void {
     console.log('  --user-role <viewer|owner>   Роль workspace user token')
     console.log('  --skip-user                  Не создавать workspace user token')
     console.log('  --json                       Печатать результат в JSON')
-}
-
-function normalizeBaseUrl(value: string): string {
-    return value.trim().replace(/\/+$/, '')
 }
 
 function pickOptionalText(value: string | undefined): string | null {

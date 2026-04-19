@@ -8,7 +8,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { loadReporterReport } from '../dashboard-utils'
 import { getErrorMessage } from '../shared/error-utils'
-import { createSaasApp } from './app'
+import { createSaasApp } from './index'
 import { type AdminAuditPage, type AdminAuditRecord, type AdminIngestionHealthReport, type ServerSettingsRecord, type WorkspaceDescriptor, type WorkspaceProvisioningResult, type WorkspaceShareLinkProvisioningResult, type WorkspaceUpdateResult, type WorkspaceUserProvisioningResult } from './contracts'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 

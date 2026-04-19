@@ -39,7 +39,9 @@ const SMART_WAIT_METHODS = new Set(['waitForSelector', 'waitForResponse', 'waitF
 const PAGE_ACTION_METHODS = new Set(['click', 'dblclick', 'tap', 'fill', 'press', 'check', 'uncheck', 'selectOption', 'goto', 'reload', 'setInputFiles', 'dragTo', 'hover'])
 const SHARED_MUTATION_METHODS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'set', 'add', 'delete', 'clear'])
 
-void main()
+if (require.main === module) {
+    void main()
+}
 
 async function main(): Promise<void> {
     try {

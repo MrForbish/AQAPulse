@@ -2,15 +2,10 @@
  * Назначение: поднимает HTTP-приложение с интерфейсом, JSON API,
  * аутентификацией и маршрутами для загрузки отчётов.
  */
-import * as path from 'node:path'
-import express, { type Request, type Response } from 'express'
+import express from 'express'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
+import { configureAppHttpRuntime } from './infrastructure/app-http-runtime'
 import { createAppRuntimeContext, type SaasServiceMode } from './infrastructure/app-runtime'
-import {
-    registerAdminRoutes,
-    registerCommonHttpErrorHandlers,
-    registerRuntimeRoutes,
-} from './infrastructure/http'
 
 /**
  * Собирает единое Express-приложение для admin- и workspace-сценариев:
@@ -32,33 +27,8 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
     const app = express()
     const config = resolveSaasAppConfig(options)
     const runtimeContext = createAppRuntimeContext(config, mode)
-    const distPath = runtimeContext.staticPaths.distPath
-    const distAssetsPath = runtimeContext.staticPaths.distAssetsPath
-    const frontendDistPath = runtimeContext.staticPaths.frontendDistPath
 
-    app.use(express.json({ limit: config.requestBodyLimit }))
-    app.use(express.urlencoded({ extended: true, limit: config.requestBodyLimit }))
-    app.use('/assets', express.static(distAssetsPath))
-    app.use('/ui-assets', express.static(frontendDistPath))
-    app.use('/static', express.static(distPath))
-    app.use('/w/:slug/assets', express.static(distAssetsPath))
-
-    app.get('/api/health', (_request: Request, response: Response) => {
-        response.json({ status: 'ok', service: mode })
-    })
-
-    if (runtimeContext.adminRoutesContext) {
-        registerAdminRoutes(app, runtimeContext.adminRoutesContext)
-    }
-
-    if (runtimeContext.runtimeRoutesContext) {
-        registerRuntimeRoutes(app, runtimeContext.runtimeRoutesContext)
-    }
-
-    registerCommonHttpErrorHandlers(app)
+    configureAppHttpRuntime(app, runtimeContext, mode)
 
     return app
 }
-
-
-

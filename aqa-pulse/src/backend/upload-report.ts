@@ -38,7 +38,9 @@ interface ExchangeApiKeyResponse {
     error?: string
 }
 
-void main()
+if (require.main === module) {
+    void main()
+}
 
 async function main(): Promise<void> {
     try {

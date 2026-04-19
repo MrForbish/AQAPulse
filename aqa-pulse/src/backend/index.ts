@@ -116,12 +116,21 @@ export {
     createWorkspaceApiKeyGuard,
     createWorkspaceResolver,
     createWorkspaceUserGuard,
+    buildCookieHeader,
+    buildExpiredCookieHeader,
     extractAccessToken,
+    getAuthClaimsFromLocals,
     getWorkspaceAuthFromLocals,
     getWorkspaceFromLocals,
+    getWorkspaceSessionCookieName,
     getWorkspaceUserAuthFromLocals,
+    issueJwtToken,
     requireWorkspaceFromLocals,
-} from './auth'
+    verifyJwtToken,
+    type AuthKind,
+    type AuthScope,
+    type AuthTokenClaims,
+} from './infrastructure/security'
 export { resolveSaasAppConfig, type SaasAppConfig } from './config'
 export * as domain from './domain'
 export { ingestReporterRun } from './run-ingestion.service'

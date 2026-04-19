@@ -106,10 +106,22 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(distRoot, 'backend', 'app.js')
     const compiledAppRuntimePath = path.resolve(distRoot, 'backend', 'infrastructure', 'app-runtime.js')
     const compiledRuntimeRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-routes.js')
+    const compiledRuntimeShellRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-shell-routes.js')
+    const compiledRuntimePublicShellRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-public-shell-routes.js')
+    const compiledRuntimeWorkspaceShellRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-workspace-shell-routes.js')
+    const compiledRuntimeDataRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-data-routes.js')
+    const compiledRuntimePublicDataRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-public-data-routes.js')
+    const compiledRuntimeWorkspaceDataRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-workspace-data-routes.js')
     const compiledFrontendShellPath = path.resolve(distRoot, 'backend', 'frontend-shell.js')
     const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
     const compiledAppRuntime = fs.readFileSync(compiledAppRuntimePath, 'utf8')
     const compiledRuntimeRoutes = fs.readFileSync(compiledRuntimeRoutesPath, 'utf8')
+    const compiledRuntimeShellRoutes = fs.readFileSync(compiledRuntimeShellRoutesPath, 'utf8')
+    const compiledRuntimePublicShellRoutes = fs.readFileSync(compiledRuntimePublicShellRoutesPath, 'utf8')
+    const compiledRuntimeWorkspaceShellRoutes = fs.readFileSync(compiledRuntimeWorkspaceShellRoutesPath, 'utf8')
+    const compiledRuntimeDataRoutes = fs.readFileSync(compiledRuntimeDataRoutesPath, 'utf8')
+    const compiledRuntimePublicDataRoutes = fs.readFileSync(compiledRuntimePublicDataRoutesPath, 'utf8')
+    const compiledRuntimeWorkspaceDataRoutes = fs.readFileSync(compiledRuntimeWorkspaceDataRoutesPath, 'utf8')
     const compiledFrontendShell = fs.readFileSync(compiledFrontendShellPath, 'utf8')
 
     assertIncludes(
@@ -144,28 +156,83 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
     )
     assertIncludes(
         compiledRuntimeRoutes,
-        'frontendShell.send(response, {',
+        'registerRuntimeShellRoutes',
         compiledRuntimeRoutesPath,
     )
     assertIncludes(
         compiledRuntimeRoutes,
+        'registerRuntimeDataRoutes',
+        compiledRuntimeRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeRoutes,
+        'registerRuntimeAuthApiRoutes',
+        compiledRuntimeRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeShellRoutes,
+        'registerRuntimePublicShellRoutes',
+        compiledRuntimeShellRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeShellRoutes,
+        'registerRuntimeWorkspaceShellRoutes',
+        compiledRuntimeShellRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimePublicShellRoutes,
+        "app.get('/test/:name', (request, response) => {",
+        compiledRuntimePublicShellRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimePublicShellRoutes,
+        "route: { kind: 'dashboard', workspaceSlug: null },",
+        compiledRuntimePublicShellRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeWorkspaceShellRoutes,
+        "app.get('/s/:shareId', (request, response) => {",
+        compiledRuntimeWorkspaceShellRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeWorkspaceShellRoutes,
         "route: { kind: 'dashboard', workspaceSlug: workspace.slug },",
-        compiledRuntimeRoutesPath,
+        compiledRuntimeWorkspaceShellRoutesPath,
     )
     assertIncludes(
-        compiledRuntimeRoutes,
+        compiledRuntimeWorkspaceShellRoutes,
         "route: { kind: 'test-history', workspaceSlug: workspace.slug, testName },",
-        compiledRuntimeRoutesPath,
+        compiledRuntimeWorkspaceShellRoutesPath,
     )
     assertIncludes(
-        compiledRuntimeRoutes,
-        'initialTestHistoryPayload: result.payload,',
-        compiledRuntimeRoutesPath,
-    )
-    assertIncludes(
-        compiledRuntimeRoutes,
+        compiledRuntimeWorkspaceShellRoutes,
         'readWorkspaceBootstrapSession',
-        compiledRuntimeRoutesPath,
+        compiledRuntimeWorkspaceShellRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeDataRoutes,
+        'registerRuntimePublicDataRoutes',
+        compiledRuntimeDataRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeDataRoutes,
+        'registerRuntimeWorkspaceDataRoutes',
+        compiledRuntimeDataRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimePublicDataRoutes,
+        "app.get('/api/test/:name', (request, response) => {",
+        compiledRuntimePublicDataRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeWorkspaceDataRoutes,
+        'invalidateWorkspaceApiStore(workspace.slug);',
+        compiledRuntimeWorkspaceDataRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeWorkspaceDataRoutes,
+        "app.get('/api/workspaces/:slug/test/:name', workspaceResolver, workspaceApiGuard, (request, response) => {",
+        compiledRuntimeWorkspaceDataRoutesPath,
     )
     assertIncludes(
         compiledFrontendShell,

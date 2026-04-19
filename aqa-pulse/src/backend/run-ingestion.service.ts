@@ -16,7 +16,7 @@ import {
     buildHistoryEntryId,
 } from '../history-utils'
 import type { IngestionResult, WorkspaceDescriptor } from './contracts'
-import type { WorkspaceRunStorage } from './storage'
+import type { WorkspaceRunStorage } from './infrastructure/persistence'
 
 export function ingestReporterRun(options: {
     workspace: WorkspaceDescriptor

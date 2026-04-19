@@ -1,10 +1,10 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { isWorkspaceReadSessionKind } from '../../domain/session-rules'
-import type { WorkspaceApiAuthResult, WorkspaceDescriptor, WorkspaceUserAuthResult } from '../../contracts'
+import type { WorkspaceApiAuthResult, WorkspaceApiKeyRecord, WorkspaceDescriptor, WorkspaceUserAuthResult, WorkspaceUserRecord } from '../../contracts'
 import type { SaasAppConfig } from '../../config'
+import type { SecurityWorkspaceRegistry } from '../persistence'
 import type { AuthTokenClaims } from './jwt'
 import { verifyJwtToken } from './jwt'
-import { WorkspaceRegistry } from '../persistence/workspace-registry'
 
 interface AqaPulseLocals {
     aqaPulseWorkspace?: WorkspaceDescriptor
@@ -19,7 +19,7 @@ interface GuardOptions {
     unauthorizedResponseMode?: UnauthorizedResponseMode
 }
 
-export function createAdminGuard(registry: WorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
+export function createAdminGuard(registry: SecurityWorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
     const unauthorizedResponseMode = options.unauthorizedResponseMode ?? 'json'
 
     return (request: Request, response: Response, next: NextFunction) => {
@@ -57,7 +57,7 @@ export function createAdminGuard(registry: WorkspaceRegistry, config: SaasAppCon
     }
 }
 
-export function createWorkspaceResolver(registry: WorkspaceRegistry): RequestHandler {
+export function createWorkspaceResolver(registry: SecurityWorkspaceRegistry): RequestHandler {
     return (request: Request, response: Response, next: NextFunction) => {
         const slug = getRouteParam(request, 'slug')
         const workspace = registry.getWorkspace(slug)
@@ -72,7 +72,7 @@ export function createWorkspaceResolver(registry: WorkspaceRegistry): RequestHan
     }
 }
 
-export function createWorkspaceApiKeyGuard(registry: WorkspaceRegistry, config: SaasAppConfig): RequestHandler {
+export function createWorkspaceApiKeyGuard(registry: SecurityWorkspaceRegistry, config: SaasAppConfig): RequestHandler {
     return (request: Request, response: Response, next: NextFunction) => {
         const workspace = getWorkspaceFromLocals(response)
 
@@ -106,7 +106,7 @@ export function createWorkspaceApiKeyGuard(registry: WorkspaceRegistry, config: 
         }
 
         const workspaceRecord = registry.getWorkspaceRecord(workspace.slug)
-        const apiKey = workspaceRecord?.apiKeys.find((item) => item.id === claims.sub && !item.disabledAt)
+        const apiKey = workspaceRecord?.apiKeys.find((item: WorkspaceApiKeyRecord) => item.id === claims.sub && !item.disabledAt)
 
         if (!workspaceRecord || !apiKey) {
             response.status(401).json({ error: 'Ключ загрузки больше не активен.' })
@@ -120,7 +120,7 @@ export function createWorkspaceApiKeyGuard(registry: WorkspaceRegistry, config: 
     }
 }
 
-export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
+export function createWorkspaceUserGuard(registry: SecurityWorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
     const unauthorizedResponseMode = options.unauthorizedResponseMode ?? 'json'
 
     return (request: Request, response: Response, next: NextFunction) => {
@@ -193,7 +193,7 @@ export function createWorkspaceUserGuard(registry: WorkspaceRegistry, config: Sa
         }
 
         const workspaceRecord = registry.getWorkspaceRecord(workspace.slug)
-        const user = workspaceRecord?.users.find((item) => item.id === claims.sub && !item.disabledAt)
+        const user = workspaceRecord?.users.find((item: WorkspaceUserRecord) => item.id === claims.sub && !item.disabledAt)
 
         if (!workspaceRecord || !user) {
             handleUnauthorized(response, {

@@ -1,8 +1,6 @@
-import { applyBusinessAssumptionsToSummary, buildDashboardSummary } from '../dashboard-utils'
-import { createEmptyHistory } from '../history-utils'
+import { ensureWorkspaceReadModelInitialized } from './application/admin'
 import { resolveSaasAppConfig } from './config'
-import { createBackendStorage, type BackendStorage } from './storage'
-import { WorkspaceRegistry } from './workspace-registry'
+import { createBackendStorage, type BackendStorage, type BootstrapWorkspaceRegistry, WorkspaceRegistry } from './infrastructure/persistence'
 
 interface CliOptions {
     name: string
@@ -41,14 +39,14 @@ try {
     const options = parseCliOptions(process.argv.slice(2))
     const config = resolveSaasAppConfig()
     const backendStorage = createBackendStorage(config)
-    const registry = new WorkspaceRegistry(backendStorage.registry)
+    const registry: BootstrapWorkspaceRegistry = new WorkspaceRegistry(backendStorage.registry)
     const createdWorkspace = registry.createWorkspace({
         name: options.name,
         slug: options.slug,
         apiKeyLabel: options.apiKeyLabel,
     })
 
-    initializeWorkspaceReadModel(createdWorkspace.workspace.slug, backendStorage, config)
+    ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage, config)
 
     const shouldCreateWorkspaceUser = config.requireWorkspaceAuth && !options.skipUser
     const createdUser = shouldCreateWorkspaceUser
@@ -213,33 +211,6 @@ function parseCliOptions(args: string[]): CliOptions {
         baseUrl: pickOptionalText(options.baseUrl) ?? undefined,
         apiKeyLabel: pickOptionalText(options.apiKeyLabel) ?? undefined,
         userLabel: pickOptionalText(options.userLabel) ?? undefined,
-    }
-}
-
-function initializeWorkspaceReadModel(slug: string, backendStorage: BackendStorage, config: ReturnType<typeof resolveSaasAppConfig>): void {
-    const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
-    const history = workspaceStorage.readHistory()
-    const normalizedHistory = Array.isArray(history.runs) ? history : createEmptyHistory()
-
-    if (!Array.isArray(history.runs)) {
-        workspaceStorage.writeHistory(normalizedHistory)
-    }
-
-    try {
-        workspaceStorage.readSummary()
-    } catch {
-        workspaceStorage.writeSummary(applyBusinessAssumptionsToSummary(buildDashboardSummary(
-            {
-                tests: [],
-                durationMs: 0,
-                environment: {
-                    projects: [],
-                },
-            },
-            `workspace://${slug}/initial-empty-summary`,
-            normalizedHistory.runs,
-            { branch: null, commit: null, author: null },
-        ), config.businessAssumptions))
     }
 }
 

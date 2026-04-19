@@ -2,14 +2,14 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadReporterReport } from '../dashboard-utils'
 import { resolveSaasAppConfig } from './config'
+import type { BootstrapWorkspaceRegistry } from './infrastructure/persistence'
+import { createBackendStorage, WorkspaceRegistry } from './infrastructure/persistence'
 import { ingestReporterRun } from './run-ingestion.service'
-import { createBackendStorage } from './storage'
-import { WorkspaceRegistry } from './workspace-registry'
 
 const config = resolveSaasAppConfig()
 const fixturePath = resolveDemoFixturePath()
 const backendStorage = createBackendStorage(config)
-const registry = new WorkspaceRegistry(backendStorage.registry)
+const registry: BootstrapWorkspaceRegistry = new WorkspaceRegistry(backendStorage.registry)
 
 try {
     const existingWorkspace = registry.getWorkspace('demo')

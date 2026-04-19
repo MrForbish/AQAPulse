@@ -141,8 +141,8 @@ export {
     type DashboardStoragePaths,
     type WorkspaceRegistryStorage,
     type WorkspaceRunStorage,
-} from './storage'
-export { WorkspaceRegistry } from './workspace-registry'
+} from './infrastructure/persistence'
+export { WorkspaceRegistry } from './infrastructure/persistence'
 export {
     getDevDataRoot,
     getWorkspacePaths,

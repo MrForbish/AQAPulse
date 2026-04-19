@@ -3,25 +3,13 @@
  */
 import * as path from 'node:path'
 import express, { type Request, type Response } from 'express'
-import { ApiStore } from '../api-store'
-import {
-    createAdminGuard,
-    createWorkspaceApiKeyGuard,
-    createWorkspaceResolver,
-    createWorkspaceUserGuard,
-} from './infrastructure/security'
-import { ensureWorkspaceReadModelInitialized as initializeWorkspaceReadModel } from './application/admin'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
-import { createFrontendShellRenderer } from './frontend-shell'
+import { createAppRuntimeContext, type SaasServiceMode } from './infrastructure/app-runtime'
 import {
     registerAdminRoutes,
     registerCommonHttpErrorHandlers,
     registerRuntimeRoutes,
 } from './infrastructure/http'
-import { createBackendStorage, WorkspaceRegistry } from './infrastructure/persistence'
-import { applyServerSettingsToConfig, buildServerSettingsDefaults } from './infrastructure/server-settings'
-
-type SaasServiceMode = 'all' | 'admin' | 'runtime'
 
 /**
  * Собирает единый Express app для admin/workspace сценариев: React shell отдаётся из одного места, а bootstrap/session данные заполняются на основе текущего запроса.
@@ -41,62 +29,10 @@ export function createRuntimeApp(options: Partial<SaasAppConfig> = {}): express.
 function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServiceMode): express.Express {
     const app = express()
     const config = resolveSaasAppConfig(options)
-    const backendStorage = createBackendStorage(config)
-    const registry = new WorkspaceRegistry(backendStorage.registry)
-    applyServerSettingsToConfig(config, registry.getServerSettings(buildServerSettingsDefaults(config)))
-    const adminShellGuard = createAdminGuard(registry, config, { unauthorizedResponseMode: 'redirect' })
-    const adminApiGuard = createAdminGuard(registry, config, { unauthorizedResponseMode: 'json' })
-    const workspaceResolver = createWorkspaceResolver(registry)
-    const workspaceApiKeyGuard = createWorkspaceApiKeyGuard(registry, config)
-    const workspaceShellGuard = createWorkspaceUserGuard(registry, config, { unauthorizedResponseMode: 'redirect' })
-    const workspaceApiGuard = createWorkspaceUserGuard(registry, config, { unauthorizedResponseMode: 'json' })
-    let defaultApiStore: ApiStore | null = null
-    const workspaceApiStores = new Map<string, ApiStore>()
-    const createDefaultApiStore = () => {
-        if (!defaultApiStore) {
-            defaultApiStore = new ApiStore({
-                storage: backendStorage.createDashboardReadStorage({
-                    summaryPath: path.join(config.distPath, 'dashboard-data.json'),
-                    historyPath: path.join(config.distPath, 'history.json'),
-                    archiveRootPath: config.archiveRootPath,
-                }),
-                businessAssumptions: config.businessAssumptions,
-            })
-        }
-
-        return defaultApiStore
-    }
-    const invalidateDefaultApiStore = () => {
-        defaultApiStore?.invalidateCaches()
-        defaultApiStore = null
-    }
-    const createWorkspaceApiStore = (slug: string) => {
-        initializeWorkspaceReadModel(slug, backendStorage, config)
-
-        const cachedStore = workspaceApiStores.get(slug)
-
-        if (cachedStore) {
-            return cachedStore
-        }
-
-        const store = new ApiStore({
-            storage: backendStorage.getWorkspaceStorage(slug),
-            businessAssumptions: config.businessAssumptions,
-        })
-
-        workspaceApiStores.set(slug, store)
-        return store
-    }
-    const invalidateWorkspaceApiStore = (slug: string) => {
-        const store = workspaceApiStores.get(slug)
-
-        store?.invalidateCaches()
-        workspaceApiStores.delete(slug)
-    }
-    const distPath = config.distPath
-    const distAssetsPath = path.resolve(distPath, './assets')
-    const frontendDistPath = path.resolve(distPath, './web')
-    const frontendShell = createFrontendShellRenderer(frontendDistPath)
+    const runtimeContext = createAppRuntimeContext(config, mode)
+    const distPath = runtimeContext.staticPaths.distPath
+    const distAssetsPath = runtimeContext.staticPaths.distAssetsPath
+    const frontendDistPath = runtimeContext.staticPaths.frontendDistPath
 
     app.use(express.json({ limit: config.requestBodyLimit }))
     app.use(express.urlencoded({ extended: true, limit: config.requestBodyLimit }))
@@ -109,35 +45,12 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         response.json({ status: 'ok', service: mode })
     })
 
-    if (mode !== 'runtime') {
-        registerAdminRoutes(app, {
-            config,
-            registry,
-            backendStorage,
-            frontendShell,
-            adminShellGuard,
-            adminApiGuard,
-            workspaceResolver,
-            invalidateWorkspaceApiStore,
-            redirectRootToAdmin: mode === 'admin',
-        })
+    if (runtimeContext.adminRoutesContext) {
+        registerAdminRoutes(app, runtimeContext.adminRoutesContext)
     }
 
-    if (mode !== 'admin') {
-        registerRuntimeRoutes(app, {
-            config,
-            registry,
-            backendStorage,
-            frontendShell,
-            workspaceResolver,
-            workspaceApiKeyGuard,
-            workspaceShellGuard,
-            workspaceApiGuard,
-            createDefaultApiStore,
-            createWorkspaceApiStore,
-            invalidateDefaultApiStore,
-            invalidateWorkspaceApiStore,
-        })
+    if (runtimeContext.runtimeRoutesContext) {
+        registerRuntimeRoutes(app, runtimeContext.runtimeRoutesContext)
     }
 
     registerCommonHttpErrorHandlers(app)

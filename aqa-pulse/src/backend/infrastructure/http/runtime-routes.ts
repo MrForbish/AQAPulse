@@ -22,8 +22,7 @@ import type { SaasAppConfig } from '../../config'
 import type { FrontendShellRenderer } from '../../frontend-shell'
 import { buildCookieHeader, buildExpiredCookieHeader } from '../security'
 import { ingestReporterRun } from '../../run-ingestion.service'
-import type { BackendStorage } from '../persistence'
-import { WorkspaceRegistry } from '../persistence'
+import type { BackendStorage, RuntimeHttpWorkspaceRegistry } from '../persistence'
 import { sendArtifactFile } from './artifact-file-response'
 import { readCookieValue } from './cookies'
 import { buildFrontendServiceUrls, readWorkspaceBootstrapSession } from './frontend-bootstrap'
@@ -33,7 +32,7 @@ import { sendUnknownWorkspaceShareLinkErrorHtml, sendWorkspaceShareLinkErrorShel
 
 export interface RuntimeRoutesContext {
     config: SaasAppConfig
-    registry: WorkspaceRegistry
+    registry: RuntimeHttpWorkspaceRegistry
     backendStorage: BackendStorage
     frontendShell: FrontendShellRenderer
     workspaceResolver: RequestHandler

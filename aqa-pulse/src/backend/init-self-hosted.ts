@@ -4,7 +4,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { resolveSaasAppConfig } from './config'
-import { createBackendStorage } from './storage'
+import { createBackendStorage } from './infrastructure/persistence'
 
 const config = resolveSaasAppConfig()
 const backendStorage = createBackendStorage(config)

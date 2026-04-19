@@ -28,8 +28,7 @@ import type { SaasAppConfig } from '../../config'
 import { normalizeShareLinkTtlMinutes } from '../../domain/share-link-rules'
 import type { FrontendShellRenderer } from '../../frontend-shell'
 import { buildCookieHeader, buildExpiredCookieHeader } from '../security'
-import type { BackendStorage } from '../persistence'
-import { WorkspaceRegistry } from '../persistence'
+import type { AdminHttpWorkspaceRegistry, BackendStorage } from '../persistence'
 import { buildServerSettingsDefaults, applyServerSettingsToConfig } from '../server-settings'
 import { resolveAdminActor } from './admin-actor'
 import { ensureDevBootstrapEnabled } from './dev-bootstrap-middleware'
@@ -40,7 +39,7 @@ import { readCookieValue } from './cookies'
 
 export interface AdminRoutesContext {
     config: SaasAppConfig
-    registry: WorkspaceRegistry
+    registry: AdminHttpWorkspaceRegistry
     backendStorage: BackendStorage
     frontendShell: FrontendShellRenderer
     adminShellGuard: RequestHandler

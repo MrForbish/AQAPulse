@@ -1,8 +1,8 @@
 import type { Response } from 'express'
 import { getAuthClaimsFromLocals } from '../security'
-import { WorkspaceRegistry } from '../persistence'
+import type { AdminActorRegistry } from '../persistence'
 
-export function resolveAdminActor(response: Response, registry: WorkspaceRegistry): { label: string; sessionId: string | null } {
+export function resolveAdminActor(response: Response, registry: AdminActorRegistry): { label: string; sessionId: string | null } {
     const claims = getAuthClaimsFromLocals(response)
 
     if (claims?.kind === 'admin' && claims.scope === 'admin') {

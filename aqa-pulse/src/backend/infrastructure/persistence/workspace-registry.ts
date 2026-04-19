@@ -27,7 +27,8 @@ import type {
 	WorkspaceUserRecord,
 	WorkspaceUserRoleUpdateResult,
 } from '../../contracts'
-import { FileSystemWorkspaceRegistryStorage, type WorkspaceRegistryStorage } from './storage'
+import { FileSystemWorkspaceRegistryStorage } from './file-system-storage'
+import type { WorkspaceRegistryStorage } from './storage-contracts'
 import {
 	buildAdminAuditPage,
 	buildAdminAuditRecord,

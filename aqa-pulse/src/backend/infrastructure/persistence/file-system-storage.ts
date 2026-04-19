@@ -25,7 +25,7 @@ import type {
     DashboardStoragePaths,
     WorkspaceRegistryStorage,
     WorkspaceRunStorage,
-} from './storage'
+} from './storage-contracts'
 import {
     getDefaultRegistryPath,
     getRegistryPathForDataRoot,

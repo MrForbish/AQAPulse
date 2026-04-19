@@ -10,7 +10,7 @@ import {
     type ArchivedRunRecord,
     type DashboardHistory,
 } from '../history-utils'
-import type { DashboardReadStorage } from './storage'
+import type { DashboardReadStorage } from './infrastructure/persistence/storage-contracts'
 
 export interface FileBackedDashboardReadStoragePaths {
     summaryPath: string

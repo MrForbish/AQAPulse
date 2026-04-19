@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import type { ReporterRoot } from '../../../dashboard-utils'
 import type { WorkspaceRegistrySnapshot } from '../../contracts'
 import { getWorkspaceRegistryPathFromDataRoot, resolveWorkspaceDataRoot } from '../../workspace-paths'
-import type { DashboardStoragePaths } from './storage'
+import type { DashboardStoragePaths } from './storage-contracts'
 
 const REGISTRY_SCHEMA_VERSION = 2
 

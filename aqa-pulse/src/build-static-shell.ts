@@ -4,7 +4,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { ApiStore, type TestHistoryResponse } from './api-store'
-import { type FileSystemDashboardReadStorage, FileSystemDashboardReadStorage as DashboardReadStorage } from './backend/storage'
+import { type FileSystemDashboardReadStorage, FileSystemDashboardReadStorage as DashboardReadStorage } from './backend/infrastructure/persistence'
 import { readDashboardSummary, writeTextFile } from './dashboard-utils'
 import { injectFrontendBootstrap } from './frontend-bootstrap'
 

@@ -20,7 +20,7 @@ import {
     type DashboardHistory,
     type DashboardHistoryEntry,
 } from './history-utils'
-import { type DashboardReadStorage, FileSystemDashboardReadStorage } from './backend/storage'
+import { type DashboardReadStorage, FileSystemDashboardReadStorage } from './backend/infrastructure/persistence'
 
 export interface ApiStoreOptions {
     summaryPath?: string

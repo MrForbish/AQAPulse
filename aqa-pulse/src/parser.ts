@@ -7,7 +7,7 @@ import {
     readDashboardSummary,
 } from './dashboard-utils'
 import { ingestReporterRun } from './backend/run-ingestion.service'
-import { FileSystemBackendStorage } from './backend/storage'
+import { FileSystemBackendStorage } from './backend/infrastructure/persistence'
 import { resolveWorkspaceDataRoot } from './backend/workspace-paths'
 
 const parsedCliArgs = parseCliArgs(process.argv.slice(2))

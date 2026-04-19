@@ -11,7 +11,7 @@ import {
 } from '../history-utils'
 import { FileBackedDashboardReadStorage, type FileBackedDashboardReadStoragePaths } from './file-backed-dashboard-read-storage'
 import type { WorkspacePaths, WorkspaceRegistrySnapshot } from './contracts'
-import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './storage'
+import type { DashboardReadStorage, WorkspaceRegistryStorage, WorkspaceRunStorage } from './infrastructure/persistence/storage-contracts'
 import { getWorkspacePathsFromDataRoot, resolveWorkspaceDataRoot } from './workspace-paths'
 
 const REGISTRY_SCHEMA_VERSION = 2

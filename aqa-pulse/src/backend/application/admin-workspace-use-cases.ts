@@ -9,6 +9,7 @@ import type {
     WorkspaceUserRole,
     WorkspaceUserRoleUpdateResult,
 } from '../contracts'
+import { normalizeWorkspaceUserRole, requireNonEmptyText } from '../domain/workspace-rules'
 
 export interface AdminActorContext {
     label: string
@@ -89,7 +90,7 @@ export function createWorkspaceCommand(
     runtime: Pick<AdminWorkspaceCommandRuntime, 'ensureWorkspaceReadModelInitialized'>,
     input: { name: string | null; slug?: string | null; apiKeyLabel?: string | null; actor?: AdminActorContext | null },
 ): WorkspaceProvisioningResult {
-    const name = requireNonEmptyValue(input.name, 'Поле "name" обязательно.')
+    const name = requireNonEmptyText(input.name, 'Поле "name" обязательно.')
     const createdWorkspace = registry.createWorkspace({
         name,
         slug: input.slug ?? undefined,
@@ -143,7 +144,7 @@ export function updateWorkspaceCommand(
     runtime: Pick<AdminWorkspaceCommandRuntime, 'renameWorkspaceData' | 'invalidateWorkspaceApiStore' | 'ensureWorkspaceReadModelInitialized'>,
     input: { workspaceSlug: string; name: string | null; nextSlug?: string | null; actor?: AdminActorContext | null },
 ): WorkspaceUpdateResult {
-    const name = requireNonEmptyValue(input.name, 'Поле "name" обязательно.')
+    const name = requireNonEmptyText(input.name, 'Поле "name" обязательно.')
     const updatedWorkspace = registry.updateWorkspace(input.workspaceSlug, {
         name,
         slug: input.nextSlug ?? input.workspaceSlug,
@@ -220,10 +221,10 @@ export function createWorkspaceUserCommand(
     registry: AdminWorkspaceRegistryPort,
     input: { workspaceSlug: string; label: string | null; role?: WorkspaceUserRole; actor?: AdminActorContext | null },
 ): WorkspaceUserProvisioningResult {
-    const label = requireNonEmptyValue(input.label, 'Поле "label" обязательно.')
+    const label = requireNonEmptyText(input.label, 'Поле "label" обязательно.')
     const createdUser = registry.createUser(input.workspaceSlug, {
         label,
-        role: input.role === 'owner' ? 'owner' : 'viewer',
+        role: normalizeWorkspaceUserRole(input.role),
     })
 
     recordAdminAuditIfNeeded(registry, input.actor, {
@@ -294,7 +295,7 @@ export function updateWorkspaceUserRoleCommand(
     registry: AdminWorkspaceRegistryPort,
     input: { workspaceSlug: string; userId: string; role?: WorkspaceUserRole; actor?: AdminActorContext | null },
 ): WorkspaceUserRoleUpdateResult {
-    const result = registry.updateUserRole(input.workspaceSlug, input.userId, input.role === 'owner' ? 'owner' : 'viewer')
+    const result = registry.updateUserRole(input.workspaceSlug, input.userId, normalizeWorkspaceUserRole(input.role))
     recordAdminAuditIfNeeded(registry, input.actor, {
         action: 'workspace-user-role-updated',
         workspaceSlug: input.workspaceSlug,
@@ -432,14 +433,6 @@ export function updateServerSettingsCommand(
     })
 
     return { settings }
-}
-
-function requireNonEmptyValue(value: string | null | undefined, errorMessage: string): string {
-    if (!value) {
-        throw new Error(errorMessage)
-    }
-
-    return value
 }
 
 function recordAdminAuditIfNeeded(

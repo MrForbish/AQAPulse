@@ -16,14 +16,14 @@ import {
     queryDashboardSummary,
     queryTestHistoryForApi,
     queryTestHistoryForShell,
-} from '../../application'
-import { getWorkspaceSessionCookieName, requireWorkspaceFromLocals } from '../../auth'
+} from '../../application/runtime'
+import { getWorkspaceSessionCookieName, requireWorkspaceFromLocals } from '../security'
 import type { SaasAppConfig } from '../../config'
 import type { FrontendShellRenderer } from '../../frontend-shell'
-import { buildCookieHeader, buildExpiredCookieHeader } from '../../jwt'
+import { buildCookieHeader, buildExpiredCookieHeader } from '../security'
 import { ingestReporterRun } from '../../run-ingestion.service'
-import type { BackendStorage } from '../../storage'
-import { WorkspaceRegistry } from '../../workspace-registry'
+import type { BackendStorage } from '../persistence'
+import { WorkspaceRegistry } from '../persistence'
 import { sendArtifactFile } from './artifact-file-response'
 import { readCookieValue } from './cookies'
 import { buildFrontendServiceUrls, readWorkspaceBootstrapSession } from './frontend-bootstrap'

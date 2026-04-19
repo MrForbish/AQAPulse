@@ -1,4 +1,5 @@
 import type { FrontendSessionStatus } from '../../frontend-bootstrap'
+import { buildSessionExpiresAt, isWorkspaceReadSessionKind } from '../domain/session-rules'
 import type { WorkspaceDescriptor, WorkspaceSessionKind, WorkspaceUserRole } from '../contracts'
 import { issueJwtToken, verifyJwtToken } from '../jwt'
 
@@ -86,7 +87,7 @@ export function loginAdmin(
         return { ok: false, statusCode: 401, error: 'Неверный admin token.' }
     }
 
-    const adminSession = registry.createAdminSession(new Date(Date.now() + config.accessTokenTtlSeconds * 1000).toISOString())
+    const adminSession = registry.createAdminSession(buildSessionExpiresAt(config.accessTokenTtlSeconds))
     const issuedToken = issueJwtToken({
         subject: 'admin',
         kind: 'admin',
@@ -163,7 +164,7 @@ export function loginWorkspaceUser(
         label: authResult.user.label,
         scope: 'workspace:read',
         role: authResult.user.role,
-        expiresAt: new Date(Date.now() + config.accessTokenTtlSeconds * 1000).toISOString(),
+        expiresAt: buildSessionExpiresAt(config.accessTokenTtlSeconds),
     })
     const issuedToken = issueJwtToken({
         subject: authResult.user.id,
@@ -210,7 +211,7 @@ export function loginWorkspaceApiKey(
         subjectId: authResult.apiKey.id,
         label: authResult.apiKey.label,
         scope: 'workspace:ingest',
-        expiresAt: new Date(Date.now() + config.accessTokenTtlSeconds * 1000).toISOString(),
+        expiresAt: buildSessionExpiresAt(config.accessTokenTtlSeconds),
     })
     const issuedToken = issueJwtToken({
         subject: authResult.apiKey.id,
@@ -297,7 +298,7 @@ export function readWorkspaceBootstrapSessionState(
 
     return {
         scope: 'workspace',
-        authenticated: (workspaceClaims?.kind === 'workspace-user' || workspaceClaims?.kind === 'workspace-share-link')
+        authenticated: isWorkspaceReadSessionKind(workspaceClaims?.kind)
             && workspaceClaims.scope === 'workspace:read'
             && workspaceClaims.workspaceSlug === workspaceSlug
             && registry.isWorkspaceSessionActive(workspaceSlug, workspaceClaims.sessionId ?? '', workspaceClaims.kind),

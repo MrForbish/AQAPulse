@@ -9,8 +9,8 @@ import {
     createWorkspaceApiKeyGuard,
     createWorkspaceResolver,
     createWorkspaceUserGuard,
-} from './auth'
-import { ensureWorkspaceReadModelInitialized as initializeWorkspaceReadModel } from './application'
+} from './infrastructure/security'
+import { ensureWorkspaceReadModelInitialized as initializeWorkspaceReadModel } from './application/admin'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
 import { createFrontendShellRenderer } from './frontend-shell'
 import {
@@ -18,9 +18,8 @@ import {
     registerCommonHttpErrorHandlers,
     registerRuntimeRoutes,
 } from './infrastructure/http'
+import { createBackendStorage, WorkspaceRegistry } from './infrastructure/persistence'
 import { applyServerSettingsToConfig, buildServerSettingsDefaults } from './infrastructure/server-settings'
-import { createBackendStorage } from './storage'
-import { WorkspaceRegistry } from './workspace-registry'
 
 type SaasServiceMode = 'all' | 'admin' | 'runtime'
 

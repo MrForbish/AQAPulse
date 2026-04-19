@@ -1,8 +1,9 @@
 import type { Request } from 'express'
 import type { FrontendBootstrapData } from '../../../frontend-bootstrap'
 import type { AdminAuthRegistryPort, AuthSessionConfig } from '../../application/auth-session-use-cases'
-import { readAdminBootstrapSessionState, readWorkspaceBootstrapSessionState } from '../../application'
-import { extractAccessToken, getWorkspaceSessionCookieName } from '../../auth'
+import { readAdminBootstrapSessionState } from '../../application/admin'
+import { readWorkspaceBootstrapSessionState } from '../../application/runtime'
+import { extractAccessToken, getWorkspaceSessionCookieName } from '../security'
 import type { SaasAppConfig } from '../../config'
 import { readCookieValue } from './cookies'
 

@@ -1,3 +1,5 @@
+export * as admin from './admin'
+export * as runtime from './runtime'
 export {
     bootstrapWorkspaceForDev,
     createWorkspaceApiKeyCommand,

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type express from 'express'
 import type { Request, RequestHandler, Response } from 'express'
+import { normalizeWorkspaceUserRole } from '../../domain/workspace-rules'
 import { getErrorMessage } from '../../../shared/error-utils'
 import {
     bootstrapWorkspaceForDev,
@@ -21,14 +22,14 @@ import {
     updateServerSettingsCommand,
     updateWorkspaceCommand,
     updateWorkspaceUserRoleCommand,
-} from '../../application'
-import { requireWorkspaceFromLocals } from '../../auth'
+} from '../../application/admin'
+import { requireWorkspaceFromLocals } from '../security'
 import type { SaasAppConfig } from '../../config'
 import { normalizeShareLinkTtlMinutes } from '../../domain/share-link-rules'
 import type { FrontendShellRenderer } from '../../frontend-shell'
-import { buildCookieHeader, buildExpiredCookieHeader } from '../../jwt'
-import type { BackendStorage } from '../../storage'
-import { WorkspaceRegistry } from '../../workspace-registry'
+import { buildCookieHeader, buildExpiredCookieHeader } from '../security'
+import type { BackendStorage } from '../persistence'
+import { WorkspaceRegistry } from '../persistence'
 import { buildServerSettingsDefaults, applyServerSettingsToConfig } from '../server-settings'
 import { resolveAdminActor } from './admin-actor'
 import { ensureDevBootstrapEnabled } from './dev-bootstrap-middleware'
@@ -169,7 +170,7 @@ export function registerAdminRoutes(app: express.Express, context: AdminRoutesCo
             const createdUser = createWorkspaceUserCommand(registry, {
                 workspaceSlug: workspace.slug,
                 label: pickOptionalString(request.body?.label),
-                role: request.body?.role === 'owner' ? 'owner' : 'viewer',
+                role: normalizeWorkspaceUserRole(request.body?.role),
             })
 
             response.status(201).json(createdUser)
@@ -328,7 +329,7 @@ export function registerAdminRoutes(app: express.Express, context: AdminRoutesCo
                 actor: resolveAdminActor(response, registry),
                 workspaceSlug: workspace.slug,
                 label: pickOptionalString(request.body?.label),
-                role: request.body?.role === 'owner' ? 'owner' : 'viewer',
+                role: normalizeWorkspaceUserRole(request.body?.role),
             })
 
             response.status(201).json(createdUser)
@@ -365,7 +366,7 @@ export function registerAdminRoutes(app: express.Express, context: AdminRoutesCo
                 actor: resolveAdminActor(response, registry),
                 workspaceSlug: workspace.slug,
                 userId: getRouteParam(request, 'userId'),
-                role: request.body?.role === 'owner' ? 'owner' : 'viewer',
+                role: normalizeWorkspaceUserRole(request.body?.role),
             })
 
             response.json(result)

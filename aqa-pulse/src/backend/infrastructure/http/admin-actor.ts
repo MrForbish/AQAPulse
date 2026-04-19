@@ -1,6 +1,6 @@
 import type { Response } from 'express'
-import { getAuthClaimsFromLocals } from '../../auth'
-import { WorkspaceRegistry } from '../../workspace-registry'
+import { getAuthClaimsFromLocals } from '../security'
+import { WorkspaceRegistry } from '../persistence'
 
 export function resolveAdminActor(response: Response, registry: WorkspaceRegistry): { label: string; sessionId: string | null } {
     const claims = getAuthClaimsFromLocals(response)

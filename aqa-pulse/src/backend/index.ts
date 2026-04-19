@@ -36,6 +36,8 @@ export {
     writeDashboardHistory,
 } from '../history-utils'
 export { createAdminApp, createRuntimeApp, createSaasApp } from './app'
+export * as applicationAdmin from './application/admin'
+export * as applicationRuntime from './application/runtime'
 export {
     buildAdminIngestionHealthReport,
     bootstrapWorkspaceForDev,
@@ -106,6 +108,8 @@ export {
     type AdminRoutesContext,
     type RuntimeRoutesContext,
 } from './infrastructure/http'
+export * as persistence from './infrastructure/persistence'
+export * as security from './infrastructure/security'
 export { applyServerSettingsToConfig, buildServerSettingsDefaults } from './infrastructure/server-settings'
 export {
     createAdminGuard,

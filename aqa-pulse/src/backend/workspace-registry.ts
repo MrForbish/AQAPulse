@@ -1,4 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { inferShareLinkTtlMinutes, isSessionActive, shouldRefreshLastSeen } from './domain/session-rules'
+import { mergePersistedServerSettings, mergeServerSettings, normalizePersistedServerSettings } from './domain/server-settings-rules'
+import { normalizeWorkspaceSlug, normalizeWorkspaceUserRole } from './domain/workspace-rules'
 import { normalizeOptionalText } from '../shared/text-utils'
 import type {
     AdminAuditPage,
@@ -30,7 +33,6 @@ import { FileSystemWorkspaceRegistryStorage, type WorkspaceRegistryStorage } fro
 const DEFAULT_API_KEY_LABEL = 'Default ingestion key'
 const DEFAULT_WORKSPACE_USER_LABEL = 'Workspace owner'
 const DEFAULT_ADMIN_SESSION_LABEL = 'Admin session'
-const SESSION_ACTIVITY_REFRESH_MS = 60_000
 const MAX_ADMIN_AUDIT_LOG_ENTRIES = 250
 
 export class WorkspaceRegistry {
@@ -143,7 +145,7 @@ export class WorkspaceRegistry {
         const nextUser: WorkspaceUserRecord = {
             id: randomBytes(8).toString('hex'),
             label: normalizeOptionalText(input.label) ?? DEFAULT_WORKSPACE_USER_LABEL,
-            role: input.role === 'owner' ? 'owner' : 'viewer',
+            role: normalizeWorkspaceUserRole(input.role),
             tokenPreview: buildTokenPreview(token),
             tokenHash: hashToken(token),
             createdAt: now,
@@ -217,7 +219,7 @@ export class WorkspaceRegistry {
             throw new Error(`Пользователь "${userId}" не найден в workspace "${slug}".`)
         }
 
-        const nextRole = role === 'owner' ? 'owner' : 'viewer'
+        const nextRole = normalizeWorkspaceUserRole(role)
 
         if (user.role !== nextRole) {
             const now = new Date().toISOString()
@@ -699,7 +701,7 @@ function normalizeWorkspaceUserRecord(user: Partial<WorkspaceUserRecord>): Works
     return {
         id: typeof user.id === 'string' ? user.id : randomBytes(8).toString('hex'),
         label: normalizeOptionalText(user.label) ?? DEFAULT_WORKSPACE_USER_LABEL,
-        role: user.role === 'owner' ? 'owner' : 'viewer',
+        role: normalizeWorkspaceUserRole(user.role),
         tokenPreview: typeof user.tokenPreview === 'string' ? user.tokenPreview : 'aqu_***',
         tokenHash: typeof user.tokenHash === 'string' ? user.tokenHash : '',
         createdAt: typeof user.createdAt === 'string' ? user.createdAt : new Date().toISOString(),
@@ -776,68 +778,6 @@ function normalizeWorkspaceSessionRecord(session: Partial<WorkspaceSessionRecord
     }
 }
 
-function normalizePersistedServerSettings(settings: Partial<PersistedServerSettingsRecord> | null | undefined): PersistedServerSettingsRecord | null {
-    if (!settings || typeof settings !== 'object') {
-        return null
-    }
-
-    const normalizedBusinessAssumptions = settings.businessAssumptions && typeof settings.businessAssumptions === 'object'
-        ? {
-            ciMinuteCostRub: normalizeNullableNonNegativeNumber(settings.businessAssumptions.ciMinuteCostRub),
-            developerHourlyCostRub: normalizeNullableNonNegativeNumber(settings.businessAssumptions.developerHourlyCostRub),
-            analysisMinutesPerUnstable: normalizeNullableNonNegativeNumber(settings.businessAssumptions.analysisMinutesPerUnstable),
-        }
-        : null
-
-    return {
-        adminBaseUrl: normalizeOptionalText(settings.adminBaseUrl ?? null),
-        runtimeBaseUrl: normalizeOptionalText(settings.runtimeBaseUrl ?? null),
-        allowDevBootstrap: typeof settings.allowDevBootstrap === 'boolean' ? settings.allowDevBootstrap : undefined,
-        requireWorkspaceAuth: typeof settings.requireWorkspaceAuth === 'boolean' ? settings.requireWorkspaceAuth : undefined,
-        accessTokenTtlSeconds: normalizeNullablePositiveInteger(settings.accessTokenTtlSeconds),
-        adminToken: normalizeOptionalText(settings.adminToken ?? null),
-        businessAssumptions: normalizedBusinessAssumptions,
-    }
-}
-
-function mergePersistedServerSettings(
-    currentSettings: PersistedServerSettingsRecord | null,
-    input: UpdateServerSettingsInput,
-): PersistedServerSettingsRecord {
-    const normalizedCurrentSettings = normalizePersistedServerSettings(currentSettings) ?? {}
-    const normalizedInput = normalizePersistedServerSettings(input) ?? {}
-
-    return {
-        ...normalizedCurrentSettings,
-        ...normalizedInput,
-        businessAssumptions: {
-            ...(normalizedCurrentSettings.businessAssumptions ?? {}),
-            ...(normalizedInput.businessAssumptions ?? {}),
-        },
-    }
-}
-
-function mergeServerSettings(
-    persistedSettings: PersistedServerSettingsRecord | null,
-    defaults: ServerSettingsRecord,
-): ServerSettingsRecord {
-    const normalizedPersistedSettings = normalizePersistedServerSettings(persistedSettings)
-
-    return {
-        adminBaseUrl: normalizedPersistedSettings?.adminBaseUrl ?? defaults.adminBaseUrl,
-        runtimeBaseUrl: normalizedPersistedSettings?.runtimeBaseUrl ?? defaults.runtimeBaseUrl,
-        allowDevBootstrap: normalizedPersistedSettings?.allowDevBootstrap ?? defaults.allowDevBootstrap,
-        requireWorkspaceAuth: normalizedPersistedSettings?.requireWorkspaceAuth ?? defaults.requireWorkspaceAuth,
-        accessTokenTtlSeconds: normalizedPersistedSettings?.accessTokenTtlSeconds ?? defaults.accessTokenTtlSeconds,
-        adminToken: normalizedPersistedSettings?.adminToken ?? defaults.adminToken,
-        businessAssumptions: {
-            ciMinuteCostRub: normalizedPersistedSettings?.businessAssumptions?.ciMinuteCostRub ?? defaults.businessAssumptions.ciMinuteCostRub,
-            developerHourlyCostRub: normalizedPersistedSettings?.businessAssumptions?.developerHourlyCostRub ?? defaults.businessAssumptions.developerHourlyCostRub,
-            analysisMinutesPerUnstable: normalizedPersistedSettings?.businessAssumptions?.analysisMinutesPerUnstable ?? defaults.businessAssumptions.analysisMinutesPerUnstable,
-        },
-    }
-}
-
 function mapWorkspaceToDescriptor(workspace: WorkspaceRecord): WorkspaceDescriptor {
     return {
         slug: workspace.slug,
@@ -887,19 +827,6 @@ function normalizeRequiredText(value: string, fieldName: string): string {
     }
 
     return normalizedValue
-}
-
-function normalizeWorkspaceSlug(value: string): string {
-    const slug = value
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-
-    if (!slug) {
-        throw new Error('Не удалось сформировать slug workspace. Используй латиницу или цифры.')
-    }
-
-    return slug
 }
 
 function generateApiToken(): string {
@@ -979,42 +906,6 @@ function revokeAllWorkspaceSessions(workspace: WorkspaceRecord, revokedAt: strin
 
 function normalizeNullablePositiveInteger(value: number | undefined): number | undefined {
     return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
-}
-
-function normalizeNullableNonNegativeNumber(value: number | null | undefined): number | null | undefined {
-    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : value === null ? null : undefined
-}
-
-function isSessionActive(session: Pick<AdminSessionRecord, 'expiresAt' | 'revokedAt'> | Pick<WorkspaceSessionRecord, 'expiresAt' | 'revokedAt'> | undefined): boolean {
-    if (!session || session.revokedAt) {
-        return false
-    }
-
-    if (!session.expiresAt) {
-        return false
-    }
-
-    const expiresAt = Date.parse(session.expiresAt)
-
-    return Number.isFinite(expiresAt) && expiresAt > Date.now()
-}
-
-function inferShareLinkTtlMinutes(label: string): number {
-    const ttlMatch = label.match(/\((\d+)m\)/i)
-    const ttlMinutes = ttlMatch ? Number(ttlMatch[1]) : Number.NaN
-
-    return Number.isInteger(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 10
-}
-
-function shouldRefreshLastSeen(lastSeenAt: string, nowIso: string): boolean {
-    const lastSeenTime = Date.parse(lastSeenAt)
-    const nowTime = Date.parse(nowIso)
-
-    if (!Number.isFinite(lastSeenTime) || !Number.isFinite(nowTime)) {
-        return true
-    }
-
-    return nowTime - lastSeenTime >= SESSION_ACTIVITY_REFRESH_MS
 }
 
 

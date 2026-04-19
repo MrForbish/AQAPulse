@@ -1,10 +1,10 @@
 import {
-    issueJwtToken as issueInfrastructureJwtToken,
-    verifyJwtToken as verifyInfrastructureJwtToken,
+    issueAuthToken,
+    verifyAuthToken,
     type AuthKind,
     type AuthScope,
     type AuthTokenClaims,
-} from '../infrastructure/security'
+} from '../auth-token-codec'
 
 export interface ApplicationAuthTokenService {
     issueToken(options: {
@@ -21,8 +21,8 @@ export interface ApplicationAuthTokenService {
 }
 
 const defaultApplicationAuthTokenService: ApplicationAuthTokenService = {
-    issueToken: issueInfrastructureJwtToken,
-    verifyToken: verifyInfrastructureJwtToken,
+    issueToken: issueAuthToken,
+    verifyToken: verifyAuthToken,
 }
 
 export function issueApplicationAuthToken(options: {

@@ -1,5 +1,6 @@
 import type { AdminWorkspaceRegistryPort } from '../../application/admin-workspace-use-cases'
 import type { AdminAuthRegistryPort } from '../../application/auth-session-use-cases'
+import type { ReadModelWorkspaceRegistry } from '../../application/workspace-read-model-ports'
 import type { WorkspaceShareLinkRegistryPort } from '../../application/workspace-share-link-use-cases'
 import type { WorkspaceDescriptor, WorkspaceRecord, WorkspaceSessionKind } from '../../contracts'
 
@@ -43,5 +44,3 @@ export type SecurityWorkspaceRegistry = Pick<
 export type AdminActorRegistry = Pick<AdminAuthRegistryPort, 'getAdminSession'>
 
 export type BootstrapWorkspaceRegistry = Pick<AdminWorkspaceRegistryPort, 'createWorkspace' | 'createApiKey' | 'createUser' | 'getWorkspace'>
-
-export type ReadModelWorkspaceRegistry = Pick<AdminWorkspaceRegistryPort, 'listWorkspaces'>

@@ -29,3 +29,8 @@ export {
     buildAdminIngestionHealthReport,
     ensureWorkspaceReadModelInitialized,
 } from '../workspace-read-model-service'
+export type {
+    ReadModelWorkspaceRegistry,
+    WorkspaceReadModelBackendStorage,
+    WorkspaceReadModelStorage,
+} from '../workspace-read-model-ports'

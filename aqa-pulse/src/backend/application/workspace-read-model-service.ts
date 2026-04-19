@@ -2,9 +2,9 @@ import { applyBusinessAssumptionsToSummary, buildDashboardSummary } from '../../
 import { createEmptyHistory } from '../../history-utils'
 import type { SaasAppConfig } from '../config'
 import type { AdminIngestionHealthReport, WorkspaceIngestionHealthItem } from '../contracts'
-import type { BackendStorage, ReadModelWorkspaceRegistry } from '../infrastructure/persistence'
+import type { ReadModelWorkspaceRegistry, WorkspaceReadModelBackendStorage } from './workspace-read-model-ports'
 
-export function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: BackendStorage, config: SaasAppConfig): void {
+export function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: WorkspaceReadModelBackendStorage, config: SaasAppConfig): void {
     const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
     const history = workspaceStorage.readHistory()
 
@@ -32,7 +32,7 @@ export function ensureWorkspaceReadModelInitialized(slug: string, backendStorage
 
 export function buildAdminIngestionHealthReport(
     registry: ReadModelWorkspaceRegistry,
-    backendStorage: BackendStorage,
+    backendStorage: WorkspaceReadModelBackendStorage,
     config: SaasAppConfig,
 ): AdminIngestionHealthReport {
     const items = registry.listWorkspaces()
@@ -56,7 +56,7 @@ export function buildAdminIngestionHealthReport(
 function buildWorkspaceIngestionHealthItem(
     slug: string,
     name: string,
-    backendStorage: BackendStorage,
+    backendStorage: WorkspaceReadModelBackendStorage,
     config: SaasAppConfig,
 ): WorkspaceIngestionHealthItem {
     ensureWorkspaceReadModelInitialized(slug, backendStorage, config)

@@ -104,15 +104,17 @@ function cleanDir(dirPath) {
  */
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(distRoot, 'backend', 'app.js')
+    const compiledAppRuntimePath = path.resolve(distRoot, 'backend', 'infrastructure', 'app-runtime.js')
     const compiledRuntimeRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-routes.js')
     const compiledFrontendShellPath = path.resolve(distRoot, 'backend', 'frontend-shell.js')
     const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
+    const compiledAppRuntime = fs.readFileSync(compiledAppRuntimePath, 'utf8')
     const compiledRuntimeRoutes = fs.readFileSync(compiledRuntimeRoutesPath, 'utf8')
     const compiledFrontendShell = fs.readFileSync(compiledFrontendShellPath, 'utf8')
 
     assertIncludes(
         compiledApp,
-        'createFrontendShellRenderer',
+        'createAppRuntimeContext',
         compiledAppPath,
     )
     assertIncludes(
@@ -124,6 +126,21 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
         compiledApp,
         'registerCommonHttpErrorHandlers',
         compiledAppPath,
+    )
+    assertIncludes(
+        compiledAppRuntime,
+        'createFrontendShellRenderer',
+        compiledAppRuntimePath,
+    )
+    assertIncludes(
+        compiledAppRuntime,
+        'createApiStoreRuntime',
+        compiledAppRuntimePath,
+    )
+    assertIncludes(
+        compiledAppRuntime,
+        'function createAppRuntimeContext(config, mode)',
+        compiledAppRuntimePath,
     )
     assertIncludes(
         compiledRuntimeRoutes,

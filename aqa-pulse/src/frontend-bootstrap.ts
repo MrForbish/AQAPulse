@@ -24,7 +24,7 @@ export type FrontendRouteDescriptor =
     | { kind: 'test-history'; workspaceSlug: string | null; testName: string }
     | { kind: 'admin-dashboard' }
     | { kind: 'admin-login' }
-    | { kind: 'workspace-login'; workspaceSlug: string }
+    | { kind: 'workspace-login'; workspaceSlug: string; workspaceName?: string | null }
     | { kind: 'workspace-api-key-exchange'; workspaceSlug: string }
     | { kind: 'workspace-share-link-error'; workspaceSlug: string; title: string; message: string }
     | { kind: 'static-dashboard'; workspaceSlug: null }
@@ -122,6 +122,14 @@ function normalizeRouteDescriptor(route: FrontendBootstrapData['route'] | undefi
     }
 
     if (route.kind === 'workspace-login' || route.kind === 'workspace-api-key-exchange') {
+        if (route.kind === 'workspace-login') {
+            return {
+                kind: route.kind,
+                workspaceSlug: normalizeRequiredWorkspaceSlug(route.workspaceSlug),
+                workspaceName: normalizeOptionalLabel(route.workspaceName),
+            }
+        }
+
         return {
             kind: route.kind,
             workspaceSlug: normalizeRequiredWorkspaceSlug(route.workspaceSlug),
@@ -140,6 +148,10 @@ function normalizeWorkspaceSlug(value: string | null | undefined): string | null
 
 function normalizeRequiredWorkspaceSlug(value: string | null | undefined): string {
     return normalizeWorkspaceSlug(value) ?? 'workspace'
+}
+
+function normalizeOptionalLabel(value: string | null | undefined): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
 function normalizeSessionStatus(value: Partial<FrontendSessionStatus> | null | undefined): FrontendSessionStatus | null {

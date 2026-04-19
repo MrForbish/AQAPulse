@@ -217,6 +217,7 @@ export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Prom
         const workspaceLoginBootstrap = extractBootstrapFromHtml(workspaceLoginPage)
         assert(workspaceLoginBootstrap.route.kind === 'workspace-login', 'workspace login shell должен содержать route.kind=workspace-login.')
         assert(workspaceLoginBootstrap.route.workspaceSlug === workspaceSlug, 'workspace login shell должен содержать корректный workspaceSlug.')
+        assert(workspaceLoginBootstrap.route.workspaceName === createdWorkspace.workspace.name, 'workspace login shell должен содержать имя workspace для login страницы.')
         assertBootstrapSession(workspaceLoginBootstrap.initialSessionStatus, {
             scope: 'workspace',
             authenticated: false,

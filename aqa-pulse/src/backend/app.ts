@@ -763,7 +763,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         app.get('/w/:slug/login', workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             frontendShell.send(response, {
-                route: { kind: 'workspace-login', workspaceSlug: workspace.slug },
+                route: { kind: 'workspace-login', workspaceSlug: workspace.slug, workspaceName: workspace.name },
                 initialRequestUrl: request.originalUrl,
                 serviceUrls: buildFrontendServiceUrls(config),
                 initialDashboardSummary: null,

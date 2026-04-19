@@ -22,7 +22,7 @@ export function AdminLoginPage(): React.JSX.Element {
         <AuthShell
             eyebrow="Admin access"
             title="AQA Pulse Admin"
-            description="Войди через admin token, чтобы управлять workspace, users и ingestion keys."
+            description="Войди через admin token, чтобы управлять рабочими пространствами, пользователями и ключами ingestion."
         >
             <AuthTokenForm fieldLabel="Admin token" submitLabel="Войти" submittingLabel="Входим..." onSubmitToken={submit} isSubmitting={isSubmitting} />
             {errorMessage ? <ErrorView title="Login не выполнен" message={errorMessage} /> : null}

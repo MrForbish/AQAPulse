@@ -202,14 +202,14 @@ async function main(): Promise<void> {
             },
         ),
         '/admin/login',
-    ), ['Admin token', 'AQA Pulse Admin'])
+    ), ['Admin token', 'AQA Pulse Admin', 'рабочими пространствами'])
 
     renderMarkup('workspace login page', renderWithRouter(
         React.createElement(
             reactModule.RuntimeProvider,
             {
                 bootstrap: createBootstrap({
-                    route: { kind: 'workspace-login', workspaceSlug },
+                    route: { kind: 'workspace-login', workspaceSlug, workspaceName: workspace.name },
                     initialRequestUrl: `/w/${workspaceSlug}/login`,
                     initialSessionStatus: { scope: 'workspace', authenticated: false, authRequired: true, workspaceSlug },
                 }),
@@ -217,7 +217,7 @@ async function main(): Promise<void> {
             },
         ),
         `/w/${workspaceSlug}/login`,
-    ), ['Workspace login', workspaceSlug])
+    ), [workspace.name, 'Пользовательский токен workspace', 'Войти в дашборд'])
 
     renderMarkup('workspace api key page', renderWithRouter(
         React.createElement(

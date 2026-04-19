@@ -37,6 +37,71 @@ export {
 } from '../history-utils'
 export { createAdminApp, createRuntimeApp, createSaasApp } from './app'
 export {
+    buildAdminIngestionHealthReport,
+    bootstrapWorkspaceForDev,
+    createWorkspaceApiKeyCommand,
+    createWorkspaceCommand,
+    createWorkspaceShareLinkCommand,
+    createWorkspaceUserCommand,
+    deleteWorkspaceApiKeyCommand,
+    deleteWorkspaceCommand,
+    deleteWorkspaceUserCommand,
+    disableWorkspaceApiKeyCommand,
+    disableWorkspaceUserCommand,
+    ensureWorkspaceReadModelInitialized,
+    loginViaWorkspaceShareLinkToken,
+    loginAdmin,
+    loginWorkspaceApiKey,
+    loginWorkspaceUser,
+    logoutAdmin,
+    logoutWorkspaceReadSession,
+    openWorkspaceShareLink,
+    queryDashboardCostMetricsPayload,
+    queryDashboardErrorClustersPayload,
+    queryDashboardFlakyPayload,
+    queryDashboardRunById,
+    queryDashboardRuns,
+    queryDashboardSummary,
+    queryTestHistoryForApi,
+    queryTestHistoryForShell,
+    readAdminBootstrapSessionState,
+    readWorkspaceBootstrapSessionState,
+    revokeWorkspaceSessionCommand,
+    updateServerSettingsCommand,
+    updateWorkspaceCommand,
+    updateWorkspaceUserRoleCommand,
+    type AdminActorContext,
+    type AdminAuthRegistryPort,
+    type AdminWorkspaceCommandRuntime,
+    type AdminWorkspaceRegistryPort,
+    type AuthSessionConfig,
+    type AdminLoginResult,
+    type WorkspaceApiKeyLoginResult,
+    type WorkspaceShareLinkAuthConfig,
+    type WorkspaceShareLinkOpenResult,
+    type WorkspaceShareLinkRegistryPort,
+    type WorkspaceShareLinkTokenLoginResult,
+    type WorkspaceUserLoginResult,
+} from './application'
+export { normalizeShareLinkTtlMinutes } from './domain/share-link-rules'
+export {
+    buildFrontendServiceUrls,
+    buildWorkspaceShareLinkUrl,
+    ensureDevBootstrapEnabled,
+    getFiltersFromRequest,
+    getRouteParam,
+    normalizeIngestionPayload,
+    normalizePaginationQueryValue,
+    pickOptionalString,
+    pickQueryParam,
+    readCookieValue,
+    readAdminBootstrapSession,
+    readWorkspaceBootstrapSession,
+    sendArtifactFile,
+    sendUnknownWorkspaceShareLinkErrorHtml,
+    sendWorkspaceShareLinkErrorShell,
+} from './infrastructure/http'
+export {
     createAdminGuard,
     createWorkspaceApiKeyGuard,
     createWorkspaceResolver,
@@ -48,7 +113,9 @@ export {
     requireWorkspaceFromLocals,
 } from './auth'
 export { resolveSaasAppConfig, type SaasAppConfig } from './config'
+export * as domain from './domain'
 export { ingestReporterRun } from './run-ingestion.service'
+export * as infrastructure from './infrastructure'
 export { uploadReportToWorkspace, type UploadReportOptions } from './upload-report'
 export {
     createBackendStorage,

@@ -1,29 +1,74 @@
 /**
  * Назначение: поднимает self-hosted/saas HTTP-приложение с React shell, JSON API, auth и ingestion-маршрутами.
  */
-import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { randomBytes } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import express, { type NextFunction, type Request, type Response } from 'express'
-import { ApiStore, type ApiFilters } from '../api-store'
-import { applyBusinessAssumptionsToSummary, buildDashboardSummary, normalizePrecomputedSourceFacts, type ReporterRoot } from '../dashboard-utils'
-import { type FrontendBootstrapData } from '../frontend-bootstrap'
-import { createEmptyHistory } from '../history-utils'
+import { ApiStore } from '../api-store'
 import { getErrorMessage } from '../shared/error-utils'
 import {
     createAdminGuard,
     createWorkspaceApiKeyGuard,
     createWorkspaceResolver,
     createWorkspaceUserGuard,
-    extractAccessToken,
     getAuthClaimsFromLocals,
     getWorkspaceSessionCookieName,
     requireWorkspaceFromLocals,
 } from './auth'
+import {
+    bootstrapWorkspaceForDev,
+    buildAdminIngestionHealthReport as createAdminIngestionHealthReport,
+    createWorkspaceApiKeyCommand,
+    createWorkspaceCommand,
+    createWorkspaceShareLinkCommand,
+    createWorkspaceUserCommand,
+    deleteWorkspaceApiKeyCommand,
+    deleteWorkspaceCommand,
+    deleteWorkspaceUserCommand,
+    disableWorkspaceApiKeyCommand,
+    disableWorkspaceUserCommand,
+    ensureWorkspaceReadModelInitialized as initializeWorkspaceReadModel,
+    loginAdmin as executeAdminLogin,
+    loginWorkspaceApiKey as executeWorkspaceApiKeyLogin,
+    loginWorkspaceUser as executeWorkspaceUserLogin,
+    logoutAdmin as executeAdminLogout,
+    logoutWorkspaceReadSession as executeWorkspaceLogout,
+    queryDashboardCostMetricsPayload,
+    queryDashboardErrorClustersPayload,
+    queryDashboardFlakyPayload,
+    queryDashboardRunById,
+    queryDashboardRuns,
+    queryDashboardSummary,
+    queryTestHistoryForApi,
+    queryTestHistoryForShell,
+    loginViaWorkspaceShareLinkToken,
+    openWorkspaceShareLink,
+    revokeWorkspaceSessionCommand,
+    updateServerSettingsCommand,
+    updateWorkspaceCommand,
+    updateWorkspaceUserRoleCommand,
+} from './application'
 import { type SaasAppConfig, resolveSaasAppConfig } from './config'
-import type { AdminIngestionHealthReport, IngestionRequestPayload, ServerSettingsRecord, WorkspaceIngestionHealthItem } from './contracts'
-import { createFrontendShellRenderer, type FrontendShellRenderer } from './frontend-shell'
-import { buildCookieHeader, buildExpiredCookieHeader, issueJwtToken, verifyJwtToken } from './jwt'
+import type { ServerSettingsRecord } from './contracts'
+import { normalizeShareLinkTtlMinutes } from './domain/share-link-rules'
+import { createFrontendShellRenderer } from './frontend-shell'
+import { buildCookieHeader, buildExpiredCookieHeader } from './jwt'
+import {
+    buildFrontendServiceUrls,
+    buildWorkspaceShareLinkUrl,
+    ensureDevBootstrapEnabled,
+    getFiltersFromRequest,
+    getRouteParam,
+    normalizeIngestionPayload,
+    normalizePaginationQueryValue,
+    pickOptionalString,
+    readCookieValue,
+    readAdminBootstrapSession,
+    readWorkspaceBootstrapSession,
+    sendArtifactFile,
+    sendUnknownWorkspaceShareLinkErrorHtml,
+    sendWorkspaceShareLinkErrorShell,
+} from './infrastructure/http'
 import { ingestReporterRun } from './run-ingestion.service'
 import { createBackendStorage, type BackendStorage } from './storage'
 import { WorkspaceRegistry } from './workspace-registry'
@@ -78,7 +123,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         defaultApiStore = null
     }
     const createWorkspaceApiStore = (slug: string) => {
-        ensureWorkspaceReadModelInitialized(slug, backendStorage, config)
+        initializeWorkspaceReadModel(slug, backendStorage, config)
 
         const cachedStore = workspaceApiStores.get(slug)
 
@@ -136,69 +181,24 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.post('/auth/admin/login', (request: Request, response: Response) => {
-            if (!config.adminToken) {
-                response.status(400).json({ error: 'Admin token не настроен в конфигурации сервера.' })
+            const result = executeAdminLogin(registry, config, pickOptionalString(request.body?.token))
+
+            if (!result.ok) {
+                response.status(result.statusCode).json({ error: result.error })
                 return
             }
-
-            const providedToken = pickOptionalString(request.body?.token)
-
-            if (!providedToken || providedToken !== config.adminToken) {
-                response.status(401).json({ error: 'Неверный admin token.' })
-                return
-            }
-
-            const adminSession = registry.createAdminSession(new Date(Date.now() + config.accessTokenTtlSeconds * 1000).toISOString())
-            const issuedToken = issueJwtToken({
-                subject: 'admin',
-                kind: 'admin',
-                scope: 'admin',
-                secret: config.jwtSecret,
-                ttlSeconds: config.accessTokenTtlSeconds,
-                sessionId: adminSession.id,
-            })
 
             response.setHeader('Set-Cookie', buildCookieHeader({
                 name: config.adminSessionCookieName,
-                value: issuedToken.token,
-                maxAgeSeconds: config.accessTokenTtlSeconds,
+                value: result.sessionToken,
+                maxAgeSeconds: result.maxAgeSeconds,
             }))
 
-            registry.recordAdminAudit({
-                action: 'admin-login',
-                actorLabel: adminSession.label,
-                actorSessionId: adminSession.id,
-                targetType: 'admin-session',
-                targetId: adminSession.id,
-                summary: 'Admin session started',
-                details: {
-                    expiresAt: adminSession.expiresAt,
-                },
-            })
-
-            response.json({
-                accessToken: issuedToken.token,
-                expiresAt: new Date(issuedToken.claims.exp * 1000).toISOString(),
-                scope: issuedToken.claims.scope,
-            })
+            response.json(result.body)
         })
 
         app.post('/auth/admin/logout', (request: Request, response: Response) => {
-            const token = readCookieValue(request, config.adminSessionCookieName)
-            const claims = token ? verifyJwtToken(token, config.jwtSecret) : null
-
-            if (claims?.kind === 'admin' && claims.scope === 'admin') {
-                registry.revokeAdminSession(claims.sessionId ?? '')
-                const session = registry.getAdminSession(claims.sessionId ?? '')
-                registry.recordAdminAudit({
-                    action: 'admin-logout',
-                    actorLabel: session?.label ?? 'Admin session',
-                    actorSessionId: claims.sessionId ?? null,
-                    targetType: 'admin-session',
-                    targetId: claims.sessionId ?? null,
-                    summary: 'Admin session closed',
-                })
-            }
+            executeAdminLogout(registry, config, readCookieValue(request, config.adminSessionCookieName))
 
             response.setHeader('Set-Cookie', buildExpiredCookieHeader(config.adminSessionCookieName))
 
@@ -229,20 +229,14 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.post('/admin/workspaces', adminApiGuard, (request: Request, response: Response) => {
-            const name = pickOptionalString(request.body?.name)
-
-            if (!name) {
-                response.status(400).json({ error: 'Поле "name" обязательно.' })
-                return
-            }
-
             try {
-                const createdWorkspace = registry.createWorkspace({
-                    name,
-                    slug: pickOptionalString(request.body?.slug) ?? undefined,
-                    apiKeyLabel: pickOptionalString(request.body?.apiKeyLabel) ?? undefined,
+                const createdWorkspace = createWorkspaceCommand(registry, {
+                    ensureWorkspaceReadModelInitialized: (slug) => initializeWorkspaceReadModel(slug, backendStorage, config),
+                }, {
+                    name: pickOptionalString(request.body?.name),
+                    slug: pickOptionalString(request.body?.slug),
+                    apiKeyLabel: pickOptionalString(request.body?.apiKeyLabel),
                 })
-                ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage, config)
 
                 response.status(201).json(createdWorkspace)
             } catch (error) {
@@ -254,7 +248,10 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             const workspace = requireWorkspaceFromLocals(response)
 
             try {
-                const createdApiKey = registry.createApiKey(workspace.slug, pickOptionalString(request.body?.label) ?? 'Generated key')
+                const createdApiKey = createWorkspaceApiKeyCommand(registry, {
+                    workspaceSlug: workspace.slug,
+                    label: pickOptionalString(request.body?.label),
+                })
 
                 response.status(201).json(createdApiKey)
             } catch (error) {
@@ -267,16 +264,11 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/admin/workspaces/:slug/users', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const label = pickOptionalString(request.body?.label)
-
-            if (!label) {
-                response.status(400).json({ error: 'Поле "label" обязательно.' })
-                return
-            }
 
             try {
-                const createdUser = registry.createUser(workspace.slug, {
-                    label,
+                const createdUser = createWorkspaceUserCommand(registry, {
+                    workspaceSlug: workspace.slug,
+                    label: pickOptionalString(request.body?.label),
                     role: request.body?.role === 'owner' ? 'owner' : 'viewer',
                 })
 
@@ -289,22 +281,21 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             }
         })
 
-        app.post('/api/dev/bootstrap', ensureDevBootstrapEnabled(config), adminApiGuard, (request: Request, response: Response) => {
-            const requestedName = pickOptionalString(request.body?.name) ?? 'Demo Workspace'
-            const requestedSlug = pickOptionalString(request.body?.slug) ?? 'demo'
-            const existingWorkspace = registry.getWorkspace(requestedSlug)
-
-            if (!existingWorkspace) {
-                const createdWorkspace = registry.createWorkspace({
-                    name: requestedName,
-                    slug: requestedSlug,
-                    apiKeyLabel: 'Bootstrap key',
+        app.post('/api/dev/bootstrap', ensureDevBootstrapEnabled(config.allowDevBootstrap), adminApiGuard, (request: Request, response: Response) => {
+            try {
+                const result = bootstrapWorkspaceForDev(registry, {
+                    name: pickOptionalString(request.body?.name),
+                    slug: pickOptionalString(request.body?.slug),
                 })
-                response.status(201).json(createdWorkspace)
-                return
-            }
 
-            response.json(registry.createApiKey(requestedSlug, 'Bootstrap key'))
+                if (result.statusCode === 201) {
+                    initializeWorkspaceReadModel(result.body.workspace.slug, backendStorage, config)
+                }
+
+                response.status(result.statusCode).json(result.body)
+            } catch (error) {
+                response.status(400).json({ error: getErrorMessage(error) })
+            }
         })
 
         app.get('/api/workspaces', adminApiGuard, (_request: Request, response: Response) => {
@@ -316,36 +307,29 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.put('/api/admin/settings', adminApiGuard, (request: Request, response: Response) => {
-            const actor = resolveAdminActor(response, registry)
-            const settings = registry.updateServerSettings({
-                adminBaseUrl: pickOptionalString(request.body?.adminBaseUrl),
-                runtimeBaseUrl: pickOptionalString(request.body?.runtimeBaseUrl),
-                allowDevBootstrap: typeof request.body?.allowDevBootstrap === 'boolean' ? request.body.allowDevBootstrap : undefined,
-                requireWorkspaceAuth: typeof request.body?.requireWorkspaceAuth === 'boolean' ? request.body.requireWorkspaceAuth : undefined,
-                accessTokenTtlSeconds: typeof request.body?.accessTokenTtlSeconds === 'number' ? request.body.accessTokenTtlSeconds : undefined,
-                adminToken: typeof request.body?.adminToken === 'string' || request.body?.adminToken === null
-                    ? pickOptionalString(request.body.adminToken)
-                    : undefined,
-                businessAssumptions: request.body?.businessAssumptions,
-            }, buildServerSettingsDefaults(config))
+            try {
+                const result = updateServerSettingsCommand(registry, {
+                    applyServerSettings: (settings) => applyServerSettingsToConfig(config, settings),
+                    buildServerSettingsDefaults: () => buildServerSettingsDefaults(config),
+                }, {
+                    actor: resolveAdminActor(response, registry),
+                    settings: {
+                        adminBaseUrl: pickOptionalString(request.body?.adminBaseUrl),
+                        runtimeBaseUrl: pickOptionalString(request.body?.runtimeBaseUrl),
+                        allowDevBootstrap: typeof request.body?.allowDevBootstrap === 'boolean' ? request.body.allowDevBootstrap : undefined,
+                        requireWorkspaceAuth: typeof request.body?.requireWorkspaceAuth === 'boolean' ? request.body.requireWorkspaceAuth : undefined,
+                        accessTokenTtlSeconds: typeof request.body?.accessTokenTtlSeconds === 'number' ? request.body.accessTokenTtlSeconds : undefined,
+                        adminToken: typeof request.body?.adminToken === 'string' || request.body?.adminToken === null
+                            ? pickOptionalString(request.body.adminToken)
+                            : undefined,
+                        businessAssumptions: request.body?.businessAssumptions,
+                    },
+                })
 
-            applyServerSettingsToConfig(config, settings)
-            registry.recordAdminAudit({
-                action: 'server-settings-updated',
-                actorLabel: actor.label,
-                actorSessionId: actor.sessionId,
-                targetType: 'server-settings',
-                summary: 'Server settings updated',
-                details: {
-                    requireWorkspaceAuth: settings.requireWorkspaceAuth,
-                    allowDevBootstrap: settings.allowDevBootstrap,
-                    accessTokenTtlSeconds: settings.accessTokenTtlSeconds,
-                    adminBaseUrl: settings.adminBaseUrl ?? '',
-                    runtimeBaseUrl: settings.runtimeBaseUrl ?? '',
-                },
-            })
-
-            response.json({ settings })
+                response.json(result)
+            } catch (error) {
+                response.status(400).json({ error: getErrorMessage(error) })
+            }
         })
 
         app.get('/api/admin/audit', adminApiGuard, (request: Request, response: Response) => {
@@ -356,7 +340,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.get('/api/admin/ingestion-health', adminApiGuard, (_request: Request, response: Response) => {
-            response.json(buildAdminIngestionHealthReport(registry, backendStorage, config))
+            response.json(createAdminIngestionHealthReport(registry, backendStorage, config))
         })
 
         app.get('/api/workspaces/:slug', adminApiGuard, workspaceResolver, (_request: Request, response: Response) => {
@@ -365,35 +349,14 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.post('/api/workspaces', adminApiGuard, (request: Request, response: Response) => {
-            const name = pickOptionalString(request.body?.name)
-            const actor = resolveAdminActor(response, registry)
-
-            if (!name) {
-                response.status(400).json({ error: 'Поле "name" обязательно.' })
-                return
-            }
-
             try {
-                const createdWorkspace = registry.createWorkspace({
-                    name,
-                    slug: pickOptionalString(request.body?.slug) ?? undefined,
-                    apiKeyLabel: pickOptionalString(request.body?.apiKeyLabel) ?? undefined,
-                })
-
-                ensureWorkspaceReadModelInitialized(createdWorkspace.workspace.slug, backendStorage, config)
-                registry.recordAdminAudit({
-                    action: 'workspace-created',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
-                    workspaceSlug: createdWorkspace.workspace.slug,
-                    targetType: 'workspace',
-                    targetId: createdWorkspace.workspace.slug,
-                    summary: 'Workspace created',
-                    details: {
-                        name: createdWorkspace.workspace.name,
-                        slug: createdWorkspace.workspace.slug,
-                        apiKeyId: createdWorkspace.apiKey.id,
-                    },
+                const createdWorkspace = createWorkspaceCommand(registry, {
+                    ensureWorkspaceReadModelInitialized: (slug) => initializeWorkspaceReadModel(slug, backendStorage, config),
+                }, {
+                    actor: resolveAdminActor(response, registry),
+                    name: pickOptionalString(request.body?.name),
+                    slug: pickOptionalString(request.body?.slug),
+                    apiKeyLabel: pickOptionalString(request.body?.apiKeyLabel),
                 })
 
                 response.status(201).json(createdWorkspace)
@@ -404,40 +367,17 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.put('/api/workspaces/:slug', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
-            const name = pickOptionalString(request.body?.name)
-
-            if (!name) {
-                response.status(400).json({ error: 'Поле "name" обязательно.' })
-                return
-            }
 
             try {
-                const updatedWorkspace = registry.updateWorkspace(workspace.slug, {
-                    name,
-                    slug: pickOptionalString(request.body?.slug) ?? workspace.slug,
-                })
-
-                if (updatedWorkspace.previousSlug !== updatedWorkspace.workspace.slug) {
-                    backendStorage.renameWorkspaceData(updatedWorkspace.previousSlug, updatedWorkspace.workspace.slug)
-                    invalidateWorkspaceApiStore(updatedWorkspace.previousSlug)
-                }
-
-                invalidateWorkspaceApiStore(updatedWorkspace.workspace.slug)
-                ensureWorkspaceReadModelInitialized(updatedWorkspace.workspace.slug, backendStorage, config)
-                registry.recordAdminAudit({
-                    action: 'workspace-updated',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
-                    workspaceSlug: updatedWorkspace.workspace.slug,
-                    targetType: 'workspace',
-                    targetId: updatedWorkspace.workspace.slug,
-                    summary: 'Workspace updated',
-                    details: {
-                        previousSlug: updatedWorkspace.previousSlug,
-                        slug: updatedWorkspace.workspace.slug,
-                        name: updatedWorkspace.workspace.name,
-                    },
+                const updatedWorkspace = updateWorkspaceCommand(registry, {
+                    renameWorkspaceData: (previousSlug, nextSlug) => backendStorage.renameWorkspaceData(previousSlug, nextSlug),
+                    invalidateWorkspaceApiStore,
+                    ensureWorkspaceReadModelInitialized: (slug) => initializeWorkspaceReadModel(slug, backendStorage, config),
+                }, {
+                    actor: resolveAdminActor(response, registry),
+                    workspaceSlug: workspace.slug,
+                    name: pickOptionalString(request.body?.name),
+                    nextSlug: pickOptionalString(request.body?.slug) ?? workspace.slug,
                 })
 
                 response.json(updatedWorkspace)
@@ -448,27 +388,17 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.delete('/api/workspaces/:slug', adminApiGuard, workspaceResolver, (_request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const deletedWorkspace = registry.deleteWorkspace(workspace.slug)
-                backendStorage.deleteWorkspaceData(workspace.slug)
-                invalidateWorkspaceApiStore(workspace.slug)
-                registry.recordAdminAudit({
-                    action: 'workspace-deleted',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const deletedWorkspace = deleteWorkspaceCommand(registry, {
+                    deleteWorkspaceData: (slug) => backendStorage.deleteWorkspaceData(slug),
+                    invalidateWorkspaceApiStore,
+                }, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'workspace',
-                    targetId: workspace.slug,
-                    summary: 'Workspace deleted',
-                    details: {
-                        slug: workspace.slug,
-                        name: deletedWorkspace.name,
-                    },
                 })
 
-                response.json({ workspace: deletedWorkspace })
+                response.json(deletedWorkspace)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -476,23 +406,12 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/api/workspaces/:slug/api-keys', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const createdApiKey = registry.createApiKey(workspace.slug, pickOptionalString(request.body?.label) ?? 'Generated key')
-                registry.recordAdminAudit({
-                    action: 'workspace-api-key-created',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const createdApiKey = createWorkspaceApiKeyCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'api-key',
-                    targetId: createdApiKey.apiKey.id,
-                    summary: 'Workspace API key created',
-                    details: {
-                        workspace: workspace.slug,
-                        label: createdApiKey.apiKey.label,
-                        apiKeyId: createdApiKey.apiKey.id,
-                    },
+                    label: pickOptionalString(request.body?.label),
                 })
 
                 response.status(201).json(createdApiKey)
@@ -503,34 +422,13 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/api/workspaces/:slug/users', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const label = pickOptionalString(request.body?.label)
-            const actor = resolveAdminActor(response, registry)
-
-            if (!label) {
-                response.status(400).json({ error: 'Поле "label" обязательно.' })
-                return
-            }
 
             try {
-                const createdUser = registry.createUser(workspace.slug, {
-                    label,
-                    role: request.body?.role === 'owner' ? 'owner' : 'viewer',
-                })
-
-                registry.recordAdminAudit({
-                    action: 'workspace-user-created',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const createdUser = createWorkspaceUserCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'user',
-                    targetId: createdUser.user.id,
-                    summary: 'Workspace user created',
-                    details: {
-                        workspace: workspace.slug,
-                        label: createdUser.user.label,
-                        role: createdUser.user.role,
-                        userId: createdUser.user.id,
-                    },
+                    label: pickOptionalString(request.body?.label),
+                    role: request.body?.role === 'owner' ? 'owner' : 'viewer',
                 })
 
                 response.status(201).json(createdUser)
@@ -541,48 +439,19 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/api/workspaces/:slug/share-links', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
             const ttlMinutes = normalizeShareLinkTtlMinutes(request.body?.ttlMinutes)
 
             try {
-                const session = registry.createWorkspaceSession(workspace.slug, {
-                    kind: 'workspace-share-link',
-                    subjectId: `share-link:${randomTokenId()}`,
-                    label: `Share link (${ttlMinutes}m)`,
-                    scope: 'workspace:read',
-                    activatedAt: null,
-                    expiresAt: null,
+                const shareLink = createWorkspaceShareLinkCommand(registry, {
+                    buildWorkspaceShareLinkUrl: (workspaceSlug, sessionId) => buildWorkspaceShareLinkUrl(request, config.runtimeBaseUrl, workspaceSlug, '', sessionId),
+                    createShareLinkSubjectId: () => `share-link:${randomUUID()}`,
+                }, {
+                    actor: resolveAdminActor(response, registry),
+                    workspaceSlug: workspace.slug,
                     ttlMinutes,
                 })
-                const shareLinkUrl = buildWorkspaceShareLinkUrl(request, config, workspace.slug, '', session.id)
 
-                registry.recordAdminAudit({
-                    action: 'workspace-share-link-created',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
-                    workspaceSlug: workspace.slug,
-                    targetType: 'session',
-                    targetId: session.id,
-                    summary: 'Workspace share link created',
-                    details: {
-                        workspace: workspace.slug,
-                        sessionId: session.id,
-                        ttlMinutes,
-                        activationMode: 'first-open',
-                    },
-                })
-
-                response.status(201).json({
-                    workspace: registry.getWorkspace(workspace.slug),
-                    shareSession: {
-                        id: session.id,
-                        label: session.label,
-                        activatedAt: session.activatedAt,
-                        expiresAt: session.expiresAt,
-                        ttlMinutes,
-                    },
-                    shareLinkUrl,
-                })
+                response.status(201).json(shareLink)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -590,23 +459,13 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.put('/api/workspaces/:slug/users/:userId/role', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const result = registry.updateUserRole(workspace.slug, getRouteParam(request, 'userId'), request.body?.role === 'owner' ? 'owner' : 'viewer')
-                registry.recordAdminAudit({
-                    action: 'workspace-user-role-updated',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const result = updateWorkspaceUserRoleCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'user',
-                    targetId: result.userId,
-                    summary: 'Workspace user role updated',
-                    details: {
-                        workspace: workspace.slug,
-                        userId: result.userId,
-                        role: result.role,
-                    },
+                    userId: getRouteParam(request, 'userId'),
+                    role: request.body?.role === 'owner' ? 'owner' : 'viewer',
                 })
 
                 response.json(result)
@@ -617,25 +476,15 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/api/workspaces/:slug/api-keys/:apiKeyId/disable', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const nextWorkspace = registry.disableApiKey(workspace.slug, getRouteParam(request, 'apiKeyId'))
-                registry.recordAdminAudit({
-                    action: 'workspace-api-key-disabled',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const nextWorkspace = disableWorkspaceApiKeyCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'api-key',
-                    targetId: getRouteParam(request, 'apiKeyId'),
-                    summary: 'Workspace API key disabled',
-                    details: {
-                        workspace: workspace.slug,
-                        apiKeyId: getRouteParam(request, 'apiKeyId'),
-                    },
+                    apiKeyId: getRouteParam(request, 'apiKeyId'),
                 })
 
-                response.json({ workspace: nextWorkspace })
+                response.json(nextWorkspace)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -643,25 +492,15 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.delete('/api/workspaces/:slug/api-keys/:apiKeyId', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const nextWorkspace = registry.deleteApiKey(workspace.slug, getRouteParam(request, 'apiKeyId'))
-                registry.recordAdminAudit({
-                    action: 'workspace-api-key-deleted',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const nextWorkspace = deleteWorkspaceApiKeyCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'api-key',
-                    targetId: getRouteParam(request, 'apiKeyId'),
-                    summary: 'Workspace API key deleted',
-                    details: {
-                        workspace: workspace.slug,
-                        apiKeyId: getRouteParam(request, 'apiKeyId'),
-                    },
+                    apiKeyId: getRouteParam(request, 'apiKeyId'),
                 })
 
-                response.json({ workspace: nextWorkspace })
+                response.json(nextWorkspace)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -669,25 +508,15 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/api/workspaces/:slug/users/:userId/disable', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const nextWorkspace = registry.disableUser(workspace.slug, getRouteParam(request, 'userId'))
-                registry.recordAdminAudit({
-                    action: 'workspace-user-disabled',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const nextWorkspace = disableWorkspaceUserCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'user',
-                    targetId: getRouteParam(request, 'userId'),
-                    summary: 'Workspace user disabled',
-                    details: {
-                        workspace: workspace.slug,
-                        userId: getRouteParam(request, 'userId'),
-                    },
+                    userId: getRouteParam(request, 'userId'),
                 })
 
-                response.json({ workspace: nextWorkspace })
+                response.json(nextWorkspace)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -695,25 +524,15 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.delete('/api/workspaces/:slug/users/:userId', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const nextWorkspace = registry.deleteUser(workspace.slug, getRouteParam(request, 'userId'))
-                registry.recordAdminAudit({
-                    action: 'workspace-user-deleted',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const nextWorkspace = deleteWorkspaceUserCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'user',
-                    targetId: getRouteParam(request, 'userId'),
-                    summary: 'Workspace user deleted',
-                    details: {
-                        workspace: workspace.slug,
-                        userId: getRouteParam(request, 'userId'),
-                    },
+                    userId: getRouteParam(request, 'userId'),
                 })
 
-                response.json({ workspace: nextWorkspace })
+                response.json(nextWorkspace)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -721,25 +540,15 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
 
         app.post('/api/workspaces/:slug/sessions/:sessionId/revoke', adminApiGuard, workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const actor = resolveAdminActor(response, registry)
 
             try {
-                const nextWorkspace = registry.revokeWorkspaceSession(workspace.slug, getRouteParam(request, 'sessionId'))
-                registry.recordAdminAudit({
-                    action: 'workspace-session-revoked',
-                    actorLabel: actor.label,
-                    actorSessionId: actor.sessionId,
+                const nextWorkspace = revokeWorkspaceSessionCommand(registry, {
+                    actor: resolveAdminActor(response, registry),
                     workspaceSlug: workspace.slug,
-                    targetType: 'session',
-                    targetId: getRouteParam(request, 'sessionId'),
-                    summary: 'Workspace session revoked',
-                    details: {
-                        workspace: workspace.slug,
-                        sessionId: getRouteParam(request, 'sessionId'),
-                    },
+                    sessionId: getRouteParam(request, 'sessionId'),
                 })
 
-                response.json({ workspace: nextWorkspace })
+                response.json(nextWorkspace)
             } catch (error) {
                 response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
             }
@@ -787,203 +596,95 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.get('/s/:shareId', (request: Request, response: Response) => {
-            const shareId = getRouteParam(request, 'shareId')
-            const resolvedShareSession = registry.findWorkspaceSession(shareId, 'workspace-share-link')
+            const result = openWorkspaceShareLink(registry, config, getRouteParam(request, 'shareId'))
 
-            if (!resolvedShareSession) {
+            if (!result.ok && result.kind === 'unknown') {
                 sendUnknownWorkspaceShareLinkErrorHtml(response)
                 return
             }
 
-            const workspaceSlug = resolvedShareSession.workspace.slug
-            const shareSession = !resolvedShareSession.session.activatedAt
-                ? registry.activateWorkspaceShareLink(workspaceSlug, resolvedShareSession.session.id)
-                : resolvedShareSession.session
-
-            if (!registry.isWorkspaceSessionActive(workspaceSlug, shareSession.id, 'workspace-share-link')) {
-                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspaceSlug, {
-                    statusCode: 401,
-                    title: 'Ссылка отозвана',
-                    message: 'Эта временная ссылка уже отозвана или её сессия истекла. Запроси новую share link в админке.',
+            if (!result.ok) {
+                sendWorkspaceShareLinkErrorShell(response, frontendShell, {
+                    statusCode: result.statusCode,
+                    initialRequestUrl: request.originalUrl,
+                    workspaceSlug: result.workspaceSlug,
+                    title: result.title,
+                    message: result.message,
+                    serviceUrls: buildFrontendServiceUrls(config),
+                    initialSessionStatus: readWorkspaceBootstrapSession(request, result.workspaceSlug, registry, config),
                 })
                 return
             }
-
-            const maxAgeSeconds = getSessionRemainingSeconds(shareSession.expiresAt)
-
-            if (maxAgeSeconds <= 0) {
-                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspaceSlug, {
-                    statusCode: 401,
-                    title: 'Ссылка истекла или некорректна',
-                    message: 'Эта временная ссылка больше не даёт доступ к dashboard. Запроси новую share link или войди через workspace user token.',
-                })
-                return
-            }
-
-            const issuedToken = issueJwtToken({
-                subject: shareSession.subjectId,
-                kind: 'workspace-share-link',
-                scope: 'workspace:read',
-                secret: config.jwtSecret,
-                ttlSeconds: maxAgeSeconds,
-                workspaceSlug,
-                sessionId: shareSession.id,
-            })
 
             response.setHeader('Set-Cookie', buildCookieHeader({
-                name: getWorkspaceSessionCookieName(config, workspaceSlug),
-                value: issuedToken.token,
-                maxAgeSeconds,
+                name: getWorkspaceSessionCookieName(config, result.workspaceSlug),
+                value: result.sessionToken,
+                maxAgeSeconds: result.maxAgeSeconds,
                 path: '/',
             }))
-            registry.touchWorkspaceSession(workspaceSlug, shareSession.id)
-            response.redirect(`/w/${encodeURIComponent(workspaceSlug)}`)
+            response.redirect(result.redirectPath)
         })
 
         app.get('/auth/workspaces/:slug/share-links/login', workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const token = pickOptionalString(request.query.token)
+            const result = loginViaWorkspaceShareLinkToken(registry, config, workspace.slug, pickOptionalString(request.query.token))
 
-            if (!token) {
-                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspace.slug, {
-                    statusCode: 400,
-                    title: 'Ссылка неполная',
-                    message: 'Во временной ссылке отсутствует token. Запроси новую ссылку в админке или открой обычный workspace login.',
+            if (!result.ok) {
+                sendWorkspaceShareLinkErrorShell(response, frontendShell, {
+                    statusCode: result.statusCode,
+                    initialRequestUrl: request.originalUrl,
+                    workspaceSlug: result.workspaceSlug,
+                    title: result.title,
+                    message: result.message,
+                    serviceUrls: buildFrontendServiceUrls(config),
+                    initialSessionStatus: readWorkspaceBootstrapSession(request, result.workspaceSlug, registry, config),
                 })
                 return
             }
-
-            const claims = verifyJwtToken(token, config.jwtSecret)
-
-            if (!claims || claims.kind !== 'workspace-share-link' || claims.scope !== 'workspace:read' || claims.workspaceSlug !== workspace.slug) {
-                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspace.slug, {
-                    statusCode: 401,
-                    title: 'Ссылка истекла или некорректна',
-                    message: 'Эта временная ссылка больше не даёт доступ к dashboard. Запроси новую share link или войди через workspace user token.',
-                })
-                return
-            }
-
-            if (!registry.isWorkspaceSessionActive(workspace.slug, claims.sessionId ?? '', 'workspace-share-link')) {
-                sendWorkspaceShareLinkErrorShell(request, response, frontendShell, registry, config, workspace.slug, {
-                    statusCode: 401,
-                    title: 'Ссылка отозвана',
-                    message: 'Эта временная ссылка уже отозвана или её сессия истекла. Запроси новую share link в админке.',
-                })
-                return
-            }
-
-            const maxAgeSeconds = Math.max(0, claims.exp - Math.floor(Date.now() / 1000))
 
             response.setHeader('Set-Cookie', buildCookieHeader({
                 name: getWorkspaceSessionCookieName(config, workspace.slug),
-                value: token,
-                maxAgeSeconds,
+                value: result.sessionToken,
+                maxAgeSeconds: result.maxAgeSeconds,
                 path: '/',
             }))
-            registry.touchWorkspaceSession(workspace.slug, claims.sessionId ?? '')
-            response.redirect(`/w/${encodeURIComponent(workspace.slug)}`)
+            response.redirect(result.redirectPath)
         })
 
         app.post('/auth/workspaces/:slug/users/login', workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const rawToken = pickOptionalString(request.body?.token)
+            const result = executeWorkspaceUserLogin(registry, config, workspace.slug, pickOptionalString(request.body?.token))
 
-            if (!rawToken) {
-                response.status(401).json({ error: 'Нужно передать workspace user token.' })
+            if (!result.ok) {
+                response.status(result.statusCode).json({ error: result.error })
                 return
             }
-
-            const authResult = registry.authenticateWorkspaceUser(rawToken)
-
-            if (!authResult || authResult.workspace.slug !== workspace.slug) {
-                response.status(401).json({ error: 'Неверный workspace user token.' })
-                return
-            }
-
-            const session = registry.createWorkspaceSession(workspace.slug, {
-                kind: 'workspace-user',
-                subjectId: authResult.user.id,
-                label: authResult.user.label,
-                scope: 'workspace:read',
-                role: authResult.user.role,
-                expiresAt: new Date(Date.now() + config.accessTokenTtlSeconds * 1000).toISOString(),
-            })
-            const issuedToken = issueJwtToken({
-                subject: authResult.user.id,
-                kind: 'workspace-user',
-                scope: 'workspace:read',
-                secret: config.jwtSecret,
-                ttlSeconds: config.accessTokenTtlSeconds,
-                workspaceSlug: workspace.slug,
-                role: authResult.user.role,
-                sessionId: session.id,
-            })
 
             response.setHeader('Set-Cookie', buildCookieHeader({
                 name: getWorkspaceSessionCookieName(config, workspace.slug),
-                value: issuedToken.token,
-                maxAgeSeconds: config.accessTokenTtlSeconds,
+                value: result.sessionToken,
+                maxAgeSeconds: result.maxAgeSeconds,
                 path: '/',
             }))
 
-            response.json({
-                accessToken: issuedToken.token,
-                expiresAt: new Date(issuedToken.claims.exp * 1000).toISOString(),
-                scope: issuedToken.claims.scope,
-                workspace: workspace.slug,
-            })
+            response.json(result.body)
         })
 
         app.post('/auth/workspaces/:slug/api-keys/login', workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const rawToken = pickOptionalString(request.body?.token)
+            const result = executeWorkspaceApiKeyLogin(registry, config, workspace.slug, pickOptionalString(request.body?.token))
 
-            if (!rawToken) {
-                response.status(401).json({ error: 'Нужно передать workspace API key.' })
+            if (!result.ok) {
+                response.status(result.statusCode).json({ error: result.error })
                 return
             }
 
-            const authResult = registry.authenticate(rawToken)
-
-            if (!authResult || authResult.workspace.slug !== workspace.slug) {
-                response.status(401).json({ error: 'Неверный workspace API key.' })
-                return
-            }
-
-            const session = registry.createWorkspaceSession(workspace.slug, {
-                kind: 'workspace-api-key',
-                subjectId: authResult.apiKey.id,
-                label: authResult.apiKey.label,
-                scope: 'workspace:ingest',
-                expiresAt: new Date(Date.now() + config.accessTokenTtlSeconds * 1000).toISOString(),
-            })
-            const issuedToken = issueJwtToken({
-                subject: authResult.apiKey.id,
-                kind: 'workspace-api-key',
-                scope: 'workspace:ingest',
-                secret: config.jwtSecret,
-                ttlSeconds: config.accessTokenTtlSeconds,
-                workspaceSlug: workspace.slug,
-                sessionId: session.id,
-            })
-
-            response.json({
-                accessToken: issuedToken.token,
-                expiresAt: new Date(issuedToken.claims.exp * 1000).toISOString(),
-                scope: issuedToken.claims.scope,
-                workspace: workspace.slug,
-            })
+            response.json(result.body)
         })
 
         app.post('/auth/workspaces/:slug/users/logout', workspaceResolver, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
-            const token = readCookieValue(request, getWorkspaceSessionCookieName(config, workspace.slug))
-            const claims = token ? verifyJwtToken(token, config.jwtSecret) : null
-
-            if ((claims?.kind === 'workspace-user' || claims?.kind === 'workspace-share-link') && claims.workspaceSlug === workspace.slug) {
-                registry.revokeWorkspaceSession(workspace.slug, claims.sessionId ?? '')
-            }
+            executeWorkspaceLogout(registry, config, workspace.slug, readCookieValue(request, getWorkspaceSessionCookieName(config, workspace.slug)))
 
             response.setHeader('Set-Cookie', buildExpiredCookieHeader(getWorkspaceSessionCookieName(config, workspace.slug)))
 
@@ -1016,36 +717,28 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.get('/api/summary', (request: Request, response: Response) => {
-            response.json(createDefaultApiStore().getFilteredSummary(getFiltersFromRequest(request)))
+            response.json(queryDashboardSummary(createDefaultApiStore(), getFiltersFromRequest(request)))
         })
 
         app.get('/api/runs', (request: Request, response: Response) => {
-            response.json({ runs: createDefaultApiStore().getRuns(getFiltersFromRequest(request)) })
+            response.json(queryDashboardRuns(createDefaultApiStore(), getFiltersFromRequest(request)))
         })
 
         app.get('/api/run/:id', (request: Request, response: Response) => {
-            const store = createDefaultApiStore()
-            const runId = getRouteParam(request, 'id')
-            const run = store.getRunById(runId)
-
-            if (!run) {
-                response.status(404).json({ error: `Прогон с id "${runId}" не найден.` })
-                return
-            }
-
-            response.json(run)
+            const result = queryDashboardRunById(createDefaultApiStore(), getRouteParam(request, 'id'))
+            response.status(result.statusCode).json(result.body)
         })
 
         app.get('/api/flaky', (request: Request, response: Response) => {
-            response.json(createDefaultApiStore().getFlakyPayload(getFiltersFromRequest(request)))
+            response.json(queryDashboardFlakyPayload(createDefaultApiStore(), getFiltersFromRequest(request)))
         })
 
         app.get('/api/errors/clusters', (request: Request, response: Response) => {
-            response.json(createDefaultApiStore().getErrorClustersPayload(getFiltersFromRequest(request)))
+            response.json(queryDashboardErrorClustersPayload(createDefaultApiStore(), getFiltersFromRequest(request)))
         })
 
         app.get('/api/metrics/cost', (request: Request, response: Response) => {
-            response.json(createDefaultApiStore().getCostMetricsPayload(getFiltersFromRequest(request)))
+            response.json(queryDashboardCostMetricsPayload(createDefaultApiStore(), getFiltersFromRequest(request)))
         })
 
         app.get('/api/artifacts/:runId', (request: Request, response: Response) => {
@@ -1053,38 +746,24 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         })
 
         app.get('/test/:name', (request: Request, response: Response) => {
-            const store = createDefaultApiStore()
             const testName = getRouteParam(request, 'name')
-            const filters = getTestHistoryFiltersFromRequest(request)
-            const payload = store.getTestHistory(testName, filters)
+            const result = queryTestHistoryForShell(createDefaultApiStore(), testName, getFiltersFromRequest(request))
 
             frontendShell.send(response, {
                 route: { kind: 'test-history', workspaceSlug: null, testName },
                 initialRequestUrl: request.originalUrl,
                 serviceUrls: buildFrontendServiceUrls(config),
                 initialDashboardSummary: null,
-                initialTestHistoryPayload: payload,
+                initialTestHistoryPayload: result.payload,
                 initialAdminWorkspaces: null,
                 initialSessionStatus: { scope: 'public', authenticated: true, authRequired: false, workspaceSlug: null },
-            }, getTestHistoryHtmlStatusCode(payload))
+            }, result.statusCode)
         })
 
         app.get('/api/test/:name', (request: Request, response: Response) => {
-            const store = createDefaultApiStore()
             const testName = getRouteParam(request, 'name')
-            const payload = store.getTestHistory(testName, getTestHistoryFiltersFromRequest(request))
-
-            if (!payload) {
-                response.status(404).json({ error: `Тест с именем "${testName}" не найден в архивной истории.` })
-                return
-            }
-
-            if ('candidates' in payload) {
-                response.status(409).json(payload)
-                return
-            }
-
-            response.json(payload)
+            const result = queryTestHistoryForApi(createDefaultApiStore(), testName, getFiltersFromRequest(request))
+            response.status(result.statusCode).json(result.body)
         })
 
         app.post('/api/workspaces/:slug/ingestions', workspaceResolver, workspaceApiKeyGuard, (request: Request, response: Response) => {
@@ -1119,7 +798,7 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
                 route: { kind: 'dashboard', workspaceSlug: workspace.slug },
                 initialRequestUrl: request.originalUrl,
                 serviceUrls: buildFrontendServiceUrls(config),
-                initialDashboardSummary: store.getFilteredSummary(getFiltersFromRequest(request)),
+                initialDashboardSummary: queryDashboardSummary(store, getFiltersFromRequest(request)),
                 initialTestHistoryPayload: null,
                 initialAdminWorkspaces: null,
                 initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, registry, config),
@@ -1130,18 +809,17 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
             const testName = getRouteParam(request, 'name')
-            const filters = getTestHistoryFiltersFromRequest(request)
-            const payload = store.getTestHistory(testName, filters)
+            const result = queryTestHistoryForShell(store, testName, getFiltersFromRequest(request))
 
             frontendShell.send(response, {
                 route: { kind: 'test-history', workspaceSlug: workspace.slug, testName },
                 initialRequestUrl: request.originalUrl,
                 serviceUrls: buildFrontendServiceUrls(config),
                 initialDashboardSummary: null,
-                initialTestHistoryPayload: payload,
+                initialTestHistoryPayload: result.payload,
                 initialAdminWorkspaces: null,
                 initialSessionStatus: readWorkspaceBootstrapSession(request, workspace.slug, registry, config),
-            }, getTestHistoryHtmlStatusCode(payload))
+            }, result.statusCode)
         })
 
         app.get('/api/workspaces/:slug/artifacts/:runId', workspaceResolver, workspaceApiGuard, (_request: Request, response: Response) => {
@@ -1153,66 +831,45 @@ function createConfiguredSaasApp(options: Partial<SaasAppConfig>, mode: SaasServ
         app.get('/api/workspaces/:slug/summary', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-            response.json(store.getFilteredSummary(getFiltersFromRequest(request)))
+            response.json(queryDashboardSummary(store, getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/runs', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-            response.json({ runs: store.getRuns(getFiltersFromRequest(request)) })
+            response.json(queryDashboardRuns(store, getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/run/:id', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-
-            const runId = getRouteParam(request, 'id')
-            const run = store.getRunById(runId)
-
-            if (!run) {
-                response.status(404).json({ error: `Прогон с id "${runId}" не найден.` })
-                return
-            }
-
-            response.json(run)
+            const result = queryDashboardRunById(store, getRouteParam(request, 'id'))
+            response.status(result.statusCode).json(result.body)
         })
 
         app.get('/api/workspaces/:slug/flaky', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-            response.json(store.getFlakyPayload(getFiltersFromRequest(request)))
+            response.json(queryDashboardFlakyPayload(store, getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/errors/clusters', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-            response.json(store.getErrorClustersPayload(getFiltersFromRequest(request)))
+            response.json(queryDashboardErrorClustersPayload(store, getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/metrics/cost', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-            response.json(store.getCostMetricsPayload(getFiltersFromRequest(request)))
+            response.json(queryDashboardCostMetricsPayload(store, getFiltersFromRequest(request)))
         })
 
         app.get('/api/workspaces/:slug/test/:name', workspaceResolver, workspaceApiGuard, (request: Request, response: Response) => {
             const workspace = requireWorkspaceFromLocals(response)
             const store = createWorkspaceApiStore(workspace.slug)
-
-            const testName = getRouteParam(request, 'name')
-            const payload = store.getTestHistory(testName, getTestHistoryFiltersFromRequest(request))
-
-            if (!payload) {
-                response.status(404).json({ error: `Тест с именем "${testName}" не найден в архивной истории.` })
-                return
-            }
-
-            if ('candidates' in payload) {
-                response.status(409).json(payload)
-                return
-            }
-
-            response.json(payload)
+            const result = queryTestHistoryForApi(store, getRouteParam(request, 'name'), getFiltersFromRequest(request))
+            response.status(result.statusCode).json(result.body)
         })
     }
 
@@ -1250,90 +907,6 @@ function isPayloadTooLargeError(error: unknown): boolean {
         || maybeError.status === 413
         || maybeError.statusCode === 413
         || maybeError.message === 'request entity too large'
-}
-
-/**
- * Workspace read model инициализируется лениво, потому что новый workspace может быть создан до первого ingestion, а React UI уже должен уметь открывать пустой dashboard без падения по отсутствующим summary/history файлам.
- */
-function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: BackendStorage, config: SaasAppConfig): void {
-    const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
-    const history = workspaceStorage.readHistory()
-
-    try {
-        workspaceStorage.readSummary()
-    } catch {
-        workspaceStorage.writeSummary(applyBusinessAssumptionsToSummary(buildDashboardSummary(
-            {
-                tests: [],
-                durationMs: 0,
-                environment: {
-                    projects: [],
-                },
-            },
-            `workspace://${slug}/initial-empty-summary`,
-            history.runs,
-            { branch: null, commit: null, author: null },
-        ), config.businessAssumptions))
-    }
-
-    if (!Array.isArray(history.runs)) {
-        workspaceStorage.writeHistory(createEmptyHistory())
-    }
-}
-
-function getFiltersFromRequest(request: Request): ApiFilters {
-    const branch = pickQueryParam(request, 'branch')
-    const project = pickQueryParam(request, 'project')
-    const file = pickQueryParam(request, 'file')
-
-    return {
-        branch: branch ?? undefined,
-        project: project ?? undefined,
-        file: file ?? undefined,
-    }
-}
-
-function getTestHistoryFiltersFromRequest(request: Request): ApiFilters {
-    return getFiltersFromRequest(request)
-}
-
-function normalizePaginationQueryValue(value: unknown, fallback: number, maxValue: number): number {
-    const normalizedValue = Array.isArray(value) ? value[0] : value
-
-    if (typeof normalizedValue !== 'string' || normalizedValue.trim().length === 0) {
-        return fallback
-    }
-
-    const parsedValue = Number(normalizedValue)
-
-    if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-        return fallback
-    }
-
-    return Math.min(parsedValue, maxValue)
-}
-
-function getRouteParam(request: Request, key: string): string {
-    const value = request.params[key]
-    return Array.isArray(value) ? value[0] : value
-}
-
-function pickQueryParam(request: Request, key: string): string | null {
-    const value = request.query[key]
-    const normalizedValue = Array.isArray(value) ? value[0] : value
-    return typeof normalizedValue === 'string' && normalizedValue.trim().length > 0 ? normalizedValue.trim() : null
-}
-
-function getTestHistoryHtmlStatusCode(payload: ReturnType<ApiStore['getTestHistory']>): number {
-    if (!payload) {
-        return 404
-    }
-
-    if ('candidates' in payload) {
-        return 409
-    }
-
-    return 200
 }
 
 function buildServerSettingsDefaults(config: SaasAppConfig): ServerSettingsRecord {
@@ -1384,388 +957,5 @@ function resolveAdminActor(response: Response, registry: WorkspaceRegistry): { l
     }
 }
 
-function buildAdminIngestionHealthReport(
-    registry: WorkspaceRegistry,
-    backendStorage: BackendStorage,
-    config: SaasAppConfig,
-): AdminIngestionHealthReport {
-    const items = registry.listWorkspaces()
-        .map((workspace) => buildWorkspaceIngestionHealthItem(workspace.slug, workspace.name, backendStorage, config))
-        .sort((left, right) => compareWorkspaceHealthItems(left, right))
-
-    return {
-        generatedAt: new Date().toISOString(),
-        totals: {
-            total: items.length,
-            healthy: items.filter((item) => item.status === 'healthy').length,
-            warning: items.filter((item) => item.status === 'warning').length,
-            critical: items.filter((item) => item.status === 'critical').length,
-            stale: items.filter((item) => item.status === 'stale').length,
-            idle: items.filter((item) => item.status === 'idle').length,
-        },
-        items,
-    }
-}
-
-function buildWorkspaceIngestionHealthItem(
-    slug: string,
-    name: string,
-    backendStorage: BackendStorage,
-    config: SaasAppConfig,
-): WorkspaceIngestionHealthItem {
-    ensureWorkspaceReadModelInitialized(slug, backendStorage, config)
-    const history = backendStorage.getWorkspaceStorage(slug).readHistory()
-    const latestRun = history.runs[history.runs.length - 1] ?? null
-    const latestTimestamp = latestRun?.generatedAt ?? latestRun?.reportTimestamp ?? null
-    const latestTime = latestTimestamp ? Date.parse(latestTimestamp) : Number.NaN
-    const staleHours = Number.isFinite(latestTime)
-        ? Math.max(0, Math.floor((Date.now() - latestTime) / (60 * 60 * 1000)))
-        : null
-
-    return {
-        slug,
-        name,
-        status: latestRun === null
-            ? 'idle'
-            : staleHours !== null && staleHours >= 72
-                ? 'stale'
-                : latestRun.failedTests > 0 || latestRun.timedOutTests > 0 || latestRun.interruptedTests > 0
-                    ? 'critical'
-                    : latestRun.flakyTests > 0 || latestRun.passRate < 100
-                        ? 'warning'
-                        : 'healthy',
-        runCount: history.runs.length,
-        lastIngestionAt: latestTimestamp,
-        staleHours,
-        latestPassRate: latestRun?.passRate ?? null,
-        latestFailedTests: latestRun?.failedTests ?? null,
-        latestFlakyTests: latestRun?.flakyTests ?? null,
-        latestDurationMs: latestRun?.totalDurationMs ?? null,
-        latestSourceFile: latestRun?.sourceFile ?? null,
-    }
-}
-
-function compareWorkspaceHealthItems(left: WorkspaceIngestionHealthItem, right: WorkspaceIngestionHealthItem): number {
-    const statusRank: Record<WorkspaceIngestionHealthItem['status'], number> = {
-        critical: 0,
-        warning: 1,
-        stale: 2,
-        idle: 3,
-        healthy: 4,
-    }
-
-    if (statusRank[left.status] !== statusRank[right.status]) {
-        return statusRank[left.status] - statusRank[right.status]
-    }
-
-    const leftTime = left.lastIngestionAt ? Date.parse(left.lastIngestionAt) : Number.NEGATIVE_INFINITY
-    const rightTime = right.lastIngestionAt ? Date.parse(right.lastIngestionAt) : Number.NEGATIVE_INFINITY
-
-    return rightTime - leftTime
-}
-
-function buildFrontendServiceUrls(config: SaasAppConfig): FrontendBootstrapData['serviceUrls'] {
-    return {
-        adminBaseUrl: config.adminBaseUrl,
-        runtimeBaseUrl: config.runtimeBaseUrl,
-    }
-}
-
-function readAdminBootstrapSession(request: Request, registry: WorkspaceRegistry, config: SaasAppConfig): FrontendBootstrapData['initialSessionStatus'] {
-    if (!config.adminToken) {
-        return { scope: 'admin', authenticated: true, authRequired: false, workspaceSlug: null }
-    }
-
-    const token = extractAccessToken(request, 'x-admin-token')
-        ?? readCookieValue(request, config.adminSessionCookieName)
-    const claims = token ? verifyJwtToken(token, config.jwtSecret) : null
-
-    return {
-        scope: 'admin',
-        authenticated: claims?.scope === 'admin'
-            && claims.kind === 'admin'
-            && registry.isAdminSessionActive(claims.sessionId ?? ''),
-        authRequired: true,
-        workspaceSlug: null,
-    }
-}
-
-/**
- * Bootstrap session для workspace учитывает и admin cookie, и workspace user cookie: администратор должен проходить в workspace shell без отдельного логина, а обычный пользователь — только в пределах своего slug.
- */
-function readWorkspaceBootstrapSession(request: Request, workspaceSlug: string, registry: WorkspaceRegistry, config: SaasAppConfig): FrontendBootstrapData['initialSessionStatus'] {
-    if (!config.requireWorkspaceAuth) {
-        return { scope: 'workspace', authenticated: true, authRequired: false, workspaceSlug }
-    }
-
-    const adminToken = extractAccessToken(request, 'x-admin-token')
-        ?? readCookieValue(request, config.adminSessionCookieName)
-    const adminClaims = adminToken ? verifyJwtToken(adminToken, config.jwtSecret) : null
-
-    if (adminClaims?.scope === 'admin' && adminClaims.kind === 'admin' && registry.isAdminSessionActive(adminClaims.sessionId ?? '')) {
-        return { scope: 'workspace', authenticated: true, authRequired: true, workspaceSlug }
-    }
-
-    const workspaceToken = extractAccessToken(request, 'x-workspace-token')
-        ?? readCookieValue(request, getWorkspaceSessionCookieName(config, workspaceSlug))
-    const workspaceClaims = workspaceToken ? verifyJwtToken(workspaceToken, config.jwtSecret) : null
-
-    return {
-        scope: 'workspace',
-        authenticated: (workspaceClaims?.kind === 'workspace-user' || workspaceClaims?.kind === 'workspace-share-link')
-            && workspaceClaims.scope === 'workspace:read'
-            && workspaceClaims.workspaceSlug === workspaceSlug
-            && registry.isWorkspaceSessionActive(workspaceSlug, workspaceClaims.sessionId ?? '', workspaceClaims.kind),
-        authRequired: true,
-        workspaceSlug,
-    }
-}
-
-function normalizeShareLinkTtlMinutes(value: unknown): number {
-    return value === 5 ? 5 : 10
-}
-
-function buildWorkspaceShareLinkUrl(request: Request, config: SaasAppConfig, workspaceSlug: string, token: string, sessionId?: string): string {
-    const pathname = sessionId
-        ? `/s/${encodeURIComponent(sessionId)}`
-        : `/auth/workspaces/${encodeURIComponent(workspaceSlug)}/share-links/login?token=${encodeURIComponent(token)}`
-
-    const serviceBaseUrl = config.runtimeBaseUrl ?? resolveRequestOrigin(request)
-
-    if (!serviceBaseUrl) {
-        return pathname
-    }
-
-    return `${serviceBaseUrl.replace(/\/+$/g, '')}${pathname}`
-}
-
-function resolveRequestOrigin(request: Request): string | null {
-    const forwardedProto = pickForwardedValue(request.header('x-forwarded-proto'))
-    const forwardedHost = pickForwardedValue(request.header('x-forwarded-host'))
-    const host = forwardedHost ?? request.header('host')?.trim() ?? null
-    const protocol = forwardedProto ?? request.protocol ?? 'http'
-
-    if (!host) {
-        return null
-    }
-
-    return `${protocol}://${host}`
-}
-
-function pickForwardedValue(value: string | undefined): string | null {
-    if (!value) {
-        return null
-    }
-
-    const normalizedValue = value.split(',')[0]?.trim()
-    return normalizedValue && normalizedValue.length > 0 ? normalizedValue : null
-}
-
-function getSessionRemainingSeconds(expiresAt: string | null): number {
-    if (!expiresAt) {
-        return 0
-    }
-
-    const expiresAtMs = Date.parse(expiresAt)
-
-    if (!Number.isFinite(expiresAtMs)) {
-        return 0
-    }
-
-    return Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000))
-}
-
-function sendWorkspaceShareLinkErrorShell(
-    request: Request,
-    response: Response,
-    frontendShell: FrontendShellRenderer,
-    registry: WorkspaceRegistry,
-    config: SaasAppConfig,
-    workspaceSlug: string,
-    options: { statusCode: number; title: string; message: string },
-): void {
-    frontendShell.send(response, {
-        route: {
-            kind: 'workspace-share-link-error',
-            workspaceSlug,
-            title: options.title,
-            message: options.message,
-        },
-        initialRequestUrl: request.originalUrl,
-        serviceUrls: buildFrontendServiceUrls(config),
-        initialDashboardSummary: null,
-        initialTestHistoryPayload: null,
-        initialAdminWorkspaces: null,
-        initialSessionStatus: readWorkspaceBootstrapSession(request, workspaceSlug, registry, config),
-    }, options.statusCode)
-}
-
-function sendUnknownWorkspaceShareLinkErrorHtml(response: Response): void {
-        response.status(404).type('html').send(`<!doctype html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Share link не найдена</title>
-    <style>
-        body { margin: 0; font-family: "Segoe UI", sans-serif; background: #08111f; color: #edf2fb; display: grid; min-height: 100vh; place-items: center; }
-        main { width: min(560px, calc(100vw - 32px)); padding: 32px; border: 1px solid rgba(148,163,184,.24); border-radius: 24px; background: rgba(15,23,42,.92); box-shadow: 0 24px 80px rgba(2,6,23,.42); }
-        h1 { margin: 0 0 12px; font-size: 28px; }
-        p { margin: 0 0 20px; line-height: 1.6; color: #cbd5e1; }
-        a { color: #7dd3fc; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <main>
-        <h1>Share link не найдена</h1>
-        <p>Короткая ссылка не существует, уже была удалена или введена с ошибкой. Запроси новую ссылку в админке.</p>
-        <a href="/">Открыть главную страницу</a>
-    </main>
-</body>
-</html>`)
-}
-
-function randomTokenId(): string {
-    return randomBytes(8).toString('hex')
-}
-
-function readCookieValue(request: Request, name: string): string | null {
-    const cookieHeader = request.header('cookie')
-
-    if (!cookieHeader) {
-        return null
-    }
-
-    const cookiePart = cookieHeader
-        .split(';')
-        .map((entry) => entry.trim())
-        .find((entry) => entry.startsWith(`${name}=`))
-
-    if (!cookiePart) {
-        return null
-    }
-
-    return decodeURIComponent(cookiePart.slice(name.length + 1))
-}
-
-function ensureDevBootstrapEnabled(config: SaasAppConfig) {
-    return (_request: Request, response: Response, next: NextFunction) => {
-        if (!config.allowDevBootstrap) {
-            response.status(404).json({ error: 'Dev bootstrap отключён в конфигурации сервера.' })
-            return
-        }
-
-        next()
-    }
-}
-
-/**
- * Ingestion endpoint принимает либо обёрнутый `{ report, metadata }`, либо сырой reporter root, чтобы CLI/self-hosted интеграции могли эволюционировать без жёсткой привязки к одному payload shape.
- */
-function normalizeIngestionPayload(body: unknown): IngestionRequestPayload | null {
-    if (!body || typeof body !== 'object') {
-        return null
-    }
-
-    const bodyRecord = body as Record<string, unknown>
-    const explicitReport = bodyRecord.report
-
-    if (explicitReport && isReporterRoot(explicitReport)) {
-        return {
-            report: attachNormalizedSourceFacts(explicitReport, bodyRecord.precomputedSourceFacts),
-            sourceFile: pickOptionalString(bodyRecord.sourceFile) ?? undefined,
-            metadata: normalizeMetadata(bodyRecord.metadata),
-        }
-    }
-
-    if (isReporterRoot(bodyRecord)) {
-        return {
-            report: attachNormalizedSourceFacts(bodyRecord, undefined),
-            metadata: undefined,
-        }
-    }
-
-    return null
-}
-
-function attachNormalizedSourceFacts(report: ReporterRoot, explicitSourceFacts: unknown): ReporterRoot {
-    const normalizedSourceFacts = normalizePrecomputedSourceFacts(explicitSourceFacts ?? report.aqaPulseSourceFacts)
-
-    if (!normalizedSourceFacts) {
-        const { aqaPulseSourceFacts: _ignoredSourceFacts, ...reportWithoutSourceFacts } = report
-        return reportWithoutSourceFacts
-    }
-
-    return {
-        ...report,
-        aqaPulseSourceFacts: normalizedSourceFacts,
-    }
-}
-
-function isReporterRoot(value: unknown): value is ReporterRoot {
-    if (!value || typeof value !== 'object') {
-        return false
-    }
-
-    const maybeReporter = value as Record<string, unknown>
-    return Array.isArray(maybeReporter.tests)
-}
-
-function normalizeMetadata(value: unknown): IngestionRequestPayload['metadata'] | undefined {
-    if (!value || typeof value !== 'object') {
-        return undefined
-    }
-
-    const metadata = value as Record<string, unknown>
-    return {
-        branch: pickOptionalString(metadata.branch) ?? undefined,
-        commit: pickOptionalString(metadata.commit) ?? undefined,
-        author: pickOptionalString(metadata.author) ?? undefined,
-    }
-}
-
-function pickOptionalString(value: unknown): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
-
-/**
- * Раздача артефактов жёстко нормализует путь относительно конкретного run directory, чтобы исключить path traversal и не позволить скачивать файлы соседних прогонов.
- */
-function sendArtifactFile(response: Response, artifactsRootPath: string, runId: string, requestedPath: string | undefined): void {
-    if (!requestedPath) {
-        response.status(400).json({ error: 'Нужно передать query-параметр path.' })
-        return
-    }
-
-    const normalizedRunDirectory = normalizeRunDirectory(runId)
-    const normalizedRequestedPath = requestedPath.replace(/\\/g, '/').replace(/^\/+/, '')
-
-    if (!normalizedRequestedPath.startsWith(`${normalizedRunDirectory}/`) || normalizedRequestedPath.includes('..')) {
-        response.status(400).json({ error: 'Некорректный путь к артефакту.' })
-        return
-    }
-
-    const resolvedRoot = path.resolve(artifactsRootPath)
-    const resolvedPath = path.resolve(resolvedRoot, normalizedRequestedPath)
-
-    if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) && resolvedPath !== resolvedRoot) {
-        response.status(400).json({ error: 'Некорректный путь к артефакту.' })
-        return
-    }
-
-    if (!fs.existsSync(resolvedPath)) {
-        response.status(404).json({ error: 'Артефакт не найден.' })
-        return
-    }
-
-    response.sendFile(resolvedPath)
-}
-
-function normalizeRunDirectory(runId: string): string {
-    return runId
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') || 'run'
-}
 
 

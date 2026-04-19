@@ -240,7 +240,7 @@ export function getAuthClaimsFromLocals(response: Response): AuthTokenClaims | n
     return locals.aqaPulseAuthClaims ?? null
 }
 
-export function getWorkspaceSessionCookieName(config: SaasAppConfig, slug: string): string {
+export function getWorkspaceSessionCookieName(config: Pick<SaasAppConfig, 'workspaceSessionCookiePrefix'>, slug: string): string {
     return `${config.workspaceSessionCookiePrefix}_${slug}`
 }
 

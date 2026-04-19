@@ -1,5 +1,7 @@
+export { registerAdminRoutes, type AdminRoutesContext } from './admin-routes'
 export { readCookieValue } from './cookies'
 export { ensureDevBootstrapEnabled } from './dev-bootstrap-middleware'
+export { registerCommonHttpErrorHandlers } from './error-handlers'
 export {
     buildFrontendServiceUrls,
     readAdminBootstrapSession,
@@ -14,6 +16,7 @@ export {
     pickOptionalString,
     pickQueryParam,
 } from './request-inputs'
+export { registerRuntimeRoutes, type RuntimeRoutesContext } from './runtime-routes'
 export {
     buildWorkspaceShareLinkUrl,
     sendUnknownWorkspaceShareLinkErrorHtml,

@@ -97,10 +97,16 @@ export {
     readCookieValue,
     readAdminBootstrapSession,
     readWorkspaceBootstrapSession,
+    registerAdminRoutes,
+    registerCommonHttpErrorHandlers,
+    registerRuntimeRoutes,
     sendArtifactFile,
     sendUnknownWorkspaceShareLinkErrorHtml,
     sendWorkspaceShareLinkErrorShell,
+    type AdminRoutesContext,
+    type RuntimeRoutesContext,
 } from './infrastructure/http'
+export { applyServerSettingsToConfig, buildServerSettingsDefaults } from './infrastructure/server-settings'
 export {
     createAdminGuard,
     createWorkspaceApiKeyGuard,

@@ -100,11 +100,14 @@ function cleanDir(dirPath) {
 
 /**
  * Эти проверки фиксируют routing/bootstrap contract React shell, чтобы packaging-изменения не ломали молча workspace dashboard/test-history поведение.
+ * После разбиения backend/app.ts на composition root и feature-specific route registrars проверяем и composition root, и runtime feature entrypoint.
  */
 function verifyWorkspaceHistoryRoutingArtifacts() {
     const compiledAppPath = path.resolve(distRoot, 'backend', 'app.js')
+    const compiledRuntimeRoutesPath = path.resolve(distRoot, 'backend', 'infrastructure', 'http', 'runtime-routes.js')
     const compiledFrontendShellPath = path.resolve(distRoot, 'backend', 'frontend-shell.js')
     const compiledApp = fs.readFileSync(compiledAppPath, 'utf8')
+    const compiledRuntimeRoutes = fs.readFileSync(compiledRuntimeRoutesPath, 'utf8')
     const compiledFrontendShell = fs.readFileSync(compiledFrontendShellPath, 'utf8')
 
     assertIncludes(
@@ -114,23 +117,38 @@ function verifyWorkspaceHistoryRoutingArtifacts() {
     )
     assertIncludes(
         compiledApp,
+        'registerRuntimeRoutes',
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledApp,
+        'registerCommonHttpErrorHandlers',
+        compiledAppPath,
+    )
+    assertIncludes(
+        compiledRuntimeRoutes,
         'frontendShell.send(response, {',
-        compiledAppPath,
+        compiledRuntimeRoutesPath,
     )
     assertIncludes(
-        compiledApp,
+        compiledRuntimeRoutes,
         "route: { kind: 'dashboard', workspaceSlug: workspace.slug },",
-        compiledAppPath,
+        compiledRuntimeRoutesPath,
     )
     assertIncludes(
-        compiledApp,
+        compiledRuntimeRoutes,
         "route: { kind: 'test-history', workspaceSlug: workspace.slug, testName },",
-        compiledAppPath,
+        compiledRuntimeRoutesPath,
     )
     assertIncludes(
-        compiledApp,
-        "initialTestHistoryPayload: payload,",
-        compiledAppPath,
+        compiledRuntimeRoutes,
+        'initialTestHistoryPayload: result.payload,',
+        compiledRuntimeRoutesPath,
+    )
+    assertIncludes(
+        compiledRuntimeRoutes,
+        'readWorkspaceBootstrapSession',
+        compiledRuntimeRoutesPath,
     )
     assertIncludes(
         compiledFrontendShell,

@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует workspace-scoped shell routes, login pages и share-link shells.
+ */
 import type express from 'express'
 import type { Request, Response } from 'express'
 import {

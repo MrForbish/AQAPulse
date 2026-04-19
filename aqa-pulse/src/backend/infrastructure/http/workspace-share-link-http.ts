@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: строит share-link URLs и рендерит share-link specific HTTP error responses.
+ */
 import type { Request, Response } from 'express'
 import type { FrontendBootstrapData } from '../../../frontend-bootstrap'
 import type { FrontendShellRenderer } from '../../frontend-shell'

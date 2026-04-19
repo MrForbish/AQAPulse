@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: smoke-проверка backend работы поверх Postgres persistence driver.
+ */
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -141,7 +144,7 @@ function sleep(milliseconds: number): void {
     const endTime = Date.now() + milliseconds
 
     while (Date.now() < endTime) {
-        // busy wait достаточно для короткого smoke-скрипта
+        // Активного ожидания здесь достаточно, потому что это короткий smoke-сценарий.
     }
 }
 

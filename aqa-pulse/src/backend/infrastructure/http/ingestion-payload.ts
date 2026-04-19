@@ -1,9 +1,15 @@
+/**
+ * Назначение файла: приводит тело запроса на загрузку отчёта к единому формату,
+ * с которым дальше работает backend.
+ */
 import { normalizePrecomputedSourceFacts, type ReporterRoot } from '../../../dashboard-utils'
 import type { IngestionRequestPayload } from '../../contracts'
 import { pickOptionalString } from './request-inputs'
 
 /**
- * Ingestion endpoint принимает либо обёрнутый `{ report, metadata }`, либо сырой reporter root, чтобы CLI/self-hosted интеграции могли эволюционировать без жёсткой привязки к одному payload shape.
+ * Маршрут загрузки принимает либо объект вида `{ report, metadata }`,
+ * либо сам Playwright-отчёт целиком, чтобы разные способы интеграции
+ * не были жёстко привязаны к одному формату запроса.
  */
 export function normalizeIngestionPayload(body: unknown): IngestionRequestPayload | null {
     if (!body || typeof body !== 'object') {

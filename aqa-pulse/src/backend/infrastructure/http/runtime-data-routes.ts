@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: связывает public и workspace-specific runtime data registrars.
+ */
 import type express from 'express'
 import { registerRuntimePublicDataRoutes } from './runtime-public-data-routes'
 import { registerRuntimeWorkspaceDataRoutes } from './runtime-workspace-data-routes'

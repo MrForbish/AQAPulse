@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит правила для времени жизни общих ссылок
+ * и связанных с ними ограничений.
+ */
 export function normalizeShareLinkTtlMinutes(value: unknown): number {
     return value === 5 ? 5 : 10
 }

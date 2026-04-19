@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: объявляет role-specific registry ports для application, security и HTTP слоёв.
+ */
 import type { AdminWorkspaceRegistryPort } from '../../application/admin-workspace-use-cases'
 import type { AdminAuthRegistryPort } from '../../application/auth-session-use-cases'
 import type { ReadModelWorkspaceRegistry } from '../../application/workspace-read-model-ports'

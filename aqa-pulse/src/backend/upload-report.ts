@@ -1,7 +1,9 @@
-import * as fs from 'node:fs'
 /**
- * Назначение: CLI/helper для backend-first upload из CI/manual flow. Он делает exchange workspace API key -> ingestion JWT и отправляет report в self-hosted ingestion endpoint без участия React runtime.
+ * Назначение: консольная утилита для загрузки отчётов из CI или вручную.
+ * Она обменивает ключ workspace на токен загрузки и отправляет отчёт
+ * в self-hosted backend без участия интерфейса.
  */
+import * as fs from 'node:fs'
 import { getErrorMessage } from '../shared/error-utils'
 import { loadReporterReport, type DashboardRunMetadata, type PrecomputedCodeQualitySourceFacts } from '../dashboard-utils'
 import type { IngestionRequestPayload, IngestionResult } from './contracts'

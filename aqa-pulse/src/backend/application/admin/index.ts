@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: единая точка входа для admin-сценариев приложения
+ * и связанных с ними контрактов.
+ */
 export {
     bootstrapWorkspaceForDev,
     createWorkspaceApiKeyCommand,

@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит команду изменения сохранённых настроек сервера
+ * и их немедленного применения в работающем backend.
+ */
 import type { ServerSettingsRecord, UpdateServerSettingsInput } from '../contracts'
 import {
     recordAdminAuditIfNeeded,

@@ -1,5 +1,6 @@
 /**
- * Назначение: нормализует runtime-конфигурацию self-hosted/backend слоя вокруг актуального archiveRootPath contract.
+ * Назначение: нормализует конфигурацию backend
+ * и подготавливает согласованные пути и настройки для запуска сервера.
  */
 import * as path from 'node:path'
 import type { DashboardBusinessAssumptions } from '../dashboard-utils'

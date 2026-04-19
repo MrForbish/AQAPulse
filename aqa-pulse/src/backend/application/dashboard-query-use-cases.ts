@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит сценарии чтения данных для дашборда,
+ * списка прогонов и истории отдельных тестов.
+ */
 import type { ApiFilters, ApiStore, DashboardRunResponse, TestHistoryConflict, TestHistoryResponse } from '../../api-store'
 
 type DashboardQueryStore = Pick<ApiStore,
@@ -49,6 +53,10 @@ export function queryDashboardCostMetricsPayload(store: DashboardQueryStore, fil
     return store.getCostMetricsPayload(filters)
 }
 
+/**
+ * Возвращает ответ для HTML-страницы истории теста,
+ * сохраняя различие между отсутствием данных и неоднозначным совпадением.
+ */
 export function queryTestHistoryForShell(
     store: DashboardQueryStore,
     testName: string,
@@ -62,6 +70,10 @@ export function queryTestHistoryForShell(
     }
 }
 
+/**
+ * Возвращает ответ API для истории теста с явным кодом статуса,
+ * если данные не найдены или найдено несколько возможных совпадений.
+ */
 export function queryTestHistoryForApi(
     store: DashboardQueryStore,
     testName: string,

@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит admin-команды для API-ключей, пользователей,
+ * ролей и отзыва активных сессий.
+ */
 import type { WorkspaceDescriptor, WorkspaceProvisioningResult, WorkspaceUserProvisioningResult, WorkspaceUserRole, WorkspaceUserRoleUpdateResult } from '../contracts'
 import { normalizeWorkspaceUserRole, requireNonEmptyText } from '../domain/workspace-rules'
 import {

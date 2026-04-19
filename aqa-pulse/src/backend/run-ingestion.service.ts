@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: координирует приём отчёта, обновление истории и сводки,
+ * а также сохранение связанных артефактов.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
@@ -97,6 +101,10 @@ export function ingestReporterRun(options: {
     }
 }
 
+/**
+ * Копирует локальные и встроенные вложения в централизованное хранилище артефактов
+ * и переписывает ссылки внутри отчёта на новые пути.
+ */
 function materializeReportArtifacts(options: {
     report: ReporterRoot
     runId: string

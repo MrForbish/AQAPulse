@@ -1,5 +1,6 @@
 /**
- * Назначение: одноразовая миграция file-backed workspace data в SQLite storage без участия frontend/runtime слоя.
+ * Назначение: одноразово переносит данные workspace из файлового хранения в SQLite
+ * без участия интерфейса и HTTP-слоя.
  */
 import * as fs from 'node:fs'
 import * as path from 'node:path'

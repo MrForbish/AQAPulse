@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: отправляет archived artifact files из backend storage в HTTP response.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { Response } from 'express'

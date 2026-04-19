@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: реализует центральный реестр workspace,
+ * в котором хранятся сессии, учётные данные, настройки сервера и журнал действий администратора.
+ */
 import { randomBytes } from 'node:crypto'
 import { inferShareLinkTtlMinutes, isSessionActive, shouldRefreshLastSeen } from '../../domain/session-rules'
 import { mergePersistedServerSettings, mergeServerSettings } from '../../domain/server-settings-rules'
@@ -73,6 +77,10 @@ export class WorkspaceRegistry {
 		return this.readRegistry().adminSessions.find((item) => item.id === sessionId) ?? null
 	}
 
+	/**
+	 * Создаёт новый workspace вместе с первичным ключом загрузки
+	 * и сохраняет результат одной записью в реестр.
+	 */
 	createWorkspace(input: CreateWorkspaceInput): WorkspaceProvisioningResult {
 		const normalizedName = normalizeRequiredText(input.name, 'name')
 		const normalizedSlug = normalizeWorkspaceSlug(input.slug ?? normalizedName)
@@ -118,6 +126,10 @@ export class WorkspaceRegistry {
 		}
 	}
 
+	/**
+	 * Добавляет новый ключ загрузки в существующий workspace
+	 * и возвращает исходный токен в единственный момент, когда его ещё можно показать вызывающему коду.
+	 */
 	createApiKey(slug: string, label = DEFAULT_API_KEY_LABEL): WorkspaceProvisioningResult {
 		const registry = this.readRegistry()
 		const workspace = findWorkspaceOrThrow(registry, slug)
@@ -150,6 +162,10 @@ export class WorkspaceRegistry {
 		}
 	}
 
+	/**
+	 * Создаёт пользователя workspace с сохранённой ролью
+	 * и однократно возвращает исходный токен входа.
+	 */
 	createUser(slug: string, input: CreateWorkspaceUserInput): WorkspaceUserProvisioningResult {
 		const registry = this.readRegistry()
 		const workspace = findWorkspaceOrThrow(registry, slug)
@@ -330,6 +346,10 @@ export class WorkspaceRegistry {
 		return mapWorkspaceToDescriptor(workspace)
 	}
 
+	/**
+	 * Открывает серверную admin-сессию, которую затем проверяют middleware аутентификации
+	 * вместе с данными из JWT.
+	 */
 	createAdminSession(expiresAt: string, label = DEFAULT_ADMIN_SESSION_LABEL): AdminSessionRecord {
 		const registry = this.readRegistry()
 		const now = new Date().toISOString()
@@ -347,6 +367,10 @@ export class WorkspaceRegistry {
 		return session
 	}
 
+	/**
+	 * Создаёт сессию workspace для пользователя, API-ключа или общей ссылки
+	 * и сохраняет её состояние в реестре независимо от HTTP-слоя.
+	 */
 	createWorkspaceSession(
 		slug: string,
 		options: {
@@ -404,6 +428,10 @@ export class WorkspaceRegistry {
 		return null
 	}
 
+	/**
+	 * Активирует сессию общей ссылки только при первом использовании
+	 * и сохраняет вычисленное время жизни в состоянии сессии.
+	 */
 	activateWorkspaceShareLink(slug: string, sessionId: string): WorkspaceSessionRecord {
 		const registry = this.readRegistry()
 		const workspace = findWorkspaceOrThrow(registry, slug)
@@ -517,6 +545,10 @@ export class WorkspaceRegistry {
 		return entry
 	}
 
+	/**
+	 * Проверяет, активна ли сессия workspace, при необходимости ограничивая проверку конкретным типом сессии,
+	 * чтобы слой безопасности не читал реестр напрямую.
+	 */
 	isWorkspaceSessionActive(slug: string, sessionId: string, kind?: WorkspaceSessionKind): boolean {
 		if (!sessionId) {
 			return false
@@ -537,6 +569,10 @@ export class WorkspaceRegistry {
 		return isSessionActive(session)
 	}
 
+	/**
+	 * Обновляет время последней активности для действующей сессии,
+	 * но делает это не на каждый запрос, чтобы не перегружать запись в реестр.
+	 */
 	touchWorkspaceSession(slug: string, sessionId: string): void {
 		if (!sessionId) {
 			return
@@ -566,6 +602,10 @@ export class WorkspaceRegistry {
 		this.writeRegistry(registry)
 	}
 
+	/**
+	 * Отзывает сессию workspace без удаления самой записи,
+	 * чтобы сохранить понятную историю её жизненного цикла.
+	 */
 	revokeWorkspaceSession(slug: string, sessionId: string): WorkspaceDescriptor {
 		const registry = this.readRegistry()
 		const workspace = findWorkspaceOrThrow(registry, slug)

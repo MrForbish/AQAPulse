@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует workspace-scoped runtime data API, включая ingestion и dashboard queries.
+ */
 import type express from 'express'
 import type { Request, Response } from 'express'
 import {

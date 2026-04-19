@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит application use cases открытия share link и входа по share-link token.
+ */
 import type { WorkspaceSessionKind } from '../contracts'
 import { getSessionRemainingSeconds } from '../domain/share-link-rules'
 import { issueApplicationAuthToken, verifyApplicationAuthToken } from './auth-token-service'

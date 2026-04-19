@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует admin shell routes и HTML entrypoints для control-plane интерфейса.
+ */
 import type express from 'express'
 import type { Request, Response } from 'express'
 import { loginAdmin as executeAdminLogin, logoutAdmin as executeAdminLogout } from '../../application/admin'

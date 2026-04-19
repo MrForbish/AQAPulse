@@ -1,9 +1,17 @@
+/**
+ * Назначение файла: подготавливает данные для чтения по workspace
+ * и строит отчёт о состоянии загрузки данных для admin-панели.
+ */
 import { applyBusinessAssumptionsToSummary, buildDashboardSummary } from '../../dashboard-utils'
 import { createEmptyHistory } from '../../history-utils'
 import type { SaasAppConfig } from '../config'
 import type { AdminIngestionHealthReport, WorkspaceIngestionHealthItem } from '../contracts'
 import type { ReadModelWorkspaceRegistry, WorkspaceReadModelBackendStorage } from './workspace-read-model-ports'
 
+/**
+ * Гарантирует, что у workspace есть минимальный набор файлов для чтения
+ * ещё до первой реальной загрузки отчёта, чтобы запросы не падали на пустом состоянии.
+ */
 export function ensureWorkspaceReadModelInitialized(slug: string, backendStorage: WorkspaceReadModelBackendStorage, config: SaasAppConfig): void {
     const workspaceStorage = backendStorage.getWorkspaceStorage(slug)
     const history = workspaceStorage.readHistory()
@@ -30,6 +38,10 @@ export function ensureWorkspaceReadModelInitialized(slug: string, backendStorage
     }
 }
 
+/**
+ * Строит сводный отчёт по всем workspace,
+ * предварительно приводя их состояние к корректному виду для чтения.
+ */
 export function buildAdminIngestionHealthReport(
     registry: ReadModelWorkspaceRegistry,
     backendStorage: WorkspaceReadModelBackendStorage,

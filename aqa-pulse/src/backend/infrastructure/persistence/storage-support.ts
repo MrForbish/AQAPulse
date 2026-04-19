@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит filesystem-specific helper functions для storage paths и raw report persistence.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ReporterRoot } from '../../../dashboard-utils'

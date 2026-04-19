@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: публичная точка входа в инфраструктурный слой backend.
+ */
 export { applyServerSettingsToConfig, buildServerSettingsDefaults } from './server-settings'
 export * as persistence from './persistence'
 export * as security from './security'

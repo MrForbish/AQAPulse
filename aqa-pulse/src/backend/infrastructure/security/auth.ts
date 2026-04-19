@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит middleware для защиты admin- и workspace-маршрутов,
+ * а также вспомогательные функции для текущего контекста аутентификации.
+ */
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { isWorkspaceReadSessionKind } from '../../domain/session-rules'
 import type { WorkspaceApiAuthResult, WorkspaceApiKeyRecord, WorkspaceDescriptor, WorkspaceUserAuthResult, WorkspaceUserRecord } from '../../contracts'
@@ -57,6 +61,10 @@ export function createAdminGuard(registry: SecurityWorkspaceRegistry, config: Sa
     }
 }
 
+/**
+ * Определяет workspace по параметру маршрута и сохраняет его в `response.locals`
+ * для последующих middleware и обработчиков.
+ */
 export function createWorkspaceResolver(registry: SecurityWorkspaceRegistry): RequestHandler {
     return (request: Request, response: Response, next: NextFunction) => {
         const slug = getRouteParam(request, 'slug')
@@ -72,6 +80,10 @@ export function createWorkspaceResolver(registry: SecurityWorkspaceRegistry): Re
     }
 }
 
+/**
+ * Проверяет токен загрузки, принадлежность текущему workspace
+ * и то, что сессия ключа загрузки всё ещё активна.
+ */
 export function createWorkspaceApiKeyGuard(registry: SecurityWorkspaceRegistry, config: SaasAppConfig): RequestHandler {
     return (request: Request, response: Response, next: NextFunction) => {
         const workspace = getWorkspaceFromLocals(response)
@@ -120,6 +132,10 @@ export function createWorkspaceApiKeyGuard(registry: SecurityWorkspaceRegistry, 
     }
 }
 
+/**
+ * Проверяет пользовательскую сессию workspace или доступ через активную admin-сессию
+ * и сохраняет результат аутентификации в `response.locals`.
+ */
 export function createWorkspaceUserGuard(registry: SecurityWorkspaceRegistry, config: SaasAppConfig, options: GuardOptions = {}): RequestHandler {
     const unauthorizedResponseMode = options.unauthorizedResponseMode ?? 'json'
 

@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: middleware-защита для dev-only bootstrap endpoints.
+ */
 import type { NextFunction, Request, Response } from 'express'
 
 export function ensureDevBootstrapEnabled(allowDevBootstrap: boolean) {

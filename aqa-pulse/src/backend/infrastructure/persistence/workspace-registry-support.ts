@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит shared helper functions для `WorkspaceRegistry` и normalization логики registry snapshot.
+ */
 import { createHash, randomBytes } from 'node:crypto'
 import { inferShareLinkTtlMinutes } from '../../domain/session-rules'
 import { normalizePersistedServerSettings } from '../../domain/server-settings-rules'

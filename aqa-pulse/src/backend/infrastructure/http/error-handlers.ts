@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует общие HTTP error handlers для Express backend.
+ */
 import type express from 'express'
 import type { NextFunction, Request, Response } from 'express'
 

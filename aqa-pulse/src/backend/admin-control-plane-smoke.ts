@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: smoke-сценарий для admin control-plane, который проверяет
+ * базовые admin/workspace операции поверх self-hosted backend.
+ */
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as os from 'node:os'

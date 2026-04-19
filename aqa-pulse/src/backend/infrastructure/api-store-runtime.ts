@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: управляет созданием и кэшированием объектов чтения данных
+ * для общего режима и отдельных workspace.
+ */
 import * as path from 'node:path'
 import { ApiStore } from '../../api-store'
 import { ensureWorkspaceReadModelInitialized } from '../application/admin'

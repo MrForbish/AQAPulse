@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: создаёт демонстрационный workspace и начальные данные
+ * для локального запуска сервера.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadReporterReport } from '../dashboard-utils'

@@ -1,5 +1,6 @@
 /**
- * Назначение: end-to-end smoke для admin/workspace auth flow и bootstrap contract React shell в self-hosted режиме.
+ * Назначение: сквозная smoke-проверка сценариев входа для admin и workspace,
+ * а также начальных данных интерфейса в self-hosted режиме.
  */
 import * as fs from 'node:fs'
 import * as http from 'node:http'
@@ -49,7 +50,9 @@ interface JsonResponse<T> {
 }
 
 /**
- * Прогоняет полный happy-path и ключевые guard-сценарии: admin login, workspace provisioning, user login, ingestion и доступ к React shell/API с корректным bootstrap состоянием.
+ * Прогоняет основной успешный сценарий и ключевые проверки защиты:
+ * вход администратора, создание workspace, вход пользователя, загрузку отчёта
+ * и доступ к интерфейсу и API с корректными начальными данными.
  */
 export async function runAuthFlowSmoke(options: AuthFlowSmokeOptions = {}): Promise<void> {
     const scenarioName = options.scenarioName ?? 'auth-flow'

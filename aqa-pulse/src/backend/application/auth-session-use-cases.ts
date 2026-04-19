@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит сценарии входа и выхода для admin и workspace,
+ * а также чтение состояния сессии для начальной загрузки интерфейса.
+ */
 import type { FrontendSessionStatus } from '../../frontend-bootstrap'
 import { buildSessionExpiresAt, isWorkspaceReadSessionKind } from '../domain/session-rules'
 import type { WorkspaceDescriptor, WorkspaceSessionKind, WorkspaceUserRole } from '../contracts'
@@ -74,6 +78,10 @@ export type WorkspaceApiKeyLoginResult = AuthFailure | AuthSuccess<{
     workspace: string
 }>
 
+/**
+ * Проверяет admin-токен из конфигурации, открывает серверную admin-сессию
+ * и выпускает короткоживущий токен доступа.
+ */
 export function loginAdmin(
     registry: AdminAuthRegistryPort,
     config: AuthSessionConfig,
@@ -121,6 +129,10 @@ export function loginAdmin(
     }
 }
 
+/**
+ * Закрывает admin-сессию по токену доступа, если токен корректен
+ * и действительно относится к области `admin`.
+ */
 export function logoutAdmin(
     registry: AdminAuthRegistryPort,
     config: Pick<AuthSessionConfig, 'jwtSecret'>,
@@ -142,6 +154,9 @@ export function logoutAdmin(
     }
 }
 
+/**
+ * Открывает пользовательскую сессию чтения для участника workspace.
+ */
 export function loginWorkspaceUser(
     registry: AdminAuthRegistryPort,
     config: Pick<AuthSessionConfig, 'jwtSecret' | 'accessTokenTtlSeconds'>,
@@ -190,6 +205,10 @@ export function loginWorkspaceUser(
     }
 }
 
+/**
+ * Открывает сессию загрузки данных по API-ключу после проверки,
+ * что ключ принадлежит нужному workspace.
+ */
 export function loginWorkspaceApiKey(
     registry: AdminAuthRegistryPort,
     config: Pick<AuthSessionConfig, 'jwtSecret' | 'accessTokenTtlSeconds'>,

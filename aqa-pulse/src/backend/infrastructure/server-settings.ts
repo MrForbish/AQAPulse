@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит вспомогательные функции для настроек сервера
+ * по умолчанию и их применения к конфигурации backend.
+ */
 import type { SaasAppConfig } from '../config'
 import type { ServerSettingsRecord } from '../contracts'
 

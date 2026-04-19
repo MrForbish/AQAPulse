@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует runtime data endpoints, доступные без workspace route prefix.
+ */
 import * as path from 'node:path'
 import type express from 'express'
 import type { Request, Response } from 'express'

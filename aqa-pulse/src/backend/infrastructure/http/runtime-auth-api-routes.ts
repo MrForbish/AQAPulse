@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует runtime auth API endpoints для workspace/admin login flows.
+ */
 import type express from 'express'
 import type { Request, Response } from 'express'
 import {

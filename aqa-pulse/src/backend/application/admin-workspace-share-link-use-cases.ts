@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит команду создания общих ссылок для workspace.
+ */
 import type { WorkspaceShareLinkProvisioningResult } from '../contracts'
 import {
     recordAdminAuditIfNeeded,

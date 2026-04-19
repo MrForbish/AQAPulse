@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: хранит общие контракты admin-слоя приложения и вспомогательную функцию для аудита,
+ * чтобы узкие модули команд не дублировали одни и те же зависимости времени выполнения и реестра.
+ */
 import type {
     ServerSettingsRecord,
     UpdateServerSettingsInput,
@@ -84,6 +88,11 @@ export interface AdminWorkspaceCommandRuntime {
     buildServerSettingsDefaults(): ServerSettingsRecord
 }
 
+/**
+ * Записывает событие в журнал аудита только тогда, когда у команды есть сведения о том,
+ * кто её выполнил. Это позволяет вызывать одну и ту же команду и из обычного admin-сценария,
+ * и из служебных сценариев начальной настройки.
+ */
 export function recordAdminAuditIfNeeded(
     registry: Pick<AdminWorkspaceRegistryPort, 'recordAdminAudit'>,
     actor: AdminActorContext | null | undefined,

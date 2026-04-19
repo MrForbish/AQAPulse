@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит правила для времени жизни сессий,
+ * проверки их активности и поведения сессий по общей ссылке.
+ */
 import type { WorkspaceSessionKind } from '../contracts'
 
 export function buildSessionExpiresAt(ttlSeconds: number, nowMs = Date.now()): string {

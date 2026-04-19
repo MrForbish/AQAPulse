@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: вычисляет стандартные пути к данным backend,
+ * каталогам workspace и файлу реестра.
+ */
 import * as path from 'node:path'
 import type { WorkspacePaths } from './contracts'
 

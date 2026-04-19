@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует admin API endpoints для управления workspaces, users, API keys и server settings.
+ */
 import { randomUUID } from 'node:crypto'
 import type express from 'express'
 import type { Request, Response } from 'express'

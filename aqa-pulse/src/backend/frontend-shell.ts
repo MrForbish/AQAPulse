@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: формирует HTML-оболочку фронтенда и встраивает в неё
+ * данные, которые клиенту нужны при первой загрузке.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { Response } from 'express'
@@ -8,7 +12,8 @@ export interface FrontendShellRenderer {
 }
 
 /**
- * Держит загрузку HTML template и bootstrap injection рядом с React shell boundary, чтобы backend/app.ts оставался про routes и auth, а не про HTML-строки.
+ * Держит чтение HTML-шаблона и подстановку начальных данных рядом,
+ * чтобы основной модуль приложения не занимался ручной сборкой HTML.
  */
 export function createFrontendShellRenderer(frontendDistPath: string): FrontendShellRenderer {
     const frontendTemplatePath = path.resolve(frontendDistPath, './index.html')

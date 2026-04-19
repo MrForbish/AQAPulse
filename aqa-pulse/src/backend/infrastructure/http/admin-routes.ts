@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: определяет `AdminRoutesContext` и связывает admin shell/API registrars.
+ */
 import type express from 'express'
 import type { RequestHandler } from 'express'
 import type { SaasAppConfig } from '../../config'

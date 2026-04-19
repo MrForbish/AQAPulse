@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: связывает public и workspace-specific runtime shell registrars.
+ */
 import type express from 'express'
 import { registerRuntimePublicShellRoutes } from './runtime-public-shell-routes'
 import type { RuntimeRoutesContext } from './runtime-routes'

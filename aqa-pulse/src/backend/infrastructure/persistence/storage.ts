@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: выбирает и создаёт concrete backend storage implementation по runtime config.
+ */
 import * as path from 'node:path'
 import type { SaasAppConfig } from '../../config'
 import { PostgresBackendStorage, PostgresWorkspaceRegistryStorage, PostgresWorkspaceRunStorage } from '../../postgres-storage'

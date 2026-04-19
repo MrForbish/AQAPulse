@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит команды жизненного цикла workspace:
+ * создание, переименование и удаление.
+ */
 import type { WorkspaceDescriptor, WorkspaceProvisioningResult, WorkspaceUpdateResult } from '../contracts'
 import { requireNonEmptyText } from '../domain/workspace-rules'
 import {
@@ -36,6 +40,10 @@ export function createWorkspaceCommand(
     return createdWorkspace
 }
 
+/**
+ * Поддерживает служебный сценарий начальной настройки: создаёт demo-workspace один раз,
+ * а при повторных вызовах только выпускает новый ключ загрузки.
+ */
 export function bootstrapWorkspaceForDev(
     registry: Pick<AdminWorkspaceRegistryPort, 'getWorkspace' | 'createWorkspace' | 'createApiKey'>,
     input: { name?: string | null; slug?: string | null },

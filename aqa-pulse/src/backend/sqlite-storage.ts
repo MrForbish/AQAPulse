@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит SQLite-backed реализации backend storage и registry persistence.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { DatabaseSync as NodeSqliteDatabaseSync } from 'node:sqlite'

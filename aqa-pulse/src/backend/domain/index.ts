@@ -1,18 +1,21 @@
+/**
+ * Назначение файла: публичный entrypoint backend domain layer c реэкспортом rule modules.
+ */
 export { getSessionRemainingSeconds, normalizeShareLinkTtlMinutes } from './share-link-rules'
 export {
-	buildSessionExpiresAt,
-	inferShareLinkTtlMinutes,
-	isSessionActive,
-	isWorkspaceReadSessionKind,
-	shouldRefreshLastSeen,
+    buildSessionExpiresAt,
+    inferShareLinkTtlMinutes,
+    isSessionActive,
+    isWorkspaceReadSessionKind,
+    shouldRefreshLastSeen,
 } from './session-rules'
 export {
-	mergePersistedServerSettings,
-	mergeServerSettings,
-	normalizePersistedServerSettings,
+    mergePersistedServerSettings,
+    mergeServerSettings,
+    normalizePersistedServerSettings,
 } from './server-settings-rules'
 export {
-	normalizeWorkspaceSlug,
-	normalizeWorkspaceUserRole,
-	requireNonEmptyText,
+    normalizeWorkspaceSlug,
+    normalizeWorkspaceUserRole,
+    requireNonEmptyText,
 } from './workspace-rules'

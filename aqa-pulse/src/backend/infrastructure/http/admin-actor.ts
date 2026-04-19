@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: извлекает admin actor context из HTTP запроса для audit и admin commands.
+ */
 import type { Response } from 'express'
 import { getAuthClaimsFromLocals } from '../security'
 import type { AdminActorRegistry } from '../persistence'

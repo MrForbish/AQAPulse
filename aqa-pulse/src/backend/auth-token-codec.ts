@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: содержит независимую от HTTP реализацию выпуска и проверки JWT,
+ * чтобы разные части backend использовали один и тот же механизм токенов.
+ */
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 export type AuthScope = 'admin' | 'workspace:read' | 'workspace:ingest'
@@ -14,6 +18,10 @@ export interface AuthTokenClaims {
     exp: number
 }
 
+/**
+ * Создаёт короткоживущий JWT для admin- и workspace-сценариев
+ * и сразу возвращает и сам токен, и его содержимое.
+ */
 export function issueAuthToken(options: {
     subject: string
     kind: AuthKind
@@ -47,6 +55,10 @@ export function issueAuthToken(options: {
     }
 }
 
+/**
+ * Проверяет подпись, обязательные поля заголовка и срок действия токена,
+ * возвращая данные только для валидного и неистёкшего JWT.
+ */
 export function verifyAuthToken(token: string, secret: string): AuthTokenClaims | null {
     const [headerSegment, payloadSegment, signatureSegment] = token.split('.')
 

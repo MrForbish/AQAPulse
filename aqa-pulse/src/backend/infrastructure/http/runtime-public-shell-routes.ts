@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: регистрирует публичные runtime shell routes, не привязанные к конкретному workspace.
+ */
 import type express from 'express'
 import type { Request, Response } from 'express'
 import { queryTestHistoryForShell } from '../../application/runtime'

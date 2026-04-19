@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: выполняет backup SQLite data для self-hosted deployment сценариев.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { resolveSaasAppConfig } from './config'

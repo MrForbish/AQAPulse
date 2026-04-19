@@ -1,6 +1,12 @@
+/**
+ * Назначение файла: нормализует HTTP route/query/body значения в application-friendly request inputs.
+ */
 import type { Request } from 'express'
 import type { ApiFilters } from '../../../api-store'
 
+/**
+ * Извлекает dashboard filters из query string, отбрасывая пустые значения.
+ */
 export function getFiltersFromRequest(request: Request): ApiFilters {
     const branch = pickQueryParam(request, 'branch')
     const project = pickQueryParam(request, 'project')
@@ -13,6 +19,9 @@ export function getFiltersFromRequest(request: Request): ApiFilters {
     }
 }
 
+/**
+ * Нормализует пагинационные query values в положительное целое число с fallback и верхней границей.
+ */
 export function normalizePaginationQueryValue(value: unknown, fallback: number, maxValue: number): number {
     const normalizedValue = Array.isArray(value) ? value[0] : value
 
@@ -34,6 +43,9 @@ export function getRouteParam(request: Request, key: string): string {
     return Array.isArray(value) ? value[0] : value
 }
 
+/**
+ * Читает один query param как trimmed string и возвращает `null` для пустых значений.
+ */
 export function pickQueryParam(request: Request, key: string): string | null {
     const value = request.query[key]
     const normalizedValue = Array.isArray(value) ? value[0] : value

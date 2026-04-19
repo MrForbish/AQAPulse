@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: основная точка входа backend-модуля,
+ * которая реэкспортирует стабильный публичный интерфейс приложения, инфраструктуры и контрактов.
+ */
 export { ApiStore, type ApiFilters, type TestHistoryConflict, type TestHistoryResponse } from '../api-store'
 export {
     buildAdvancedMetrics,

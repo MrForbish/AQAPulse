@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: читает bootstrap session state для admin/workspace frontend onboarding flows.
+ */
 import type { Request } from 'express'
 import type { FrontendBootstrapData } from '../../../frontend-bootstrap'
 import type { AdminAuthRegistryPort, AuthSessionConfig } from '../../application/auth-session-use-cases'

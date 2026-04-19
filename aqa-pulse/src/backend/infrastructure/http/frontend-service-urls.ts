@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: строит frontend-facing service URLs для shell bootstrap и client runtime.
+ */
 import type { FrontendBootstrapData } from '../../../frontend-bootstrap'
 import type { SaasAppConfig } from '../../config'
 

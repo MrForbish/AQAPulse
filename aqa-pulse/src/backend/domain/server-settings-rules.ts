@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит правила нормализации и объединения настроек сервера.
+ */
 import type {
     PersistedServerSettingsRecord,
     ServerSettingsRecord,

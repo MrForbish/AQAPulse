@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: определяет порты уровня приложения для чтения данных,
+ * чтобы сценарии приложения не зависели от конкретной реализации хранения.
+ */
 import type { DashboardSummary } from '../../dashboard-utils'
 import type { DashboardHistory } from '../../history-utils'
 import type { WorkspaceDescriptor } from '../contracts'

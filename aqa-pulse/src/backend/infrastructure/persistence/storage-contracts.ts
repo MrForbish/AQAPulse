@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: объявляет persistence contracts для backend storage, registry и workspace data access.
+ */
 import type { DashboardSummary, ReporterRoot } from '../../../dashboard-utils'
 import type { ArchivedRunMetadata, ArchivedRunRecord, DashboardHistory, DashboardHistoryEntry } from '../../../history-utils'
 import type { WorkspacePaths, WorkspaceRegistrySnapshot } from '../../contracts'

@@ -1,5 +1,6 @@
 /**
- * Назначение: поднимает self-hosted/saas HTTP-приложение с React shell, JSON API, auth и ingestion-маршрутами.
+ * Назначение: поднимает HTTP-приложение с интерфейсом, JSON API,
+ * аутентификацией и маршрутами для загрузки отчётов.
  */
 import * as path from 'node:path'
 import express, { type Request, type Response } from 'express'
@@ -12,7 +13,8 @@ import {
 } from './infrastructure/http'
 
 /**
- * Собирает единый Express app для admin/workspace сценариев: React shell отдаётся из одного места, а bootstrap/session данные заполняются на основе текущего запроса.
+ * Собирает единое Express-приложение для admin- и workspace-сценариев:
+ * интерфейс отдается из одного места, а начальные данные сессии подготавливаются по текущему запросу.
  */
 export function createSaasApp(options: Partial<SaasAppConfig> = {}): express.Express {
     return createConfiguredSaasApp(options, 'all')

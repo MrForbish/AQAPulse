@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: выполняет начальную настройку workspace
+ * и выпуск первых учётных данных для доступа.
+ */
 import { ensureWorkspaceReadModelInitialized } from './application/admin'
 import { resolveSaasAppConfig } from './config'
 import { createBackendStorage, type BackendStorage, type BootstrapWorkspaceRegistry, WorkspaceRegistry } from './infrastructure/persistence'

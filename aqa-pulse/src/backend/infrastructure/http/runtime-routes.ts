@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: определяет `RuntimeRoutesContext` и связывает runtime shell/auth/data registrars.
+ */
 import type express from 'express'
 import type { RequestHandler } from 'express'
 import { ApiStore } from '../../../api-store'

@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: содержит file-system реализации dashboard/workspace storage и registry persistence.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {

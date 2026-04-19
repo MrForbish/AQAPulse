@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: минимальные HTTP cookie helpers для backend auth и session flows.
+ */
 import type { Request } from 'express'
 
 export function readCookieValue(request: Request, name: string): string | null {

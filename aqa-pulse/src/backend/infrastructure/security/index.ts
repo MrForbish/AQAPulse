@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: публичная точка входа в слой безопасности с middleware,
+ * JWT-утилитами и вспомогательными функциями для cookie.
+ */
 export {
     createAdminGuard,
     createWorkspaceApiKeyGuard,

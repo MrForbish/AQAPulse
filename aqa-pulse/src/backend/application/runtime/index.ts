@@ -1,3 +1,6 @@
+/**
+ * Назначение файла: grouped facade для runtime-oriented application query use cases и auth flows.
+ */
 export {
     loginViaWorkspaceShareLinkToken,
     openWorkspaceShareLink,

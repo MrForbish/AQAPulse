@@ -967,7 +967,7 @@ function initializePlaywrightFileNameUtilities(): void {
             playwrightWindowsFilesystemFriendlyLength = playwrightUtils.windowsFilesystemFriendlyLength
         }
     } catch {
-        // Используем fallback-реализации, если внутренние util Playwright недоступны в runtime.
+        // Используем запасные реализации, если внутренние утилиты Playwright недоступны во время выполнения.
     }
 }
 

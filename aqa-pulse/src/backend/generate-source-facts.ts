@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: собирает сведения об исходном коде
+ * для аналитики и обогащения данных дашборда.
+ */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type * as TypeScript from 'typescript'

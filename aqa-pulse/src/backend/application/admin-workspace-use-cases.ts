@@ -1,3 +1,7 @@
+/**
+ * Назначение файла: совместимый фасад над более узкими admin-модулями команд.
+ * Сохраняет стабильную точку импорта для инфраструктурного слоя и публичного backend API.
+ */
 export type {
     AdminActorContext,
     AdminWorkspaceCommandRuntime,

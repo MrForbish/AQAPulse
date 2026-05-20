@@ -134,7 +134,7 @@ function resolveCliOptions(options: CliOptions): { reportPath: string; outPath: 
     }
 }
 
-function buildPrecomputedSourceFacts(report: ReporterRoot, repoRoot: string, reportPath: string): PrecomputedCodeQualitySourceFacts {
+export function buildPrecomputedSourceFacts(report: ReporterRoot, repoRoot: string, reportPath: string): PrecomputedCodeQualitySourceFacts {
     const typeScriptModule = getTypeScriptModule(repoRoot, reportPath)
 
     if (!typeScriptModule) {

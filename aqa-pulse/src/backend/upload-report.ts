@@ -4,10 +4,12 @@
  * в self-hosted backend без участия интерфейса.
  */
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { getErrorMessage } from '../shared/error-utils'
 import { loadReporterReport, type DashboardRunMetadata, type PrecomputedCodeQualitySourceFacts } from '../dashboard-utils'
 import type { IngestionRequestPayload, IngestionResult } from './contracts'
 import { prepareReporterReportForUpload } from './upload-report-artifacts'
+import { buildPrecomputedSourceFacts } from './generate-source-facts'
 
 export interface UploadReportOptions {
     baseUrl: string
@@ -27,6 +29,8 @@ interface CliOptions {
     reportPath?: string
     sourceFile?: string
     sourceFactsPath?: string
+    generateSourceFacts?: boolean
+    repoRoot?: string
     branch?: string | null
     commit?: string | null
     author?: string | null
@@ -110,6 +114,11 @@ function parseCliOptions(args: string[]): CliOptions {
             continue
         }
 
+        if (currentArg === '--generate-source-facts') {
+            options.generateSourceFacts = true
+            continue
+        }
+
         const nextArg = args[index + 1]
 
         if (!nextArg || nextArg.startsWith('--')) {
@@ -152,6 +161,12 @@ function parseCliOptions(args: string[]): CliOptions {
             continue
         }
 
+        if (currentArg === '--repo-root') {
+            options.repoRoot = nextArg
+            index += 1
+            continue
+        }
+
         if (currentArg === '--branch') {
             options.branch = nextArg
             index += 1
@@ -180,9 +195,14 @@ function resolveUploadOptions(options: CliOptions): UploadReportOptions {
     const baseUrl = normalizeBaseUrl(options.baseUrl ?? process.env.AQA_PULSE_BASE_URL)
     const workspaceSlug = requireNonEmptyText(options.workspaceSlug ?? process.env.AQA_PULSE_WORKSPACE_SLUG, 'AQA_PULSE_WORKSPACE_SLUG')
     const workspaceApiKey = requireNonEmptyText(options.workspaceApiKey ?? process.env.AQA_PULSE_WORKSPACE_API_KEY, 'AQA_PULSE_WORKSPACE_API_KEY')
-    const reportPath = requireNonEmptyText(options.reportPath ?? process.env.PW_LLM_REPORT ?? 'test-results/dashboard/data.json', '--report / PW_LLM_REPORT')
+    const reportPath = requireNonEmptyText(options.reportPath ?? process.env.AQA_PULSE_REPORT_PATH ?? process.env.PW_LLM_REPORT ?? 'test-results/dashboard/data.json', '--report / AQA_PULSE_REPORT_PATH / PW_LLM_REPORT')
     const sourceFile = normalizeOptionalText(options.sourceFile) ?? buildDefaultSourceFile(reportPath)
+    const shouldGenerateSourceFacts = options.generateSourceFacts === true || isEnabledFlag(process.env.AQA_PULSE_GENERATE_SOURCE_FACTS)
     const sourceFactsPath = normalizeOptionalText(options.sourceFactsPath ?? process.env.AQA_PULSE_SOURCE_FACTS_PATH)
+        ?? (shouldGenerateSourceFacts ? path.join(path.dirname(path.resolve(reportPath)), 'source-facts.json') : null)
+    const precomputedSourceFacts = sourceFactsPath
+        ? resolvePrecomputedSourceFacts(sourceFactsPath, reportPath, options.repoRoot ?? process.env.AQA_PULSE_SOURCE_ROOT ?? process.env.AQA_PULSE_REPO_ROOT, shouldGenerateSourceFacts)
+        : null
 
     return {
         baseUrl,
@@ -191,7 +211,7 @@ function resolveUploadOptions(options: CliOptions): UploadReportOptions {
         reportPath,
         sourceFile,
         sourceFactsPath,
-        precomputedSourceFacts: sourceFactsPath ? readJsonFile<PrecomputedCodeQualitySourceFacts>(sourceFactsPath, '--source-facts / AQA_PULSE_SOURCE_FACTS_PATH') : null,
+        precomputedSourceFacts,
         metadata: {
             branch: normalizeOptionalText(options.branch ?? process.env.CI_COMMIT_REF_NAME ?? process.env.GITHUB_REF_NAME),
             commit: normalizeOptionalText(options.commit ?? process.env.CI_COMMIT_SHA ?? process.env.GITHUB_SHA),
@@ -276,9 +296,11 @@ function printHelp(): void {
     console.log('  --base-url <url>                Base URL сервера, иначе AQA_PULSE_BASE_URL')
     console.log('  --workspace-slug <slug>         Workspace slug, иначе AQA_PULSE_WORKSPACE_SLUG')
     console.log('  --workspace-api-key <key>       Raw workspace API key, иначе AQA_PULSE_WORKSPACE_API_KEY')
-    console.log('  --report <path>                 Путь к report JSON, иначе PW_LLM_REPORT или test-results/dashboard/data.json')
+    console.log('  --report <path>                 Путь к report JSON, иначе AQA_PULSE_REPORT_PATH / PW_LLM_REPORT / test-results/dashboard/data.json')
     console.log('  --source-file <value>           Явный sourceFile для ingestion payload')
     console.log('  --source-facts <path>           JSON с precomputed source facts для code-quality metrics')
+    console.log('  --generate-source-facts         Сгенерировать source-facts перед upload, если файл не найден')
+    console.log('  --repo-root <path>              Корень repo для --generate-source-facts, иначе текущая директория')
     console.log('  --branch <value>                Явная branch metadata')
     console.log('  --commit <value>                Явная commit metadata')
     console.log('  --author <value>                Явный author metadata')
@@ -286,6 +308,8 @@ function printHelp(): void {
     console.log('')
     console.log('Дополнительные env для attachment-aware upload:')
     console.log('  AQA_PULSE_SOURCE_FACTS_PATH                     Путь к JSON с precomputed source facts')
+    console.log('  AQA_PULSE_GENERATE_SOURCE_FACTS=true             Автоматически сгенерировать source facts перед upload')
+    console.log('  AQA_PULSE_SOURCE_ROOT / AQA_PULSE_REPO_ROOT       Корень repo для генерации source facts')
     console.log('  AQA_PULSE_PREPARED_REPORT_PATH                   Сохранить подготовленный payload report в JSON')
     console.log('  AQA_PULSE_DEBUG_ATTACHMENTS_SUMMARY=true         Печатать debug summary по найденным attachment')
     console.log('  AQA_PULSE_INLINE_ATTACHMENTS_TOTAL_MAX_SIZE_BYTES Общий budget inline attachment в байтах')
@@ -353,4 +377,23 @@ function readJsonFile<T>(filePath: string, label: string): T {
     const resolvedFilePath = requireNonEmptyText(filePath, label)
     const fileContent = fs.readFileSync(resolvedFilePath, 'utf8')
     return JSON.parse(fileContent) as T
+}
+
+function resolvePrecomputedSourceFacts(sourceFactsPath: string, reportPath: string, repoRoot: string | undefined, shouldGenerate: boolean): PrecomputedCodeQualitySourceFacts {
+    if (fs.existsSync(sourceFactsPath)) {
+        return readJsonFile<PrecomputedCodeQualitySourceFacts>(sourceFactsPath, '--source-facts / AQA_PULSE_SOURCE_FACTS_PATH')
+    }
+
+    if (!shouldGenerate) {
+        throw new Error(`Не найден source facts file: ${sourceFactsPath}`)
+    }
+
+    const report = loadReporterReport(reportPath)
+    const resolvedRepoRoot = path.resolve(repoRoot ?? process.cwd())
+    const sourceFacts = buildPrecomputedSourceFacts(report, resolvedRepoRoot, path.resolve(reportPath))
+
+    fs.mkdirSync(path.dirname(path.resolve(sourceFactsPath)), { recursive: true })
+    fs.writeFileSync(sourceFactsPath, `${JSON.stringify(sourceFacts, null, 2)}\n`, 'utf8')
+
+    return sourceFacts
 }

@@ -79,11 +79,14 @@ npm run update:docker -- --build-package
 - `aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]`
 - `aqa-pulse-server sqlite-backup [backupDirectory]`
 - `aqa-pulse-server generate-source-facts [--report <path>] [--out <path>] [--repo-root <path>] [--json]`
-- `aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]`
+- `aqa-pulse-server merge-reports [--project-kind ui|api] --output <path> [--allow-missing] <input...>`
+- `aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--generate-source-facts] [--repo-root <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]`
 
 `upload-report` подходит и для обычного JSON upload, и для Playwright artifact-aware upload: если рядом с report доступны `test-results-*` output directories или markdown/screenshots attachments, CLI подготовит их для ingestion перед отправкой. Дополнительно можно передать `--source-facts <path>` или `AQA_PULSE_SOURCE_FACTS_PATH`, чтобы сервер строил code-quality из precomputed source facts без локального checkout автотестов.
 
 `generate-source-facts` нужен для CI-side анализа исходников: команда читает `report.tests[*].location.file`, находит соответствующие `.ts/.tsx/.js/.jsx` файлы в test repo и пишет `source-facts.json`, который потом передаётся в `upload-report`.
+
+`merge-reports` заменяет локальные project-specific helper-скрипты в репозитории автотестов. Команда объединяет несколько reports одного типа (`ui` или `api`) в один JSON и сохраняет `aqaPulseSourceReportPath`, чтобы `upload-report` потом смог найти локальные Playwright artifacts рядом с исходными reports.
 
 ### Формат precomputed source facts
 
@@ -154,6 +157,33 @@ aqa-pulse-server generate-source-facts \
 aqa-pulse-server upload-report \
 	--report "$PW_LLM_REPORT" \
 	--source-facts test-results/dashboard/source-facts.json
+```
+
+Можно ещё короче: `upload-report` сам сгенерирует `source-facts.json`, если передать флаг:
+
+```bash
+aqa-pulse-server upload-report \
+	--report "$PW_LLM_REPORT" \
+	--generate-source-facts \
+	--repo-root .
+```
+
+Пример merge нескольких reports перед upload:
+
+```bash
+aqa-pulse-server merge-reports \
+	--project-kind ui \
+	--allow-missing \
+	--output test-results/dashboard/ui-merged.json \
+	test-results/dashboard/ui-purchase.json \
+	test-results/dashboard/ui-cpu.json \
+	test-results/dashboard/ui-first.json \
+	test-results/dashboard/ui-second.json
+
+aqa-pulse-server upload-report \
+	--report test-results/dashboard/ui-merged.json \
+	--generate-source-facts \
+	--repo-root .
 ```
 
 Если путь к report уже лежит в `PW_LLM_REPORT`, можно короче:

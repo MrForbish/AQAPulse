@@ -304,6 +304,7 @@ function GitLabCiSettingsModal(props: {
     onClose: () => void
 }): React.JSX.Element {
     const [copiedValue, setCopiedValue] = React.useState<string | null>(null)
+    const [copyFailedValue, setCopyFailedValue] = React.useState<string | null>(null)
     const baseUrl = props.runtimeBaseUrl ?? getCurrentBaseUrl()
     const variables = buildGitLabVariables(props.workspace, baseUrl)
     const jobSnippet = buildGitLabJobSnippet(props.workspace, baseUrl)
@@ -311,6 +312,7 @@ function GitLabCiSettingsModal(props: {
     async function copyValue(value: string): Promise<void> {
         const copied = await copyToClipboard(value)
         setCopiedValue(copied ? value : null)
+        setCopyFailedValue(copied ? null : value)
     }
 
     return (
@@ -323,7 +325,7 @@ function GitLabCiSettingsModal(props: {
                         <p className="subtle-copy">Эти значения нужно добавить в GitLab CI/CD Variables для workspace <code>{props.workspace.slug}</code>.</p>
                     </div>
                     <button type="button" className="secondary-button" onClick={() => void copyValue(variables)}>
-                        {copiedValue === variables ? 'Скопировано' : 'Скопировать переменные'}
+                        {copyFailedValue === variables ? 'Не удалось скопировать' : copiedValue === variables ? 'Скопировано' : 'Скопировать переменные'}
                     </button>
                 </div>
 
@@ -331,30 +333,41 @@ function GitLabCiSettingsModal(props: {
                     <GitLabVariableRow
                         name="AQA_PULSE_BASE_URL"
                         value={baseUrl}
-                        tooltip="Публичный адрес AQA Pulse. GitLab job отправляет по нему отчет после прогона тестов."
+                        tooltip="Публичный адрес AQA Pulse, куда GitLab job отправляет отчет."
                         onCopy={copyValue}
                         isCopied={copiedValue === baseUrl}
+                        isCopyFailed={copyFailedValue === baseUrl}
                     />
                     <GitLabVariableRow
                         name="AQA_PULSE_WORKSPACE_SLUG"
                         value={props.workspace.slug}
-                        tooltip="Идентификатор workspace. По нему сервер понимает, в какой дашборд положить загруженный отчет."
+                        tooltip="Slug workspace, в который нужно положить отчет."
                         onCopy={copyValue}
                         isCopied={copiedValue === props.workspace.slug}
+                        isCopyFailed={copyFailedValue === props.workspace.slug}
                     />
                     <GitLabVariableRow
                         name="AQA_PULSE_WORKSPACE_API_KEY"
                         value={props.workspace.apiKeys.length > 0 ? 'Полные значения старых ключей не показываются' : 'Сначала создай ключ загрузки'}
-                        tooltip="Секретный ключ для загрузки отчетов. Полное значение показывается только один раз при создании, потом хранится только hash и короткий preview."
+                        tooltip="Секрет для загрузки отчетов. Полное значение видно только при создании ключа."
                         onCopy={copyValue}
                         isCopied={false}
+                        isCopyFailed={false}
                         copyDisabled
+                    />
+                    <GitLabVariableRow
+                        name="AQA_PULSE_REPORT_PATH"
+                        value="Playwright/test-results/dashboard/data.json"
+                        tooltip="Путь к JSON report, который генерирует Playwright reporter."
+                        onCopy={copyValue}
+                        isCopied={copiedValue === 'Playwright/test-results/dashboard/data.json'}
+                        isCopyFailed={copyFailedValue === 'Playwright/test-results/dashboard/data.json'}
                     />
                 </div>
 
                 <div className="gitlab-ci-section-title">
                     <h3>Ключи загрузки</h3>
-                    <InfoTooltip text="Старые полные ключи нельзя посмотреть повторно. Если нужен новый ключ для GitLab, создай его в блоке «Ключи загрузки отчетов»." />
+                    <InfoTooltip text="Полные значения старых ключей не показываются. Для GitLab создай новый ключ." />
                 </div>
                 <ul className="admin-compact-list access-admin-list gitlab-key-list">
                     {props.workspace.apiKeys.length > 0 ? props.workspace.apiKeys.map((apiKey) => (
@@ -366,7 +379,7 @@ function GitLabCiSettingsModal(props: {
                             <div className="gitlab-key-value">
                                 <span>
                                     AQA_PULSE_WORKSPACE_API_KEY
-                                    <InfoTooltip text="Это только короткий preview, а не полный секрет. В GitLab нужно вставлять полное значение, которое показали при создании ключа." />
+                                    <InfoTooltip text="Это короткий preview. В GitLab нужен полный ключ, показанный при создании." />
                                 </span>
                                 <code>{apiKey.tokenPreview}</code>
                             </div>
@@ -380,12 +393,12 @@ function GitLabCiSettingsModal(props: {
 
                 <div className="gitlab-ci-section-title">
                     <h3>Пример .gitlab-ci.yml</h3>
-                    <InfoTooltip text="Проверь путь к отчету и команду запуска тестов под свой проект. Главное — передать base URL, slug workspace и API key в uploader." />
+                    <InfoTooltip text="Проверь путь к отчету и команду тестов под свой проект." />
                 </div>
                 <div className="gitlab-ci-code-block">
                     <code>{jobSnippet}</code>
                     <button type="button" className="secondary-button" onClick={() => void copyValue(jobSnippet)}>
-                        {copiedValue === jobSnippet ? 'Скопировано' : 'Скопировать job'}
+                        {copyFailedValue === jobSnippet ? 'Не удалось скопировать' : copiedValue === jobSnippet ? 'Скопировано' : 'Скопировать job'}
                     </button>
                 </div>
 
@@ -403,6 +416,7 @@ function GitLabVariableRow(props: {
     tooltip: string
     onCopy: (value: string) => Promise<void>
     isCopied: boolean
+    isCopyFailed: boolean
     copyDisabled?: boolean
 }): React.JSX.Element {
     return (
@@ -415,7 +429,7 @@ function GitLabVariableRow(props: {
             </div>
             <code>{props.value}</code>
             <button type="button" className="secondary-button" disabled={props.copyDisabled} onClick={() => void props.onCopy(props.value)}>
-                {props.isCopied ? 'Скопировано' : 'Скопировать'}
+                {props.isCopyFailed ? 'Не удалось скопировать' : props.isCopied ? 'Скопировано' : 'Скопировать'}
             </button>
         </div>
     )
@@ -435,6 +449,7 @@ function buildGitLabVariables(workspace: WorkspaceDescriptor, baseUrl: string): 
         `AQA_PULSE_BASE_URL=${baseUrl}`,
         `AQA_PULSE_WORKSPACE_SLUG=${workspace.slug}`,
         'AQA_PULSE_WORKSPACE_API_KEY=<полный-ключ-показывается-при-создании>',
+        'AQA_PULSE_REPORT_PATH=Playwright/test-results/dashboard/data.json',
     ].join('\n')
 }
 
@@ -449,7 +464,7 @@ function buildGitLabJobSnippet(workspace: WorkspaceDescriptor, baseUrl: string):
         '  script:',
         '    - npm ci',
         '    - npm test',
-        '    - npx aqa-pulse-server upload-report --report "$AQA_PULSE_REPORT_PATH"',
+        '    - npx aqa-pulse-server upload-report --generate-source-facts --repo-root "$CI_PROJECT_DIR"',
         '  artifacts:',
         '    when: always',
         '    paths:',
@@ -471,11 +486,31 @@ async function copyToClipboard(value: string): Promise<boolean> {
             await navigator.clipboard.writeText(value)
             return true
         } catch {
-            return false
+            // Fallback ниже нужен для self-hosted инсталляций на HTTP или доменах без secure clipboard context.
         }
     }
 
-    return false
+    if (typeof document === 'undefined') {
+        return false
+    }
+
+    const textarea = document.createElement('textarea')
+    textarea.value = value
+    textarea.setAttribute('readonly', 'true')
+    textarea.style.position = 'fixed'
+    textarea.style.top = '0'
+    textarea.style.left = '0'
+    textarea.style.opacity = '0'
+    textarea.style.pointerEvents = 'none'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+
+    try {
+        return document.execCommand('copy')
+    } finally {
+        document.body.removeChild(textarea)
+    }
 }
 
 function formatDateTime(value: string | null): string {

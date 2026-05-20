@@ -1192,7 +1192,9 @@ input {
 
 .gitlab-ci-dialog {
     width: min(980px, calc(100vw - 32px));
-    overflow: visible;
+    max-height: min(86vh, 900px);
+    overflow: auto;
+    min-width: 0;
 }
 
 .gitlab-ci-summary,
@@ -1201,6 +1203,7 @@ input {
     gap: 12px;
     align-items: flex-start;
     justify-content: space-between;
+    min-width: 0;
 }
 
 .gitlab-ci-summary {
@@ -1210,6 +1213,8 @@ input {
 .gitlab-ci-summary h3,
 .gitlab-ci-section-title h3 {
     margin: 0 0 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .gitlab-ci-variable-list,
@@ -1225,9 +1230,10 @@ input {
 
 .gitlab-variable-row {
     display: grid;
-    grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(240px, 0.86fr) minmax(0, 1fr) auto;
     gap: 12px;
     align-items: center;
+    min-width: 0;
     padding: 12px 14px;
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -1237,8 +1243,11 @@ input {
 .gitlab-variable-row code,
 .gitlab-key-value code,
 .gitlab-ci-code-block code {
+    min-width: 0;
+    max-width: 100%;
     white-space: pre-wrap;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    box-sizing: border-box;
 }
 
 .gitlab-key-value {
@@ -1275,14 +1284,20 @@ input {
 .gitlab-ci-code-block {
     display: grid;
     gap: 12px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 14px;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: rgba(8, 17, 31, 0.48);
+    overflow: hidden;
 }
 
 .gitlab-ci-code-block code {
     display: block;
+    width: 100%;
+    overflow-x: auto;
     padding: 12px 14px;
     border-radius: 12px;
     background: rgba(15, 23, 42, 0.9);
@@ -1309,10 +1324,11 @@ input {
 
 .info-tooltip-bubble {
     position: absolute;
-    left: 50%;
-    bottom: calc(100% + 10px);
+    left: 0;
+    top: calc(100% + 8px);
     z-index: 1400;
-    width: min(360px, calc(100vw - 56px));
+    width: 320px;
+    max-width: min(320px, calc(100vw - 56px));
     padding: 9px 11px;
     border: 1px solid rgba(99, 179, 237, 0.35);
     border-radius: 12px;
@@ -1323,7 +1339,8 @@ input {
     line-height: 1.32;
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, 4px);
+    text-align: left;
+    transform: translateY(-2px);
     transition: opacity 0.16s ease, transform 0.16s ease;
     box-shadow: var(--shadow-lg);
 }
@@ -1331,7 +1348,16 @@ input {
 .info-tooltip:hover .info-tooltip-bubble,
 .info-tooltip:focus .info-tooltip-bubble {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
+}
+
+.gitlab-ci-section-title .info-tooltip-bubble {
+    left: auto;
+    right: 0;
+}
+
+.gitlab-key-value .info-tooltip-bubble {
+    left: 0;
 }
 
 .detail-pairs {

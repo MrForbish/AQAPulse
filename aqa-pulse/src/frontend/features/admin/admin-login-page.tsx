@@ -15,17 +15,17 @@ export function AdminLoginPage(): React.JSX.Element {
     const { errorMessage, isSubmitting, submit } = useAdminLoginAction()
 
     if (isCheckingSession) {
-        return <AuthCheckingSessionState label="Проверяем admin session..." />
+        return <AuthCheckingSessionState label="Проверяем сессию администратора..." />
     }
 
     return (
         <AuthShell
-            eyebrow="Admin access"
-            title="AQA Pulse Admin"
-            description="Войди через admin token, чтобы управлять рабочими пространствами, пользователями и ключами ingestion."
+            eyebrow="Доступ администратора"
+            title="Админка AQA Pulse"
+            description="Войди через admin token, чтобы управлять workspace, пользователями и ключами загрузки отчетов."
         >
             <AuthTokenForm fieldLabel="Admin token" submitLabel="Войти" submittingLabel="Входим..." onSubmitToken={submit} isSubmitting={isSubmitting} />
-            {errorMessage ? <ErrorView title="Login не выполнен" message={errorMessage} /> : null}
+            {errorMessage ? <ErrorView title="Войти не удалось" message={errorMessage} /> : null}
         </AuthShell>
     )
 }

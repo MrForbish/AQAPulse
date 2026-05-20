@@ -1,5 +1,5 @@
 /**
- * Назначение: admin React-страница для provisioning workspace, API keys и workspace users в едином shell.
+ * Назначение: главная страница админки со списком workspace и управлением доступами.
  */
 import React from 'react'
 import { useInitialAdminWorkspaces } from '../../runtime-hooks'
@@ -8,22 +8,19 @@ import { useAdminDashboardState } from './admin-hooks'
 import {
     AdminDashboardActionResult,
     AdminDashboardHero,
-    AdminAuditTrailSection,
     AdminIngestionHealthSection,
     AdminWorkspaceRegistry,
 } from './admin-dashboard-sections'
 
 /**
- * Dashboard reuses bootstrap-loaded workspaces when они уже встроены в HTML shell, но сохраняет живые CRUD-action handlers как отдельный hook-слой.
+ * Страница использует workspace из начальной загрузки, а действия с данными держит в отдельном hook.
  */
 export function AdminDashboardPage(): React.JSX.Element {
     const initialWorkspaces = useInitialAdminWorkspaces()
     const {
         workspaces,
-        auditPage,
         ingestionHealth,
         isLoading,
-        isAuditPageLoading,
         errorMessage,
         actionResult,
         dismissActionResult,
@@ -40,8 +37,6 @@ export function AdminDashboardPage(): React.JSX.Element {
         disableUser,
         deleteUser,
         revokeSession,
-        goToPreviousAuditPage,
-        goToNextAuditPage,
         logout,
     } = useAdminDashboardState(initialWorkspaces)
 
@@ -69,12 +64,6 @@ export function AdminDashboardPage(): React.JSX.Element {
                 onDisableUser={disableUser}
                 onDeleteUser={deleteUser}
                 onRevokeSession={revokeSession}
-            />
-            <AdminAuditTrailSection
-                auditPage={auditPage}
-                isLoading={isAuditPageLoading}
-                onPreviousPage={goToPreviousAuditPage}
-                onNextPage={goToNextAuditPage}
             />
         </PageFrame>
     )

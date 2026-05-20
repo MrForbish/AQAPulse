@@ -10,8 +10,8 @@ export function AdminServerSettingsSection(props: {
     if (!props.settings) {
         return (
             <section className="admin-grid">
-                <Panel className="span-2" title="Server settings">
-                    <LoadingView label="Загружаем server settings..." />
+                <Panel className="span-2" title="Настройки сервера">
+                    <LoadingView label="Загружаем настройки сервера..." />
                 </Panel>
             </section>
         )
@@ -19,35 +19,35 @@ export function AdminServerSettingsSection(props: {
 
     return (
         <section className="admin-grid">
-            <Panel className="span-2" title="Server settings" description="Этот раздел управляет server-side поведением self-hosted инстанса: base URL, auth policy, TTL токенов и базовыми business assumptions для runtime API.">
+            <Panel className="span-2" title="Настройки сервера" description="Здесь настраивается весь self-hosted сервер: публичные URL, авторизация, срок жизни сессий и базовые значения для бизнес-расчетов.">
                 <form className="stack admin-form" onSubmit={props.onUpdateSettings}>
                     <div className="admin-grid server-settings-grid">
                         <label><span>Admin base URL</span><input type="text" name="adminBaseUrl" defaultValue={props.settings.adminBaseUrl ?? ''} placeholder="https://admin.example.com" /></label>
-                        <label><span>Runtime base URL</span><input type="text" name="runtimeBaseUrl" defaultValue={props.settings.runtimeBaseUrl ?? ''} placeholder="https://runtime.example.com" /></label>
-                        <label><span>Admin token</span><input type="text" name="adminToken" defaultValue={props.settings.adminToken ?? ''} placeholder="Пусто = admin auth отключён" /></label>
-                        <label><span>JWT/session TTL, сек</span><input type="number" min="1" name="accessTokenTtlSeconds" defaultValue={String(props.settings.accessTokenTtlSeconds)} required /></label>
-                        <label><span>CI minute cost</span><input type="number" min="0" step="0.01" name="ciMinuteCostRub" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.ciMinuteCostRub)} /></label>
-                        <label><span>Developer hourly cost</span><input type="number" min="0" step="0.01" name="developerHourlyCostRub" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.developerHourlyCostRub)} /></label>
-                        <label><span>Analysis minutes per unstable</span><input type="number" min="0" step="0.01" name="analysisMinutesPerUnstable" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.analysisMinutesPerUnstable)} /></label>
+                        <label><span>Runtime base URL</span><input type="text" name="runtimeBaseUrl" defaultValue={props.settings.runtimeBaseUrl ?? ''} placeholder="https://aqa-pulse.example.com" /></label>
+                        <label><span>Admin token</span><input type="text" name="adminToken" defaultValue={props.settings.adminToken ?? ''} placeholder="Пусто = вход в админку без токена" /></label>
+                        <label><span>TTL сессии, секунд</span><input type="number" min="1" name="accessTokenTtlSeconds" defaultValue={String(props.settings.accessTokenTtlSeconds)} required /></label>
+                        <label><span>Стоимость минуты CI</span><input type="number" min="0" step="0.01" name="ciMinuteCostRub" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.ciMinuteCostRub)} /></label>
+                        <label><span>Стоимость часа разработчика</span><input type="number" min="0" step="0.01" name="developerHourlyCostRub" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.developerHourlyCostRub)} /></label>
+                        <label><span>Минут на разбор нестабильного теста</span><input type="number" min="0" step="0.01" name="analysisMinutesPerUnstable" defaultValue={stringifyNullableNumber(props.settings.businessAssumptions.analysisMinutesPerUnstable)} /></label>
                     </div>
                     <div className="checkbox-row-group">
                         <label className="checkbox-row checkbox-card-row">
                             <input type="checkbox" name="requireWorkspaceAuth" defaultChecked={props.settings.requireWorkspaceAuth} />
                             <span className="checkbox-copy">
-                                <strong>Требовать workspace login для чтения dashboard/API</strong>
-                                <small>Если включено, `/w/&lt;slug&gt;` и read-only API доступны только после входа по workspace user token, admin session или временной share link.</small>
+                                <strong>Требовать вход для просмотра workspace</strong>
+                                <small>Если включено, `/w/&lt;slug&gt;` и read-only API доступны только после входа по токену пользователя, сессии администратора или временной ссылке.</small>
                             </span>
                         </label>
                         <label className="checkbox-row checkbox-card-row">
                             <input type="checkbox" name="allowDevBootstrap" defaultChecked={props.settings.allowDevBootstrap} />
                             <span className="checkbox-copy">
-                                <strong>Разрешить dev bootstrap route</strong>
-                                <small>Если включено, сервер оставляет доступным dev-only endpoint `/api/dev/bootstrap` для быстрого локального создания demo workspace и ключей.</small>
+                                <strong>Разрешить тестовый bootstrap</strong>
+                                <small>Если включено, остается доступным служебный endpoint `/api/dev/bootstrap` для быстрого создания demo workspace и ключей.</small>
                             </span>
                         </label>
                     </div>
                     <button type="submit" className="primary-link auth-submit" disabled={props.busyKey === 'settings:update'}>
-                        {props.busyKey === 'settings:update' ? 'Сохраняем...' : 'Сохранить server settings'}
+                        {props.busyKey === 'settings:update' ? 'Сохраняем...' : 'Сохранить настройки'}
                     </button>
                 </form>
             </Panel>
@@ -59,7 +59,7 @@ export function AdminIngestionHealthSection(props: {
     health: AdminIngestionHealthReport | null
 }): React.JSX.Element {
     return (
-        <Panel className="span-2" title="Состояние загрузок и прогонов" description="Сводка по последним циклам загрузки отчётов и состоянию последних прогонов в каждом workspace.">
+        <Panel className="span-2" title="Состояние загрузок и прогонов" description="Сводка по последним загрузкам отчетов и состоянию прогонов в каждом workspace.">
             {!props.health ? <LoadingView label="Собираем сводку по загрузкам и прогонам..." /> : (
                 <>
                     <div className="detail-pairs compact-pairs admin-health-summary-grid">
@@ -80,10 +80,10 @@ export function AdminIngestionHealthSection(props: {
                                 <div className="access-item-meta access-item-meta-compact">
                                     <span>Workspace: {item.slug}</span>
                                     <span>Прогонов: {String(item.runCount)}</span>
-                                    <span>Последний ingestion: {formatDateTime(item.lastIngestionAt)}</span>
+                                    <span>Последняя загрузка: {formatDateTime(item.lastIngestionAt)}</span>
                                     <span>Устарело, ч: {item.staleHours === null ? 'н/д' : String(item.staleHours)}</span>
                                     <span>Успешность: {formatPercent(item.latestPassRate)}</span>
-                                    <span>Провалено: {formatNullableNumber(item.latestFailedTests)}</span>
+                                    <span>Упало тестов: {formatNullableNumber(item.latestFailedTests)}</span>
                                     <span>Флаки: {formatNullableNumber(item.latestFlakyTests)}</span>
                                     <span>Длительность: {formatDuration(item.latestDurationMs)}</span>
                                     <span>Источник: {item.latestSourceFile ?? 'н/д'}</span>
@@ -105,8 +105,8 @@ export function AdminAuditTrailSection(props: {
 }): React.JSX.Element {
     if (!props.auditPage) {
         return (
-            <Panel className="span-2" title="Admin audit" description="Последние админские действия по доступам, настройкам и workspace lifecycle.">
-                <LoadingView label="Загружаем audit log..." />
+            <Panel className="span-2" title="Аудит админки" description="История действий с workspace, ключами, пользователями, сессиями и настройками сервера.">
+                <LoadingView label="Загружаем журнал действий..." />
             </Panel>
         )
     }
@@ -115,7 +115,7 @@ export function AdminAuditTrailSection(props: {
     const rangeEnd = props.auditPage.totalEntries === 0 ? 0 : rangeStart + props.auditPage.entries.length - 1
 
     return (
-        <Panel className="span-2" title="Admin audit" description="Последние админские действия по доступам, настройкам и workspace lifecycle.">
+        <Panel className="span-2" title="Аудит админки" description="История действий с workspace, ключами, пользователями, сессиями и настройками сервера.">
             <div className="admin-audit-toolbar">
                 <div className="subtle-copy">Показаны записи {String(rangeStart)}-{String(rangeEnd)} из {String(props.auditPage.totalEntries)}</div>
                 <div className="admin-audit-pagination">
@@ -124,7 +124,7 @@ export function AdminAuditTrailSection(props: {
                     </button>
                     <span>Страница {String(props.auditPage.page)} из {String(props.auditPage.totalPages)}</span>
                     <button type="button" className="secondary-button" disabled={props.isLoading || !props.auditPage.hasNextPage} onClick={() => void props.onNextPage()}>
-                        Вперёд
+                        Вперед
                     </button>
                 </div>
             </div>
@@ -132,28 +132,28 @@ export function AdminAuditTrailSection(props: {
                 {props.auditPage.entries.length > 0 ? props.auditPage.entries.map((entry) => (
                     <li key={entry.id} className="access-list-item">
                         <div className="access-item-head">
-                            <strong>{entry.summary}</strong>
-                            <span className="access-state-pill is-active">{entry.action}</span>
+                            <strong>{formatAuditSummary(entry)}</strong>
+                            <span className="access-state-pill is-active">{labelAuditAction(entry.action)}</span>
                         </div>
                         <div className="access-item-meta access-item-meta-compact">
                             <span>Когда: {formatDateTime(entry.createdAt)}</span>
                             <span>Кто: {entry.actorLabel}</span>
-                            <span>Session: {entry.actorSessionId ?? 'n/a'}</span>
-                            <span>Workspace: {entry.workspaceSlug ?? 'n/a'}</span>
-                            <span>Target: {entry.targetType}{entry.targetId ? `:${entry.targetId}` : ''}</span>
+                            <span>Сессия: {entry.actorSessionId ?? 'н/д'}</span>
+                            <span>Workspace: {entry.workspaceSlug ?? 'н/д'}</span>
+                            <span>Объект: {labelAuditTarget(entry.targetType)}{entry.targetId ? `:${entry.targetId}` : ''}</span>
                         </div>
                         {Object.keys(entry.details).length > 0 ? (
                             <div className="detail-pairs compact-pairs admin-audit-details">
                                 {Object.entries(entry.details).map(([key, value]) => (
                                     <div key={key} className="detail-row">
-                                        <span>{key}</span>
+                                        <span>{labelAuditDetail(key)}</span>
                                         <code>{value}</code>
                                     </div>
                                 ))}
                             </div>
                         ) : null}
                     </li>
-                )) : <li className="is-empty">Аудит-записей пока нет.</li>}
+                )) : <li className="is-empty">Записей аудита пока нет.</li>}
             </ul>
         </Panel>
     )
@@ -174,9 +174,90 @@ function labelHealthStatus(status: WorkspaceIngestionHealthStatus): string {
     }
 }
 
+function labelAuditAction(action: AdminAuditRecord['action']): string {
+    switch (action) {
+        case 'admin-login':
+            return 'Вход администратора'
+        case 'admin-logout':
+            return 'Выход администратора'
+        case 'workspace-created':
+            return 'Workspace создан'
+        case 'workspace-updated':
+            return 'Workspace обновлен'
+        case 'workspace-deleted':
+            return 'Workspace удален'
+        case 'workspace-data-reset':
+            return 'Прогоны очищены'
+        case 'workspace-api-key-created':
+            return 'Ключ создан'
+        case 'workspace-api-key-disabled':
+            return 'Ключ отключен'
+        case 'workspace-api-key-deleted':
+            return 'Ключ удален'
+        case 'workspace-user-created':
+            return 'Пользователь создан'
+        case 'workspace-user-disabled':
+            return 'Пользователь отключен'
+        case 'workspace-user-deleted':
+            return 'Пользователь удален'
+        case 'workspace-user-role-updated':
+            return 'Роль изменена'
+        case 'workspace-share-link-created':
+            return 'Временная ссылка создана'
+        case 'workspace-session-revoked':
+            return 'Сессия отозвана'
+        case 'server-settings-updated':
+            return 'Настройки обновлены'
+        default:
+            return action
+    }
+}
+
+function labelAuditTarget(targetType: AdminAuditRecord['targetType']): string {
+    switch (targetType) {
+        case 'workspace':
+            return 'workspace'
+        case 'api-key':
+            return 'ключ'
+        case 'user':
+            return 'пользователь'
+        case 'session':
+            return 'сессия'
+        case 'server-settings':
+            return 'настройки сервера'
+        default:
+            return 'сессия администратора'
+    }
+}
+
+function labelAuditDetail(key: string): string {
+    const labels: Record<string, string> = {
+        accessTokenTtlSeconds: 'TTL сессии, секунд',
+        allowDevBootstrap: 'Тестовый bootstrap',
+        apiKeyId: 'ID ключа',
+        name: 'Название',
+        previousSlug: 'Предыдущий slug',
+        requireWorkspaceAuth: 'Требовать вход',
+        role: 'Роль',
+        sessionId: 'ID сессии',
+        slug: 'Slug',
+        userId: 'ID пользователя',
+    }
+
+    return labels[key] ?? key
+}
+
+function formatAuditSummary(entry: AdminAuditRecord): string {
+    if (entry.summary && !/^[a-z\s-]+$/i.test(entry.summary)) {
+        return entry.summary
+    }
+
+    return labelAuditAction(entry.action)
+}
+
 function formatDateTime(value: string | null): string {
     if (!value) {
-        return 'ещё не было'
+        return 'еще не было'
     }
 
     const parsed = Date.parse(value)

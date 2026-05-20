@@ -7,30 +7,30 @@ export function AdminProvisioningIntro(props: {
 }): React.JSX.Element {
     return (
         <section className="admin-grid">
-            <Panel title="Создать workspace" description="Workspace создаётся вместе с первичным ingestion key.">
+            <Panel title="Создать workspace" description="Workspace создается вместе с первым ключом загрузки отчетов. После создания админка покажет готовые переменные для GitLab CI.">
                 <form className="stack admin-form" onSubmit={props.onCreateWorkspace}>
                     <label>
-                        <span>Template</span>
+                        <span>Шаблон</span>
                         <select name="template" defaultValue="production">
-                            <option value="production">Production CI</option>
-                            <option value="sandbox">Sandbox / test data</option>
+                            <option value="production">Боевой CI</option>
+                            <option value="sandbox">Песочница / тестовые данные</option>
                             <option value="demo">Demo workspace</option>
                         </select>
                     </label>
-                    <label><span>Name</span><input type="text" name="name" required /></label>
-                    <label><span>Slug</span><input type="text" name="slug" placeholder="demo-client" /></label>
-                    <label><span>Initial API key label</span><input type="text" name="apiKeyLabel" placeholder="Primary ingestion key" /></label>
+                    <label><span>Название</span><input type="text" name="name" required /></label>
+                    <label><span>Slug</span><input type="text" name="slug" placeholder="autotests-main" /></label>
+                    <label><span>Название первого ключа</span><input type="text" name="apiKeyLabel" placeholder="GitLab CI загрузка отчетов" /></label>
                     <button type="submit" className="primary-link auth-submit" disabled={props.isCreatingWorkspace}>
-                        {props.isCreatingWorkspace ? 'Создаём...' : 'Создать workspace'}
+                        {props.isCreatingWorkspace ? 'Создаем...' : 'Создать workspace'}
                     </button>
                 </form>
             </Panel>
-            <Panel title="Как это работает" description="Те же backend контракты, что и раньше, но в одном React shell.">
+            <Panel title="Что будет создано" description="Минимальный набор для подключения автотестов к AQA Pulse.">
                 <div className="detail-pairs compact-pairs">
-                    <div className="detail-row"><span>Admin login</span><code>session cookie</code></div>
-                    <div className="detail-row"><span>Workspace API key</span><code>ingestion only</code></div>
-                    <div className="detail-row"><span>Workspace user token</span><code>dashboard/API read</code></div>
-                    <div className="detail-row"><span>Provisioning tokens</span><code>сохраняются сразу после создания</code></div>
+                    <div className="detail-row"><span>Workspace</span><code>отдельный дашборд и хранилище прогонов</code></div>
+                    <div className="detail-row"><span>Ключ загрузки</span><code>только для отправки отчетов из CI</code></div>
+                    <div className="detail-row"><span>Переменные GitLab CI</span><code>готовый блок для копирования</code></div>
+                    <div className="detail-row"><span>Секреты</span><code>полный ключ показывается только один раз</code></div>
                 </div>
             </Panel>
         </section>

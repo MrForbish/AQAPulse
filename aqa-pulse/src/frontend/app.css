@@ -1115,8 +1115,7 @@ input {
 }
 
 .gitlab-ci-summary,
-.gitlab-ci-section-title,
-.gitlab-variable-row {
+.gitlab-ci-section-title {
     display: flex;
     gap: 12px;
     align-items: flex-start;
@@ -1144,6 +1143,10 @@ input {
 }
 
 .gitlab-variable-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
     padding: 12px 14px;
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -1157,7 +1160,6 @@ input {
     word-break: break-word;
 }
 
-.gitlab-variable-label,
 .gitlab-key-value {
     display: grid;
     gap: 6px;
@@ -1168,6 +1170,13 @@ input {
     display: inline-flex;
     gap: 8px;
     align-items: center;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.gitlab-variable-label strong {
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .gitlab-key-value span {
@@ -1196,6 +1205,7 @@ input {
     position: relative;
     display: inline-grid;
     place-items: center;
+    flex: 0 0 auto;
     width: 18px;
     height: 18px;
     border: 1px solid rgba(99, 179, 237, 0.45);
@@ -1352,9 +1362,16 @@ input {
     }
 
     .gitlab-ci-summary,
-    .gitlab-ci-section-title,
-    .gitlab-variable-row {
+    .gitlab-ci-section-title {
         display: grid;
+    }
+
+    .gitlab-variable-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .gitlab-variable-label strong {
+        white-space: normal;
     }
 
     .workspace-admin-grid-3 {

@@ -3,26 +3,27 @@ import { Link } from 'react-router-dom'
 import { useInitialAdminWorkspaces } from '../../runtime-hooks'
 import { ErrorView, PageFrame } from '../../shared/ui'
 import { useAdminDashboardState } from './admin-hooks'
-import { AdminDashboardActionResult, AdminServerSettingsSection } from './admin-dashboard-sections'
+import { AdminAuditTrailSection, AdminDashboardActionResult } from './admin-dashboard-sections'
 
-export function AdminSettingsPage(): React.JSX.Element {
+export function AdminAuditPage(): React.JSX.Element {
     const initialWorkspaces = useInitialAdminWorkspaces()
     const {
-        serverSettings,
+        auditPage,
+        isAuditPageLoading,
         errorMessage,
         actionResult,
         dismissActionResult,
-        busyKey,
-        updateServerSettings,
+        goToPreviousAuditPage,
+        goToNextAuditPage,
     } = useAdminDashboardState(initialWorkspaces)
 
     return (
         <PageFrame>
             <section className="admin-subpage-header">
                 <div>
-                    <div className="eyebrow">Расширенные настройки</div>
-                    <h1>Настройки сервера</h1>
-                    <p className="subtle-copy">Публичные URL, авторизация, срок жизни сессий и базовые значения для расчетов.</p>
+                    <div className="eyebrow">Журнал действий</div>
+                    <h1>Аудит админки</h1>
+                    <p className="subtle-copy">История изменений workspace, ключей, пользователей, сессий и настроек сервера.</p>
                 </div>
                 <Link to="/admin" className="secondary-button">Вернуться в админку</Link>
             </section>
@@ -30,7 +31,12 @@ export function AdminSettingsPage(): React.JSX.Element {
             {actionResult ? <AdminDashboardActionResult actionResult={actionResult} onClose={dismissActionResult} /> : null}
             {errorMessage ? <ErrorView title="Admin API недоступен" message={errorMessage} /> : null}
 
-            <AdminServerSettingsSection settings={serverSettings} busyKey={busyKey} onUpdateSettings={updateServerSettings} />
+            <AdminAuditTrailSection
+                auditPage={auditPage}
+                isLoading={isAuditPageLoading}
+                onPreviousPage={goToPreviousAuditPage}
+                onNextPage={goToNextAuditPage}
+            />
         </PageFrame>
     )
 }

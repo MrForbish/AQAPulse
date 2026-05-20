@@ -19,11 +19,11 @@ export function AdminCreateWorkspacePage(): React.JSX.Element {
         <PageFrame>
             <section className="admin-subpage-header">
                 <div>
-                    <div className="eyebrow">Workspace onboarding</div>
-                    <h1>Create workspace</h1>
-                    <p className="subtle-copy">Create a workspace, initial ingestion key and ready-to-copy GitLab CI settings.</p>
+                    <div className="eyebrow">Новый workspace</div>
+                    <h1>Создать workspace</h1>
+                    <p className="subtle-copy">Создай workspace, первый ключ загрузки отчетов и готовые настройки для GitLab CI.</p>
                 </div>
-                <Link to="/admin" className="secondary-button">Back to admin</Link>
+                <Link to="/admin" className="secondary-button">Вернуться в админку</Link>
             </section>
 
             {actionResult ? <AdminDashboardActionResult actionResult={actionResult} onClose={dismissActionResult} /> : null}

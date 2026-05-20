@@ -182,7 +182,7 @@ export function useWorkspaceApiKeyExchangeAction(workspaceSlug: string): {
             setExchangeResult(result)
         } catch (error) {
             setExchangeResult(null)
-            setErrorMessage(readErrorMessage(error, 'Не удалось выпустить ingestion JWT.'))
+            setErrorMessage(readErrorMessage(error, 'Не удалось выпустить JWT для загрузки отчетов.'))
         } finally {
             setIsSubmitting(false)
         }

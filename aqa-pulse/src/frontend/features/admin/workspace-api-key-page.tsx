@@ -1,5 +1,5 @@
 /**
- * Назначение: страница обмена raw workspace API key на ingestion JWT для self-hosted и client onboarding сценариев.
+ * Назначение: страница обмена ключа загрузки workspace на временный JWT.
  */
 import React from 'react'
 import { ErrorView, Panel } from '../../shared/ui'
@@ -8,30 +8,30 @@ import { AuthTokenForm } from './auth-token-form'
 import { useWorkspaceApiKeyExchangeAction } from './admin-hooks'
 
 /**
- * После exchange страница сразу показывает готовые operational details, чтобы оператор мог без ручной сборки составить Authorization header и ingestion endpoint.
+ * После обмена страница показывает готовые параметры для отправки отчетов.
  */
 export function WorkspaceApiKeyExchangePage(props: { workspaceSlug: string }): React.JSX.Element {
     const { errorMessage, exchangeResult, isSubmitting, submit } = useWorkspaceApiKeyExchangeAction(props.workspaceSlug)
 
     const detailEntries = exchangeResult
         ? {
-            accessToken: exchangeResult.accessToken,
-            expiresAt: exchangeResult.expiresAt,
-            scope: exchangeResult.scope,
-            workspace: exchangeResult.workspace,
-            authorizationHeader: `Bearer ${exchangeResult.accessToken}`,
-            ingestionEndpoint: `/api/workspaces/${exchangeResult.workspace}/ingestions`,
+            JWT: exchangeResult.accessToken,
+            'Истекает': exchangeResult.expiresAt,
+            'Права': exchangeResult.scope,
+            Workspace: exchangeResult.workspace,
+            'Authorization header': `Bearer ${exchangeResult.accessToken}`,
+            'Endpoint загрузки': `/api/workspaces/${exchangeResult.workspace}/ingestions`,
         }
         : null
 
     return (
         <AuthShell
-            eyebrow="API key exchange"
-            title="API key → ingestion JWT"
-            description={`Workspace: ${props.workspaceSlug}. Введи raw API key, чтобы получить ingestion JWT для загрузки прогонов.`}
-            footerLink={{ href: '/admin', label: 'Вернуться в admin dashboard' }}
+            eyebrow="Проверка ключа загрузки"
+            title="Ключ загрузки → JWT"
+            description={`Workspace: ${props.workspaceSlug}. Введи ключ загрузки, чтобы получить временный JWT для отправки отчетов.`}
+            footerLink={{ href: '/admin', label: 'Вернуться в админку' }}
         >
-            <AuthTokenForm fieldLabel="Workspace API key" submitLabel="Получить ingestion JWT" submittingLabel="Выпускаем JWT..." onSubmitToken={submit} isSubmitting={isSubmitting} />
+            <AuthTokenForm fieldLabel="Ключ загрузки workspace" submitLabel="Получить JWT" submittingLabel="Выпускаем JWT..." onSubmitToken={submit} isSubmitting={isSubmitting} />
             {errorMessage ? <ErrorView title="JWT не выпущен" message={errorMessage} /> : null}
             {detailEntries ? (
                 <Panel title="JWT выпущен" className="panel-success">

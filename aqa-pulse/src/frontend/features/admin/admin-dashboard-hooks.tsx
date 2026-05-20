@@ -48,7 +48,7 @@ export interface DashboardCopyItem {
 }
 
 /**
- * Admin dashboard state объединяет initial bootstrap data, lazy loading registry и все provisioning actions в одном hook, чтобы page-компонент оставался декларативным и не управлял вручную множеством form/result состояний.
+ * Hook хранит состояние админки, догружает справочники и обрабатывает действия форм.
  */
 export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] | null): {
     workspaces: WorkspaceDescriptor[]
@@ -121,7 +121,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 return
             }
 
-            setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin telemetry.'))
+            setErrorMessage(readErrorMessage(error, 'Не удалось загрузить служебные данные админки.'))
         }
     }, [auditPage?.page, auditPageSize, handleUnauthorized])
 
@@ -136,7 +136,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 return
             }
 
-            setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin audit.'))
+            setErrorMessage(readErrorMessage(error, 'Не удалось загрузить аудит админки.'))
         } finally {
             setIsAuditPageLoading(false)
         }
@@ -176,7 +176,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                     return
                 }
 
-                setErrorMessage(readErrorMessage(error, 'Не удалось загрузить admin dashboard.'))
+                setErrorMessage(readErrorMessage(error, 'Не удалось загрузить админку.'))
             } finally {
                 if (isMounted) {
                     setIsLoading(false)
@@ -214,7 +214,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             await logoutAdmin()
             window.location.assign('/admin/login')
         } catch (error) {
-            setErrorMessage(readErrorMessage(error, 'Не удалось завершить admin session.'))
+            setErrorMessage(readErrorMessage(error, 'Не удалось завершить сессию администратора.'))
             setBusyKey(null)
         }
     }
@@ -229,7 +229,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         const apiKeyLabel = String(formData.get('apiKeyLabel') ?? '').trim() || getDefaultApiKeyLabel(template)
 
         if (!name) {
-            setActionResult({ title: 'Ошибка создания workspace', tone: 'error', details: { error: 'Поле name обязательно.' } })
+            setActionResult({ title: 'Ошибка создания workspace', tone: 'error', details: { error: 'Поле «Название» обязательно.' } })
             return
         }
 
@@ -244,11 +244,11 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 tone: 'success',
                 details: mapWorkspaceProvisioningDetails(createdWorkspace),
                 copyItems: [
-                    { label: 'API key token', value: createdWorkspace.apiKey.token },
-                    { label: 'GitLab CI variables', value: buildGitLabVariables(createdWorkspace) },
-                    { label: 'GitLab upload job', value: buildGitLabUploadJob(createdWorkspace) },
-                    { label: 'Workspace login path', value: `/w/${createdWorkspace.workspace.slug}/login` },
-                    { label: 'API key exchange path', value: `/auth/workspaces/${createdWorkspace.workspace.slug}/api-keys/login` },
+                    { label: 'Токен ключа загрузки', value: createdWorkspace.apiKey.token },
+                    { label: 'Переменные GitLab CI', value: buildGitLabVariables(createdWorkspace) },
+                    { label: 'Job для загрузки отчета', value: buildGitLabUploadJob(createdWorkspace) },
+                    { label: 'Страница входа в workspace', value: `/w/${createdWorkspace.workspace.slug}/login` },
+                    { label: 'Проверка ключа загрузки', value: `/auth/workspaces/${createdWorkspace.workspace.slug}/api-keys/login` },
                 ],
             })
             form.reset()
@@ -273,7 +273,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         const submitKey = `workspace:update:${slug}`
 
         if (!name) {
-            setActionResult({ title: 'Ошибка обновления workspace', tone: 'error', details: { workspace: slug, error: 'Поле name обязательно.' } })
+            setActionResult({ title: 'Ошибка обновления workspace', tone: 'error', details: { Workspace: slug, Ошибка: 'Поле «Название» обязательно.' } })
             return
         }
 
@@ -290,14 +290,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 return
             }
 
-            setActionResult({ title: 'Ошибка обновления workspace', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось обновить workspace.') } })
+            setActionResult({ title: 'Ошибка обновления workspace', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось обновить workspace.') } })
         } finally {
             setBusyKey(null)
         }
     }
 
     async function deleteWorkspaceAction(slug: string): Promise<void> {
-        if (typeof window !== 'undefined' && !window.confirm(`Удалить workspace ${slug} вместе с его history, raw reports и access records?`)) {
+        if (typeof window !== 'undefined' && !window.confirm(`Удалить workspace ${slug} вместе с историей прогонов, сырыми отчетами и настройками доступа?`)) {
             return
         }
 
@@ -308,21 +308,21 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             await deleteWorkspace(slug)
             setWorkspaces((currentWorkspaces) => currentWorkspaces.filter((workspace) => workspace.slug !== slug))
-            setActionResult({ title: 'Workspace удалён', tone: 'info', details: { workspace: slug } })
+            setActionResult({ title: 'Workspace удалён', tone: 'info', details: { Workspace: slug } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Ошибка удаления workspace', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить workspace.') } })
+            setActionResult({ title: 'Ошибка удаления workspace', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось удалить workspace.') } })
         } finally {
             setBusyKey(null)
         }
     }
 
     async function resetWorkspaceDataAction(slug: string): Promise<void> {
-        if (typeof window !== 'undefined' && !window.confirm(`Clear run history and raw reports for workspace ${slug}? API keys and users will stay active.`)) {
+        if (typeof window !== 'undefined' && !window.confirm(`Очистить историю прогонов и сырые отчеты workspace ${slug}? Ключи и пользователи останутся активными.`)) {
             return
         }
 
@@ -333,14 +333,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const workspace = await resetWorkspaceData(slug)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
-            setActionResult({ title: 'Workspace data cleared', tone: 'info', details: { workspace: slug, note: 'Run history and raw reports were removed. Access tokens stayed untouched.' } })
+            setActionResult({ title: 'Данные прогонов очищены', tone: 'info', details: { Workspace: slug, Примечание: 'История прогонов и сырые отчеты удалены. Доступы не изменились.' } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Workspace data clear failed', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Could not clear workspace run data.') } })
+            setActionResult({ title: 'Ошибка очистки прогонов', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось очистить данные прогонов.') } })
         } finally {
             setBusyKey(null)
         }
@@ -360,17 +360,17 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const createdApiKey = await createWorkspaceApiKey(slug, label || undefined)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, createdApiKey.workspace))
             setActionResult({
-                title: 'API key создан',
+                title: 'Ключ загрузки создан',
                 tone: 'success',
                 details: {
-                    workspace: slug,
-                    label: createdApiKey.apiKey.label,
-                    apiKeyToken: createdApiKey.apiKey.token,
-                    apiKeyExchangeUrl: `/auth/workspaces/${slug}/api-keys/login`,
+                    Workspace: slug,
+                    'Название ключа': createdApiKey.apiKey.label,
+                    'Токен': createdApiKey.apiKey.token,
+                    'Проверка ключа': `/auth/workspaces/${slug}/api-keys/login`,
                 },
                 copyItems: [
-                    { label: 'API key token', value: createdApiKey.apiKey.token },
-                    { label: 'API key exchange path', value: `/auth/workspaces/${slug}/api-keys/login` },
+                    { label: 'Токен ключа загрузки', value: createdApiKey.apiKey.token },
+                    { label: 'Проверка ключа загрузки', value: `/auth/workspaces/${slug}/api-keys/login` },
                 ],
             })
             form.reset()
@@ -381,11 +381,11 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             }
 
             setActionResult({
-                title: 'Ошибка создания API key',
+                title: 'Ошибка создания ключа загрузки',
                 tone: 'error',
                 details: {
-                    workspace: slug,
-                    error: readErrorMessage(error, 'Не удалось создать API key.'),
+                    Workspace: slug,
+                    Ошибка: readErrorMessage(error, 'Не удалось создать ключ загрузки.'),
                 },
             })
         } finally {
@@ -402,7 +402,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         const submitKey = `user:${slug}`
 
         if (!label) {
-            setActionResult({ title: 'Ошибка создания user token', tone: 'error', details: { workspace: slug, error: 'Поле label обязательно.' } })
+            setActionResult({ title: 'Ошибка создания пользователя', tone: 'error', details: { Workspace: slug, Ошибка: 'Поле «Имя или описание» обязательно.' } })
             return
         }
 
@@ -413,12 +413,12 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const createdUser = await createWorkspaceUser(slug, { label, role })
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, createdUser.workspace))
             setActionResult({
-                title: 'Workspace user token создан',
+                title: 'Пользователь создан',
                 tone: 'success',
                 details: mapWorkspaceUserProvisioningDetails(createdUser),
                 copyItems: [
-                    { label: 'Workspace user token', value: createdUser.user.token },
-                    { label: 'Workspace login path', value: `/w/${createdUser.workspace.slug}/login` },
+                    { label: 'Токен пользователя', value: createdUser.user.token },
+                    { label: 'Страница входа в workspace', value: `/w/${createdUser.workspace.slug}/login` },
                 ],
             })
             form.reset()
@@ -429,11 +429,11 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             }
 
             setActionResult({
-                title: 'Ошибка создания user token',
+                title: 'Ошибка создания пользователя',
                 tone: 'error',
                 details: {
-                    workspace: slug,
-                    error: readErrorMessage(error, 'Не удалось создать user token.'),
+                    Workspace: slug,
+                    Ошибка: readErrorMessage(error, 'Не удалось создать пользователя.'),
                 },
             })
         } finally {
@@ -455,10 +455,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             const result = await createWorkspaceShareLink(slug, ttlMinutes)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, result.workspace))
             setActionResult({
-                title: 'Share link создан',
+                title: 'Временная ссылка создана',
                 tone: 'success',
                 details: mapWorkspaceShareLinkDetails(result),
-                copyItems: [{ label: 'Short share link', value: result.shareLinkUrl }],
+                copyItems: [{ label: 'Временная ссылка', value: result.shareLinkUrl }],
             })
             await refreshSupplementaryData()
         } catch (error) {
@@ -466,7 +466,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 return
             }
 
-            setActionResult({ title: 'Ошибка создания share link', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось создать временную ссылку.') } })
+            setActionResult({ title: 'Ошибка создания временной ссылки', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось создать временную ссылку.') } })
         } finally {
             setBusyKey(null)
         }
@@ -491,7 +491,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 return
             }
 
-            setActionResult({ title: 'Ошибка обновления роли', tone: 'error', details: { workspace: slug, userId, error: readErrorMessage(error, 'Не удалось обновить роль пользователя.') } })
+            setActionResult({ title: 'Ошибка обновления роли', tone: 'error', details: { Workspace: slug, 'ID пользователя': userId, Ошибка: readErrorMessage(error, 'Не удалось обновить роль пользователя.') } })
         } finally {
             setBusyKey(null)
         }
@@ -505,14 +505,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const workspace = await disableWorkspaceApiKey(slug, apiKeyId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
-            setActionResult({ title: 'Ключ загрузки отключён', tone: 'info', details: { workspace: slug, apiKeyId } })
+            setActionResult({ title: 'Ключ загрузки отключён', tone: 'info', details: { Workspace: slug, 'ID ключа': apiKeyId } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Ошибка отключения ключа', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отключить ключ загрузки.') } })
+            setActionResult({ title: 'Ошибка отключения ключа', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось отключить ключ загрузки.') } })
         } finally {
             setBusyKey(null)
         }
@@ -530,14 +530,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const workspace = await deleteWorkspaceApiKey(slug, apiKeyId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
-            setActionResult({ title: 'Ключ загрузки удалён', tone: 'info', details: { workspace: slug, apiKeyId } })
+            setActionResult({ title: 'Ключ загрузки удалён', tone: 'info', details: { Workspace: slug, 'ID ключа': apiKeyId } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Ошибка удаления ключа', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить ключ загрузки.') } })
+            setActionResult({ title: 'Ошибка удаления ключа', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось удалить ключ загрузки.') } })
         } finally {
             setBusyKey(null)
         }
@@ -551,14 +551,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const workspace = await disableWorkspaceUser(slug, userId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
-            setActionResult({ title: 'Доступ пользователя отключён', tone: 'info', details: { workspace: slug, userId } })
+            setActionResult({ title: 'Доступ пользователя отключён', tone: 'info', details: { Workspace: slug, 'ID пользователя': userId } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Ошибка отключения пользователя', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отключить пользователя.') } })
+            setActionResult({ title: 'Ошибка отключения пользователя', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось отключить пользователя.') } })
         } finally {
             setBusyKey(null)
         }
@@ -576,14 +576,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const workspace = await deleteWorkspaceUser(slug, userId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
-            setActionResult({ title: 'Пользователь удалён', tone: 'info', details: { workspace: slug, userId } })
+            setActionResult({ title: 'Пользователь удалён', tone: 'info', details: { Workspace: slug, 'ID пользователя': userId } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Ошибка удаления пользователя', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить пользователя.') } })
+            setActionResult({ title: 'Ошибка удаления пользователя', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось удалить пользователя.') } })
         } finally {
             setBusyKey(null)
         }
@@ -597,14 +597,14 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         try {
             const workspace = await revokeWorkspaceSession(slug, sessionId)
             setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
-            setActionResult({ title: 'Сессия отозвана', tone: 'info', details: { workspace: slug, sessionId } })
+            setActionResult({ title: 'Сессия отозвана', tone: 'info', details: { Workspace: slug, 'ID сессии': sessionId } })
             await refreshSupplementaryData()
         } catch (error) {
             if (handleUnauthorized(error)) {
                 return
             }
 
-            setActionResult({ title: 'Ошибка отзыва сессии', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось отозвать сессию.') } })
+            setActionResult({ title: 'Ошибка отзыва сессии', tone: 'error', details: { Workspace: slug, Ошибка: readErrorMessage(error, 'Не удалось отозвать сессию.') } })
         } finally {
             setBusyKey(null)
         }
@@ -641,12 +641,12 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
 
             setServerSettings(nextSettings)
             setActionResult({
-                title: 'Server settings обновлены',
+                title: 'Настройки сервера обновлены',
                 tone: 'success',
                 details: {
-                    requireWorkspaceAuth: String(nextSettings.requireWorkspaceAuth),
-                    allowDevBootstrap: String(nextSettings.allowDevBootstrap),
-                    accessTokenTtlSeconds: String(nextSettings.accessTokenTtlSeconds),
+                    'Вход в workspace обязателен': nextSettings.requireWorkspaceAuth ? 'да' : 'нет',
+                    'Тестовый bootstrap включен': nextSettings.allowDevBootstrap ? 'да' : 'нет',
+                    'TTL сессии, секунд': String(nextSettings.accessTokenTtlSeconds),
                 },
             })
             await refreshSupplementaryData()
@@ -655,7 +655,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 return
             }
 
-            setActionResult({ title: 'Ошибка обновления настроек', tone: 'error', details: { error: readErrorMessage(error, 'Не удалось обновить server settings.') } })
+            setActionResult({ title: 'Ошибка обновления настроек', tone: 'error', details: { error: readErrorMessage(error, 'Не удалось обновить настройки сервера.') } })
         } finally {
             setBusyKey(null)
         }
@@ -694,11 +694,11 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
 
 function mapWorkspaceProvisioningDetails(result: WorkspaceProvisioningResult): Record<string, string> {
     return {
-        workspace: result.workspace.slug,
-        apiKeyLabel: result.apiKey.label,
-        apiKeyToken: result.apiKey.token,
-        workspaceLoginPath: `/w/${result.workspace.slug}/login`,
-        apiKeyExchangePath: `/auth/workspaces/${result.workspace.slug}/api-keys/login`,
+        Workspace: result.workspace.slug,
+        'Название ключа': result.apiKey.label,
+        'Токен': result.apiKey.token,
+        'Страница входа': `/w/${result.workspace.slug}/login`,
+        'Проверка ключа': `/auth/workspaces/${result.workspace.slug}/api-keys/login`,
     }
 }
 
@@ -710,14 +710,14 @@ function normalizeWorkspaceTemplate(value: FormDataEntryValue | null): Workspace
 
 function getDefaultApiKeyLabel(template: WorkspaceTemplate): string {
     if (template === 'sandbox') {
-        return 'Sandbox GitLab ingestion'
+        return 'Песочница: загрузка из GitLab CI'
     }
 
     if (template === 'demo') {
-        return 'Demo ingestion'
+        return 'Demo: загрузка отчетов'
     }
 
-    return 'Production GitLab ingestion'
+    return 'Боевой GitLab CI'
 }
 
 function buildGitLabVariables(result: WorkspaceProvisioningResult): string {
@@ -757,41 +757,41 @@ function getCurrentBaseUrl(): string {
 
 function mapWorkspaceUserProvisioningDetails(result: WorkspaceUserProvisioningResult): Record<string, string> {
     return {
-        workspace: result.workspace.slug,
-        label: result.user.label,
-        role: result.user.role,
-        workspaceUserToken: result.user.token,
-        workspaceLoginPath: `/w/${result.workspace.slug}/login`,
+        Workspace: result.workspace.slug,
+        'Имя или описание': result.user.label,
+        'Роль': result.user.role,
+        'Токен': result.user.token,
+        'Страница входа': `/w/${result.workspace.slug}/login`,
     }
 }
 
 function mapWorkspaceUpdateDetails(result: WorkspaceUpdateResult): Record<string, string> {
     return {
-        previousSlug: result.previousSlug,
-        workspace: result.workspace.slug,
-        name: result.workspace.name,
-        workspaceLoginPath: `/w/${result.workspace.slug}/login`,
-        dashboardPath: `/w/${result.workspace.slug}`,
+        'Предыдущий slug': result.previousSlug,
+        Workspace: result.workspace.slug,
+        'Название': result.workspace.name,
+        'Страница входа': `/w/${result.workspace.slug}/login`,
+        'Дашборд': `/w/${result.workspace.slug}`,
     }
 }
 
 function mapWorkspaceShareLinkDetails(result: WorkspaceShareLinkProvisioningResult): Record<string, string> {
     return {
-        workspace: result.workspace.slug,
-        sessionId: result.shareSession.id,
-        ttlMinutes: String(result.shareSession.ttlMinutes),
-        activation: result.shareSession.activatedAt ? 'Уже активирована' : 'TTL стартует с первого открытия',
-        expiresAt: result.shareSession.expiresAt ?? 'После первого открытия',
-        shareLinkUrl: result.shareLinkUrl,
+        Workspace: result.workspace.slug,
+        'ID сессии': result.shareSession.id,
+        'TTL, минут': String(result.shareSession.ttlMinutes),
+        'Активация': result.shareSession.activatedAt ? 'Уже активирована' : 'Время жизни начнется после первого открытия',
+        'Истекает': result.shareSession.expiresAt ?? 'После первого открытия',
+        'Временная ссылка': result.shareLinkUrl,
     }
 }
 
 function mapWorkspaceUserRoleUpdateDetails(result: WorkspaceUserRoleUpdateResult): Record<string, string> {
     return {
-        workspace: result.workspace.slug,
-        userId: result.userId,
-        role: result.role,
-        note: 'Активные workspace sessions этого пользователя были перевыпущены через revoke.',
+        Workspace: result.workspace.slug,
+        'ID пользователя': result.userId,
+        'Роль': result.role,
+        'Примечание': 'Активные сессии этого пользователя были отозваны.',
     }
 }
 

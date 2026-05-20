@@ -1,5 +1,5 @@
 /**
- * Назначение: тонкая export-boundary для admin auth/login hooks и dashboard provisioning state.
+ * Назначение: единая точка экспорта для admin hooks.
  */
 export type { DashboardActionResult, DashboardCopyItem } from './admin-dashboard-hooks'
 export { useAdminDashboardState } from './admin-dashboard-hooks'

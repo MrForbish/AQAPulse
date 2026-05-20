@@ -28,6 +28,10 @@ const AdminSettingsPage = React.lazy(async () => ({
     default: (await import('./features/admin/admin-settings-page.js')).AdminSettingsPage,
 }))
 
+const AdminAuditPage = React.lazy(async () => ({
+    default: (await import('./features/admin/admin-audit-page.js')).AdminAuditPage,
+}))
+
 const AdminLoginPage = React.lazy(async () => ({
     default: (await import('./features/admin/admin-login-page.js')).AdminLoginPage,
 }))
@@ -88,6 +92,7 @@ function AppBody(): React.JSX.Element {
                         <Route path="/admin" element={<AdminDashboardPage />} />
                         <Route path="/admin/workspaces/new" element={<AdminCreateWorkspacePage />} />
                         <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                        <Route path="/admin/audit" element={<AdminAuditPage />} />
                         <Route path="/admin/login" element={<AdminLoginPage />} />
                         <Route path="/test/:name" element={<StandaloneTestHistoryRoute />} />
                         <Route path="/w/:slug" element={<WorkspaceDashboardRoute />} />

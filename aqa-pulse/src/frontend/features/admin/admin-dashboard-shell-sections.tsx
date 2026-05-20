@@ -11,22 +11,23 @@ export function AdminDashboardHero(props: {
     return (
         <section className="hero-block admin-hero-block">
             <div className="panel admin-hero-copy">
-                <div className="eyebrow">Admin workspace control</div>
-                <h1>AQA Pulse Admin</h1>
-                <p>Единый React shell для provisioning, workspace access и ingestion flow без отдельного legacy delivery слоя для admin-страниц.</p>
+                <div className="eyebrow">Управление workspace</div>
+                <h1>Админка AQA Pulse</h1>
+                <p>Здесь можно управлять workspace, ключами загрузки отчетов, доступом пользователей и настройками интеграции с GitLab CI.</p>
             </div>
             <div className="hero-meta-card admin-toolbar-card">
                 <div className="hero-meta-row">
-                    <span>Workspace count</span>
+                    <span>Workspace</span>
                     <strong>{props.workspaceCount}</strong>
                 </div>
                 <div className="hero-meta-row">
-                    <span>Auth mode</span>
-                    <strong>Session cookie + JWT exchange</strong>
+                    <span>Доступ</span>
+                    <strong>Сессии и токены</strong>
                 </div>
                 <div className="hero-actions">
-                    <Link to="/admin/workspaces/new" className="primary-link">New workspace</Link>
-                    <Link to="/admin/settings" className="secondary-button">Server settings</Link>
+                    <Link to="/admin/workspaces/new" className="primary-link">Создать workspace</Link>
+                    <Link to="/admin/settings" className="secondary-button">Настройки сервера</Link>
+                    <Link to="/admin/audit" className="secondary-button">Аудит</Link>
                     <button type="button" className="secondary-button" onClick={() => void props.onLogout()} disabled={props.isLoggingOut}>
                         {props.isLoggingOut ? 'Выходим...' : 'Выйти'}
                     </button>

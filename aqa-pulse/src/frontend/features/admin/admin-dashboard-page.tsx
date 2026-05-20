@@ -10,8 +10,6 @@ import {
     AdminDashboardHero,
     AdminAuditTrailSection,
     AdminIngestionHealthSection,
-    AdminProvisioningIntro,
-    AdminServerSettingsSection,
     AdminWorkspaceRegistry,
 } from './admin-dashboard-sections'
 
@@ -22,7 +20,6 @@ export function AdminDashboardPage(): React.JSX.Element {
     const initialWorkspaces = useInitialAdminWorkspaces()
     const {
         workspaces,
-        serverSettings,
         auditPage,
         ingestionHealth,
         isLoading,
@@ -31,7 +28,6 @@ export function AdminDashboardPage(): React.JSX.Element {
         actionResult,
         dismissActionResult,
         busyKey,
-        createWorkspace,
         updateWorkspace,
         deleteWorkspace,
         resetWorkspaceData,
@@ -44,7 +40,6 @@ export function AdminDashboardPage(): React.JSX.Element {
         disableUser,
         deleteUser,
         revokeSession,
-        updateServerSettings,
         goToPreviousAuditPage,
         goToNextAuditPage,
         logout,
@@ -57,8 +52,6 @@ export function AdminDashboardPage(): React.JSX.Element {
             {actionResult ? <AdminDashboardActionResult actionResult={actionResult} onClose={dismissActionResult} /> : null}
             {errorMessage ? <ErrorView title="Admin API недоступен" message={errorMessage} /> : null}
 
-            <AdminServerSettingsSection settings={serverSettings} busyKey={busyKey} onUpdateSettings={updateServerSettings} />
-            <AdminProvisioningIntro isCreatingWorkspace={busyKey === 'workspace:create'} onCreateWorkspace={createWorkspace} />
             <AdminIngestionHealthSection health={ingestionHealth} />
             <AdminWorkspaceRegistry
                 workspaces={workspaces}

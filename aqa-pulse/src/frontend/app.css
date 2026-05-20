@@ -740,6 +740,19 @@ input {
     margin-bottom: 18px;
 }
 
+.admin-subpage-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.admin-subpage-header h1 {
+    margin: 4px 0 8px;
+}
+
 .workspace-admin-list {
     display: grid;
     gap: 18px;

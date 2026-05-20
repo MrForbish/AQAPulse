@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { Panel } from '../../shared/ui'
 import type { DashboardActionResult, DashboardCopyItem } from './admin-hooks'
 
@@ -24,6 +25,8 @@ export function AdminDashboardHero(props: {
                     <strong>Session cookie + JWT exchange</strong>
                 </div>
                 <div className="hero-actions">
+                    <Link to="/admin/workspaces/new" className="primary-link">New workspace</Link>
+                    <Link to="/admin/settings" className="secondary-button">Server settings</Link>
                     <button type="button" className="secondary-button" onClick={() => void props.onLogout()} disabled={props.isLoggingOut}>
                         {props.isLoggingOut ? 'Выходим...' : 'Выйти'}
                     </button>

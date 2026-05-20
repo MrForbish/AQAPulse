@@ -129,23 +129,27 @@ function WorkspaceCard(props: {
                 </div>
 
                 <Panel title="Настройки workspace">
-                    <form className="stack admin-form" onSubmit={(event) => void props.onUpdateWorkspace(event, workspace.slug)}>
+                    <form className="stack admin-form workspace-settings-form" onSubmit={(event) => void props.onUpdateWorkspace(event, workspace.slug)}>
                         <label><span>Название</span><input type="text" name="name" defaultValue={workspace.name} required /></label>
                         <label><span>Slug</span><input type="text" name="slug" defaultValue={workspace.slug} required /></label>
                         <div className="workspace-settings-actions">
-                            <button type="submit" className="secondary-button" disabled={props.busyKey === updateKey}>
-                                {props.busyKey === updateKey ? 'Сохраняем...' : 'Сохранить'}
-                            </button>
-                            <button type="button" className="secondary-button danger-button" disabled={props.busyKey === deleteKey} onClick={() => void props.onDeleteWorkspace(workspace.slug)}>
-                                {props.busyKey === deleteKey ? 'Удаляем...' : 'Удалить workspace'}
-                            </button>
-                            <button type="button" className="secondary-button danger-button" disabled={props.busyKey === resetDataKey} onClick={() => void props.onResetWorkspaceData(workspace.slug)}>
-                                {props.busyKey === resetDataKey ? 'Очищаем...' : 'Очистить прогоны'}
-                            </button>
-                            <button type="button" className="secondary-button" onClick={() => setIsGitLabSettingsOpen(true)}>Настройки GitLab CI</button>
+                            <div className="workspace-settings-primary-actions">
+                                <button type="submit" className="primary-link" disabled={props.busyKey === updateKey}>
+                                    {props.busyKey === updateKey ? 'Сохраняем...' : 'Сохранить'}
+                                </button>
+                                <button type="button" className="secondary-button" onClick={() => setIsGitLabSettingsOpen(true)}>Настройки GitLab CI</button>
+                            </div>
+                            <div className="workspace-settings-danger-actions">
+                                <button type="button" className="secondary-button danger-button" disabled={props.busyKey === resetDataKey} onClick={() => void props.onResetWorkspaceData(workspace.slug)}>
+                                    {props.busyKey === resetDataKey ? 'Очищаем...' : 'Очистить прогоны'}
+                                </button>
+                                <button type="button" className="secondary-button danger-button" disabled={props.busyKey === deleteKey} onClick={() => void props.onDeleteWorkspace(workspace.slug)}>
+                                    {props.busyKey === deleteKey ? 'Удаляем...' : 'Удалить workspace'}
+                                </button>
+                            </div>
                         </div>
                     </form>
-                    <form className="stack admin-form" onSubmit={(event) => void props.onCreateShareLink(event, workspace.slug)}>
+                    <form className="stack admin-form workspace-share-form" onSubmit={(event) => void props.onCreateShareLink(event, workspace.slug)}>
                         <label>
                             <span>Временная ссылка на дашборд</span>
                             <select name="ttlMinutes" defaultValue="10">
@@ -191,7 +195,7 @@ function WorkspaceCard(props: {
                                 )
                             }) : <li className="is-empty">Ключей загрузки пока нет.</li>}
                         </ul>
-                        <form className="stack admin-form" onSubmit={(event) => void props.onCreateApiKey(event, workspace.slug)}>
+                        <form className="stack admin-form access-create-form" onSubmit={(event) => void props.onCreateApiKey(event, workspace.slug)}>
                             <label><span>Название ключа</span><input type="text" name="label" placeholder="GitLab CI загрузка отчетов" /></label>
                             <button type="submit" className="secondary-button" disabled={props.busyKey === `api-key:${workspace.slug}`}>
                                 {props.busyKey === `api-key:${workspace.slug}` ? 'Создаем...' : 'Создать ключ'}
@@ -239,7 +243,7 @@ function WorkspaceCard(props: {
                                 )
                             }) : <li className="is-empty">Пользователей пока нет.</li>}
                         </ul>
-                        <form className="stack admin-form" onSubmit={(event) => void props.onCreateUser(event, workspace.slug)}>
+                        <form className="stack admin-form access-create-form" onSubmit={(event) => void props.onCreateUser(event, workspace.slug)}>
                             <label><span>Имя или описание</span><input type="text" name="label" placeholder="Наблюдатель команды" required /></label>
                             <label>
                                 <span>Права</span>
@@ -405,7 +409,7 @@ function GitLabVariableRow(props: {
         <div className="gitlab-variable-row">
             <div className="gitlab-variable-label">
                 <strong>
-                    {props.name}
+                    <span className="gitlab-variable-name">{props.name}</span>
                     <InfoTooltip text={props.tooltip} />
                 </strong>
             </div>

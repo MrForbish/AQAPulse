@@ -1,0 +1,37 @@
+{
+  "name": "@aqa-pulse/cli",
+  "version": "0.1.1",
+  "description": "CLI для загрузки отчетов в AQA Pulse",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "bin": {
+    "aqa-pulse": "bin/aqa-pulse.js"
+  },
+  "files": [
+    "bin/**/*",
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "npm --prefix ../../aqa-pulse run compile && node ./scripts/build.js",
+    "pack:check": "npm run build && npm pack --dry-run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    },
+    "playwright": {
+      "optional": true
+    },
+    "playwright-core": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

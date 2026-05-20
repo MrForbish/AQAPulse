@@ -245,8 +245,10 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 details: mapWorkspaceProvisioningDetails(createdWorkspace),
                 copyItems: [
                     { label: 'Токен ключа загрузки', value: createdWorkspace.apiKey.token },
-                    { label: 'Переменные GitLab CI', value: buildGitLabVariables(createdWorkspace) },
-                    { label: 'Job для загрузки отчета', value: buildGitLabUploadJob(createdWorkspace) },
+                    { label: '1. GitLab CI/CD Variables', value: buildGitLabVariables(createdWorkspace) },
+                    { label: '2. .aqa-pulse.yml в репозиторий автотестов', value: buildAqaPulseConfig() },
+                    { label: '3. .gitlab-ci.yml: простой job без include', value: buildDirectGitLabUploadJob() },
+                    { label: '3. .gitlab-ci.yml: вариант через reusable template', value: buildTemplateGitLabUploadJob() },
                     { label: 'Страница входа в workspace', value: `/w/${createdWorkspace.workspace.slug}/login` },
                     { label: 'Проверка ключа загрузки', value: `/auth/workspaces/${createdWorkspace.workspace.slug}/api-keys/login` },
                 ],
@@ -728,22 +730,58 @@ function buildGitLabVariables(result: WorkspaceProvisioningResult): string {
     ].join('\n')
 }
 
-function buildGitLabUploadJob(result: WorkspaceProvisioningResult): string {
+function buildAqaPulseConfig(): string {
     return [
-        'aqa-pulse-upload:',
+        'projectDir: Playwright',
+        'reportPath: test-results/dashboard/data.json',
+        'repoRoot: .',
+        '',
+        '# Если reports несколько, замени reportPath на merge:',
+        '# merge:',
+        '#   projectKind: ui',
+        '#   output: test-results/dashboard/ui-merged.json',
+        '#   allowMissing: true',
+        '#   inputs:',
+        '#     - test-results/dashboard/ui-part-1.json',
+        '#     - test-results/dashboard/ui-part-2.json',
+    ].join('\n')
+}
+
+function buildDirectGitLabUploadJob(): string {
+    return [
+        'aqa pulse upload:',
+        '  stage: Tests',
         '  image: node:22-bookworm-slim',
-        '  variables:',
-        `    AQA_PULSE_BASE_URL: "${getCurrentBaseUrl()}"`,
-        `    AQA_PULSE_WORKSPACE_SLUG: "${result.workspace.slug}"`,
-        '    AQA_PULSE_REPORT_PATH: "Playwright/test-results/dashboard/data.json"',
+        '  needs:',
+        '    - job: playwright tests',
+        '      artifacts: true',
         '  script:',
-        '    - npm ci',
-        '    - npm test',
-        '    - npx aqa-pulse-server upload-report --report "$AQA_PULSE_REPORT_PATH"',
+        '    - npx @aqa-pulse/cli@latest upload-from-config --config .aqa-pulse.yml',
         '  artifacts:',
         '    when: always',
         '    paths:',
-        '      - Playwright/test-results/dashboard',
+        '      - "**/test-results/dashboard"',
+        '  allow_failure: true',
+        '',
+        '# Замени "playwright tests" на имя job, которая генерирует dashboard JSON.',
+    ].join('\n')
+}
+
+function buildTemplateGitLabUploadJob(): string {
+    return [
+        'include:',
+        "  - project: 'your-gitlab-group/AQAPulse'",
+        '    ref: main',
+        "    file: '/aqa-pulse-server/template/gitlab/aqa-pulse-upload.gitlab-ci.yml'",
+        '',
+        'aqa pulse upload:',
+        '  extends: .aqa_pulse_upload_from_config',
+        '  needs:',
+        '    - job: playwright tests',
+        '      artifacts: true',
+        '',
+        '# project - это GitLab repo, где лежит template AQA Pulse.',
+        '# Если такого repo нет, используй простой job выше без include.',
     ].join('\n')
 }
 

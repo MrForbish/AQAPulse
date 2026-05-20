@@ -27,7 +27,6 @@
 
 Стартовые документы:
 
-- `./SELF-HOSTED-QUICKSTART.md`
 - `./SELF-HOSTED-DEPLOYMENT.md`
 
 ### 2. Нужен офлайн dashboard без сервера

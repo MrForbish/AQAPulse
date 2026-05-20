@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 const [, , command = 'start', ...restArgs] = process.argv
 
@@ -14,6 +15,7 @@ const commandMap = {
     'generate-source-facts': '../dist/backend/generate-source-facts.js',
     'merge-reports': '../dist/backend/merge-reports.js',
     'upload-report': '../dist/backend/upload-report.js',
+    'upload-from-config': '../dist/backend/upload-from-config.js',
 }
 
 if (command === '--help' || command === '-h') {
@@ -26,12 +28,20 @@ if (command === '--help' || command === '-h') {
     printCommandHelp(command)
 } else {
     const entryFile = path.resolve(__dirname, commandMap[command])
-    process.argv = [process.argv[0], entryFile, ...restArgs]
-    require(entryFile)
+    const result = spawnSync(process.execPath, [entryFile, ...restArgs], {
+        stdio: 'inherit',
+        env: process.env,
+    })
+
+    if (result.error) {
+        throw result.error
+    }
+
+    process.exit(result.status ?? 1)
 }
 
 function printHelp() {
-    console.log('Использование: aqa-pulse-server [start, init, bootstrap-workspace, bootstrap-demo, sqlite-migrate, sqlite-backup, generate-source-facts, merge-reports, upload-report]')
+    console.log('Использование: aqa-pulse-server <command> [options]')
     console.log('')
     console.log('Команды:')
     console.log('  aqa-pulse-server start')
@@ -42,7 +52,8 @@ function printHelp() {
     console.log('  aqa-pulse-server sqlite-backup [backupDirectory]')
     console.log('  aqa-pulse-server generate-source-facts [--report <path>] [--out <path>] [--repo-root <path>] [--json]')
     console.log('  aqa-pulse-server merge-reports [--project-kind ui|api] --output <path> [--allow-missing] <input...>')
-    console.log('  aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--generate-source-facts] [--repo-root <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
+    console.log('  aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--generate-source-facts] [--repo-root <path>]')
+    console.log('  aqa-pulse-server upload-from-config [--config .aqa-pulse.yml] [--dry-run] [--json]')
     console.log('')
     console.log('Подсказка: AQA_PULSE_DATA_ROOT и AQA_PULSE_ADMIN_TOKEN задаются через env.')
 }
@@ -56,49 +67,54 @@ function printCommandHelp(commandName) {
 
     if (commandName === 'init') {
         console.log('aqa-pulse-server init')
-        console.log('Создаёт data root, workspaces/, registry.json и runtime storage директории.')
-        return
-    }
-
-    if (commandName === 'bootstrap-demo') {
-        console.log('aqa-pulse-server bootstrap-demo')
-        console.log('Создаёт demo workspace и ingest sample report в текущий data root.')
+        console.log('Создает data root, workspaces, registry и runtime storage директории.')
         return
     }
 
     if (commandName === 'bootstrap-workspace') {
         console.log('aqa-pulse-server bootstrap-workspace --name "<workspace name>" [--slug <slug>] [--base-url <url>] [--skip-user] [--json]')
-        console.log('Создаёт workspace, ingestion key и при необходимости viewer token, а затем печатает готовые переменные для GitLab CI.')
+        console.log('Создает workspace, ingestion key и при необходимости viewer token.')
+        return
+    }
+
+    if (commandName === 'bootstrap-demo') {
+        console.log('aqa-pulse-server bootstrap-demo')
+        console.log('Создает demo workspace и ingest sample report в текущий data root.')
         return
     }
 
     if (commandName === 'sqlite-migrate') {
         console.log('aqa-pulse-server sqlite-migrate [sourceDataRoot] [targetSqlitePath]')
-        console.log('Мигрирует file storage data root в SQLite базу для self-hosted режима.')
+        console.log('Мигрирует file storage data root в SQLite базу.')
         return
     }
 
     if (commandName === 'sqlite-backup') {
         console.log('aqa-pulse-server sqlite-backup [backupDirectory]')
-        console.log('Создаёт timestamped backup текущей SQLite базы в backup directory.')
+        console.log('Создает timestamped backup текущей SQLite базы.')
         return
     }
 
     if (commandName === 'generate-source-facts') {
         console.log('aqa-pulse-server generate-source-facts [--report <path>] [--out <path>] [--repo-root <path>] [--json]')
-        console.log('Читает Playwright report JSON, анализирует test source по report.tests[*].location.file и сохраняет precomputed source facts для code-quality.')
+        console.log('Анализирует test source по report.tests[*].location.file и сохраняет source facts.')
         return
     }
 
     if (commandName === 'merge-reports') {
         console.log('aqa-pulse-server merge-reports [--project-kind ui|api] --output <path> [--allow-missing] <input...>')
-        console.log('Объединяет несколько Playwright dashboard JSON reports одного типа проекта в один report для последующего upload.')
+        console.log('Объединяет несколько Playwright dashboard JSON reports одного типа проекта.')
         return
     }
 
     if (commandName === 'upload-report') {
-        console.log('aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--generate-source-facts] [--repo-root <path>] [--base-url <url>] [--workspace-slug <slug>] [--workspace-api-key <key>]')
-        console.log('Делает exchange workspace API key -> ingestion JWT, подготавливает local Playwright attachments и отправляет report в backend ingestion endpoint. Если передан --generate-source-facts, CLI сам построит source-facts перед upload.')
+        console.log('aqa-pulse-server upload-report [--report <path>] [--source-facts <path>] [--generate-source-facts] [--repo-root <path>]')
+        console.log('Загружает report в backend ingestion endpoint.')
+        return
+    }
+
+    if (commandName === 'upload-from-config') {
+        console.log('aqa-pulse-server upload-from-config [--config .aqa-pulse.yml] [--dry-run] [--json]')
+        console.log('Читает .aqa-pulse.yml, при необходимости merge-ит reports и загружает итоговый report.')
     }
 }
-

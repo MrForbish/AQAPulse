@@ -1,0 +1,11 @@
+**/node_modules/
+**/dist-ts/
+**/test-results/
+**/playwright-report/
+**/.generated/
+**/*.tgz
+**/*.log
+
+aqa-pulse/dist/
+aqa-pulse-server/dist/
+packages/aqa-pulse-cli/dist/

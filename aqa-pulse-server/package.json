@@ -36,8 +36,6 @@
     "README.md",
     "MIGRATION.md",
     "SELF-HOSTED-DEPLOYMENT.md",
-    "SELF-HOSTED-QUICKSTART.md",
-    "SELF-HOSTED-INSTALL.md",
     "GITLAB-CI-INTEGRATION.md",
     "Makefile",
     "Dockerfile",
@@ -61,6 +59,7 @@
     "sqlite:backup": "node ./bin/aqa-pulse-server.js sqlite-backup",
     "merge:reports": "node ./bin/aqa-pulse-server.js merge-reports",
     "upload:report": "node ./bin/aqa-pulse-server.js upload-report",
+    "upload:from-config": "node ./bin/aqa-pulse-server.js upload-from-config",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepublishOnly": "node -e \"console.error('Пакет aqa-pulse-server является внутренним и не предназначен для публикации.'); process.exit(1)\""
   },

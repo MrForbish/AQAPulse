@@ -307,6 +307,7 @@ function GitLabCiSettingsModal(props: {
     const [copyFailedValue, setCopyFailedValue] = React.useState<string | null>(null)
     const baseUrl = props.runtimeBaseUrl ?? getCurrentBaseUrl()
     const variables = buildGitLabVariables(props.workspace, baseUrl)
+    const configSnippet = buildAqaPulseConfigSnippet()
     const jobSnippet = buildGitLabJobSnippet(props.workspace, baseUrl)
 
     async function copyValue(value: string): Promise<void> {
@@ -322,7 +323,7 @@ function GitLabCiSettingsModal(props: {
                 <div className="gitlab-ci-summary">
                     <div>
                         <h3>{props.workspace.name}</h3>
-                        <p className="subtle-copy">Эти значения нужно добавить в GitLab CI/CD Variables для workspace <code>{props.workspace.slug}</code>.</p>
+                    <p className="subtle-copy">Подключение состоит из трех частей: переменные в GitLab UI, файл <code>.aqa-pulse.yml</code> в репозитории автотестов и upload job в <code>.gitlab-ci.yml</code>.</p>
                     </div>
                     <button type="button" className="secondary-button" onClick={() => void copyValue(variables)}>
                         {copyFailedValue === variables ? 'Не удалось скопировать' : copiedValue === variables ? 'Скопировано' : 'Скопировать переменные'}
@@ -355,14 +356,6 @@ function GitLabCiSettingsModal(props: {
                         isCopyFailed={false}
                         copyDisabled
                     />
-                    <GitLabVariableRow
-                        name="AQA_PULSE_REPORT_PATH"
-                        value="Playwright/test-results/dashboard/data.json"
-                        tooltip="Путь к JSON report, который генерирует Playwright reporter."
-                        onCopy={copyValue}
-                        isCopied={copiedValue === 'Playwright/test-results/dashboard/data.json'}
-                        isCopyFailed={copyFailedValue === 'Playwright/test-results/dashboard/data.json'}
-                    />
                 </div>
 
                 <div className="gitlab-ci-section-title">
@@ -392,8 +385,19 @@ function GitLabCiSettingsModal(props: {
                 </ul>
 
                 <div className="gitlab-ci-section-title">
-                    <h3>Пример .gitlab-ci.yml</h3>
-                    <InfoTooltip text="Проверь путь к отчету и команду тестов под свой проект." />
+                    <h3>.aqa-pulse.yml</h3>
+                    <InfoTooltip text="Этот файл положи в корень репозитория автотестов. Он говорит CLI, где искать dashboard report." />
+                </div>
+                <div className="gitlab-ci-code-block">
+                    <code>{configSnippet}</code>
+                    <button type="button" className="secondary-button" onClick={() => void copyValue(configSnippet)}>
+                        {copyFailedValue === configSnippet ? 'Не удалось скопировать' : copiedValue === configSnippet ? 'Скопировано' : 'Скопировать config'}
+                    </button>
+                </div>
+
+                <div className="gitlab-ci-section-title">
+                    <h3>.gitlab-ci.yml без include</h3>
+                    <InfoTooltip text="Самый понятный первый вариант: вставь этот job в репозиторий автотестов и замени имя job в needs на свою test job." />
                 </div>
                 <div className="gitlab-ci-code-block">
                     <code>{jobSnippet}</code>
@@ -449,26 +453,43 @@ function buildGitLabVariables(workspace: WorkspaceDescriptor, baseUrl: string): 
         `AQA_PULSE_BASE_URL=${baseUrl}`,
         `AQA_PULSE_WORKSPACE_SLUG=${workspace.slug}`,
         'AQA_PULSE_WORKSPACE_API_KEY=<полный-ключ-показывается-при-создании>',
-        'AQA_PULSE_REPORT_PATH=Playwright/test-results/dashboard/data.json',
     ].join('\n')
 }
 
-function buildGitLabJobSnippet(workspace: WorkspaceDescriptor, baseUrl: string): string {
+function buildAqaPulseConfigSnippet(): string {
     return [
-        'aqa-pulse-upload:',
+        'projectDir: Playwright',
+        'reportPath: test-results/dashboard/data.json',
+        'repoRoot: .',
+        '',
+        '# Если reports несколько, замени reportPath на merge:',
+        '# merge:',
+        '#   projectKind: ui',
+        '#   output: test-results/dashboard/ui-merged.json',
+        '#   allowMissing: true',
+        '#   inputs:',
+        '#     - test-results/dashboard/ui-part-1.json',
+        '#     - test-results/dashboard/ui-part-2.json',
+    ].join('\n')
+}
+
+function buildGitLabJobSnippet(_workspace: WorkspaceDescriptor, _baseUrl: string): string {
+    return [
+        'aqa pulse upload:',
+        '  stage: Tests',
         '  image: node:22-bookworm-slim',
-        '  variables:',
-        `    AQA_PULSE_BASE_URL: "${baseUrl}"`,
-        `    AQA_PULSE_WORKSPACE_SLUG: "${workspace.slug}"`,
-        '    AQA_PULSE_REPORT_PATH: "Playwright/test-results/dashboard/data.json"',
+        '  needs:',
+        '    - job: playwright tests',
+        '      artifacts: true',
         '  script:',
-        '    - npm ci',
-        '    - npm test',
-        '    - npx aqa-pulse-server upload-report --generate-source-facts --repo-root "$CI_PROJECT_DIR"',
+        '    - npx @aqa-pulse/cli@latest upload-from-config --config .aqa-pulse.yml',
         '  artifacts:',
         '    when: always',
         '    paths:',
-        '      - Playwright/test-results/dashboard',
+        '      - "**/test-results/dashboard"',
+        '  allow_failure: true',
+        '',
+        '# Замени "playwright tests" на имя job, которая генерирует dashboard JSON.',
     ].join('\n')
 }
 

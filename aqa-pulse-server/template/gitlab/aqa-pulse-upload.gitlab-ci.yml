@@ -1,71 +1,46 @@
-# Готовый include/snippet для GitLab CI, если хочешь вынести upload в отдельный job.
-# Ожидается, что тестовая job уже сгенерировала Playwright dashboard report
-# и сохранила его как artifact по пути Playwright/test-results/dashboard/data.json.
+# Universal AQA Pulse upload job for GitLab CI.
 #
-# Обязательные GitLab CI/CD variables:
+# Required GitLab CI/CD variables:
 # - AQA_PULSE_BASE_URL
 # - AQA_PULSE_WORKSPACE_SLUG
 # - AQA_PULSE_WORKSPACE_API_KEY
 #
-# Пример подключения:
+# Optional variables:
+# - AQA_PULSE_CONFIG_PATH: config path, default ".aqa-pulse.yml"
+# - AQA_PULSE_UPLOAD_ENABLED: set to "false" to skip upload
+#
+# Minimal usage:
+#
 # include:
-#   - local: '/aqa-pulse-server/template/gitlab/aqa-pulse-upload.gitlab-ci.yml'
+#   - project: 'your-group/AQAPulse'
+#     ref: main
+#     file: '/aqa-pulse-server/template/gitlab/aqa-pulse-upload.gitlab-ci.yml'
 #
-# aqa pulse upload api:
-#   extends: .aqa_pulse_upload_job
+# aqa pulse upload:
+#   extends: .aqa_pulse_upload_from_config
 #   needs:
-#     - job: run api tests
+#     - job: playwright tests
 #       artifacts: true
-#
-# Если upload нужен прямо внутри тестовой job, можно использовать script-block ниже
-# как copy/paste reference без отдельного repo-specific npm script.
 
-.aqa_pulse_upload_job:
+.aqa_pulse_upload_from_config:
   stage: Tests
-  image: mcr.microsoft.com/playwright:v1.58.2-jammy
+  image: node:22-bookworm-slim
   variables:
-    PW_LLM_REPORT: "test-results/dashboard/data.json"
-  before_script:
-    - cd "${CI_PROJECT_DIR}/Playwright"
-    - npm install
+    AQA_PULSE_CONFIG_PATH: ".aqa-pulse.yml"
   script:
     - |
-      if [ ! -f "$PW_LLM_REPORT" ]; then
-        echo "AQA Pulse upload skipped: не найден report $PW_LLM_REPORT" >&2
-        exit 1
+      if [ "${AQA_PULSE_UPLOAD_ENABLED:-true}" != "true" ]; then
+        echo "AQA Pulse upload skipped: AQA_PULSE_UPLOAD_ENABLED is not true."
+        exit 0
       fi
     - |
-      INGESTION_JWT=$(curl --silent --show-error --fail \
-        -X POST "$AQA_PULSE_BASE_URL/auth/workspaces/$AQA_PULSE_WORKSPACE_SLUG/api-keys/login" \
-        -H "Content-Type: application/json" \
-        -d "{\"token\":\"$AQA_PULSE_WORKSPACE_API_KEY\"}" \
-        | node -e "let body=''; process.stdin.on('data', c => body += c); process.stdin.on('end', () => { const parsed = JSON.parse(body); process.stdout.write(parsed.accessToken); });")
-    - |
-      node -e "
-      const fs = require('fs');
-      const reportPath = process.env.PW_LLM_REPORT;
-      const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-      const payload = {
-        report,
-        metadata: {
-          branch: process.env.CI_COMMIT_REF_NAME || null,
-          commit: process.env.CI_COMMIT_SHA || null,
-          author: process.env.GITLAB_USER_NAME || process.env.CI_COMMIT_AUTHOR || 'GitLab CI'
-        },
-        sourceFile: process.env.CI_PROJECT_PATH && process.env.CI_PIPELINE_ID && process.env.CI_JOB_NAME
-          ? 'gitlab://' + process.env.CI_PROJECT_PATH + '/' + process.env.CI_PIPELINE_ID + '/' + process.env.CI_JOB_NAME
-          : 'gitlab://manual-upload'
-      };
-      fs.writeFileSync('test-results/dashboard/ingestion-payload.json', JSON.stringify(payload));
-      "
-    - |
-      curl --silent --show-error --fail \
-        -X POST "$AQA_PULSE_BASE_URL/api/workspaces/$AQA_PULSE_WORKSPACE_SLUG/ingestions" \
-        -H "Authorization: Bearer $INGESTION_JWT" \
-        -H "Content-Type: application/json" \
-        --data @test-results/dashboard/ingestion-payload.json
+      if [ ! -f "$AQA_PULSE_CONFIG_PATH" ]; then
+        echo "AQA Pulse upload failed: config not found at $AQA_PULSE_CONFIG_PATH" >&2
+        exit 1
+      fi
+    - npx @aqa-pulse/cli@latest upload-from-config --config "$AQA_PULSE_CONFIG_PATH"
   artifacts:
     when: always
     paths:
-      - "${CI_PROJECT_DIR}/Playwright/test-results/dashboard"
-
+      - "**/test-results/dashboard"
+  allow_failure: true

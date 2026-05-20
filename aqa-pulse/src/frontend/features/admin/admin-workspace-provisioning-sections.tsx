@@ -41,6 +41,124 @@ export function AdminProvisioningIntro(props: {
                     <div className="detail-row"><span>Много репозиториев</span><code>вынеси template в общий GitLab repo</code></div>
                 </div>
             </Panel>
+            <GitLabPipelineWizard />
         </section>
     )
+}
+
+function GitLabPipelineWizard(): React.JSX.Element {
+    const [mode, setMode] = React.useState<'single' | 'merge'>('single')
+    const [projectDir, setProjectDir] = React.useState('Playwright')
+    const [singleJob, setSingleJob] = React.useState('run api tests')
+    const [singleReport, setSingleReport] = React.useState('test-results/dashboard/data.json')
+    const [mergeJobs, setMergeJobs] = React.useState('run ui tests [purchase]\nrun ui tests [cpu]\nrun ui tests [first]\nrun ui tests [second]')
+    const [mergeReports, setMergeReports] = React.useState('test-results/dashboard/ui-purchase.json\ntest-results/dashboard/ui-cpu.json\ntest-results/dashboard/ui-first.json\ntest-results/dashboard/ui-second.json')
+
+    const normalizedProjectDir = projectDir.trim() || 'Playwright'
+    const testJobs = splitLines(mode === 'single' ? singleJob : mergeJobs)
+    const reportPaths = splitLines(mode === 'single' ? singleReport : mergeReports)
+    const configSnippet = mode === 'single'
+        ? buildSingleReportConfig(normalizedProjectDir, reportPaths[0] ?? 'test-results/dashboard/data.json')
+        : buildMergeConfig(normalizedProjectDir, reportPaths)
+    const jobSnippet = buildUploadJob(testJobs)
+
+    return (
+        <Panel title="Конструктор GitLab YAML" description="Заполни под свой pipeline: какие jobs создают dashboard JSON и где лежат reports. Ниже появятся готовые блоки для копирования.">
+            <div className="stack admin-form">
+                <label>
+                    <span>Сценарий</span>
+                    <select value={mode} onChange={(event) => setMode(event.currentTarget.value === 'merge' ? 'merge' : 'single')}>
+                        <option value="single">Один report из одной job</option>
+                        <option value="merge">Несколько reports, нужен merge</option>
+                    </select>
+                </label>
+                <label><span>Папка Playwright-проекта</span><input type="text" value={projectDir} onChange={(event) => setProjectDir(event.currentTarget.value)} /></label>
+
+                {mode === 'single' ? (
+                    <>
+                        <label><span>Имя GitLab job, которая создает report</span><input type="text" value={singleJob} onChange={(event) => setSingleJob(event.currentTarget.value)} /></label>
+                        <label><span>Путь к report внутри папки проекта</span><input type="text" value={singleReport} onChange={(event) => setSingleReport(event.currentTarget.value)} /></label>
+                    </>
+                ) : (
+                    <>
+                        <label>
+                            <span>GitLab jobs, которые создают reports</span>
+                            <textarea rows={4} value={mergeJobs} onChange={(event) => setMergeJobs(event.currentTarget.value)} />
+                        </label>
+                        <label>
+                            <span>Reports внутри папки проекта, в том же порядке</span>
+                            <textarea rows={4} value={mergeReports} onChange={(event) => setMergeReports(event.currentTarget.value)} />
+                        </label>
+                    </>
+                )}
+
+                <div className="detail-pairs compact-pairs">
+                    <div className="detail-row"><span>Куда вставить .aqa-pulse.yml</span><code>в корень репозитория автотестов</code></div>
+                    <div className="detail-row"><span>Куда вставить upload job</span><code>в .gitlab-ci.yml или .gitlab/playwright.yml</code></div>
+                </div>
+
+                <label>
+                    <span>.aqa-pulse.yml</span>
+                    <textarea rows={mode === 'single' ? 4 : 12} value={configSnippet} readOnly />
+                </label>
+                <label>
+                    <span>Upload job для .gitlab-ci.yml</span>
+                    <textarea rows={Math.max(8, testJobs.length * 2 + 8)} value={jobSnippet} readOnly />
+                </label>
+            </div>
+        </Panel>
+    )
+}
+
+function splitLines(value: string): string[] {
+    return value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+}
+
+function buildSingleReportConfig(projectDir: string, reportPath: string): string {
+    return [
+        `projectDir: ${projectDir}`,
+        `reportPath: ${reportPath}`,
+        'repoRoot: .',
+    ].join('\n')
+}
+
+function buildMergeConfig(projectDir: string, reportPaths: string[]): string {
+    const inputs = reportPaths.length > 0 ? reportPaths : ['test-results/dashboard/ui-part-1.json']
+
+    return [
+        `projectDir: ${projectDir}`,
+        'repoRoot: .',
+        '',
+        'merge:',
+        '  projectKind: ui',
+        '  output: test-results/dashboard/ui-merged.json',
+        '  allowMissing: true',
+        '  inputs:',
+        ...inputs.map((reportPath) => `    - ${reportPath}`),
+    ].join('\n')
+}
+
+function buildUploadJob(jobNames: string[]): string {
+    const needs = jobNames.length > 0 ? jobNames : ['playwright tests']
+
+    return [
+        'aqa pulse upload:',
+        '  stage: Tests',
+        '  image: node:22-bookworm-slim',
+        '  needs:',
+        ...needs.flatMap((jobName) => [
+            `    - job: ${jobName}`,
+            '      artifacts: true',
+        ]),
+        '  script:',
+        '    - npx @aqa-pulse/cli@latest upload-from-config --config .aqa-pulse.yml',
+        '  artifacts:',
+        '    when: always',
+        '    paths:',
+        '      - "**/test-results/dashboard"',
+        '  allow_failure: true',
+    ].join('\n')
 }

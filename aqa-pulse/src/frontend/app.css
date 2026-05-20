@@ -1191,10 +1191,12 @@ input {
 }
 
 .gitlab-ci-dialog {
-    width: min(980px, calc(100vw - 32px));
-    max-height: min(86vh, 900px);
+    width: min(1240px, calc(100vw - 32px));
+    max-height: min(92vh, 1040px);
     overflow: auto;
     min-width: 0;
+    padding: 24px;
+    scrollbar-gutter: stable;
 }
 
 .gitlab-ci-summary,
@@ -1287,7 +1289,7 @@ input {
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
-    padding: 14px;
+    padding: 16px;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: rgba(8, 17, 31, 0.48);
@@ -1297,11 +1299,15 @@ input {
 .gitlab-ci-code-block code {
     display: block;
     width: 100%;
+    max-height: min(48vh, 520px);
     overflow-x: auto;
-    padding: 12px 14px;
+    overflow-y: auto;
+    padding: 16px;
     border-radius: 12px;
     background: rgba(15, 23, 42, 0.9);
     border: 1px solid rgba(99, 179, 237, 0.2);
+    font-size: 13px;
+    line-height: 1.55;
 }
 
 .info-tooltip {
@@ -3382,6 +3388,28 @@ th {
 
     .step-tree-children-react {
         padding-left: 18px;
+    }
+
+    .admin-action-modal {
+        padding: 10px;
+        align-items: stretch;
+    }
+
+    .gitlab-ci-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+        padding: 16px;
+    }
+
+    .gitlab-ci-summary,
+    .gitlab-ci-section-title {
+        display: grid;
+        gap: 10px;
+    }
+
+    .gitlab-variable-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
     }
 
 }

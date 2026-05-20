@@ -13,6 +13,8 @@ const filesToCopy = [
     'history-utils.d.ts',
     'backend/upload-report.js',
     'backend/upload-report.d.ts',
+    'backend/upload-from-config.js',
+    'backend/upload-from-config.d.ts',
     'backend/upload-report-artifacts.js',
     'backend/upload-report-artifacts.d.ts',
     'backend/generate-source-facts.js',

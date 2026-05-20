@@ -12,6 +12,8 @@ const commandMap = {
     merge: '../dist/backend/merge-reports.js',
     'generate-source-facts': '../dist/backend/generate-source-facts.js',
     'source-facts': '../dist/backend/generate-source-facts.js',
+    'upload-from-config': '../dist/backend/upload-from-config.js',
+    config: '../dist/backend/upload-from-config.js',
 }
 
 if (command === '--help' || command === '-h') {
@@ -39,11 +41,13 @@ function printHelp() {
     console.log('')
     console.log('Использование:')
     console.log('  aqa-pulse upload-report [--report <path>] [--generate-source-facts] [--repo-root <path>]')
+    console.log('  aqa-pulse upload-from-config [--config .aqa-pulse.yml]')
     console.log('  aqa-pulse merge-reports --project-kind ui|api --output <path> [--allow-missing] <input...>')
     console.log('  aqa-pulse generate-source-facts [--report <path>] [--out <path>] [--repo-root <path>]')
     console.log('')
     console.log('Короткие алиасы:')
     console.log('  aqa-pulse upload')
+    console.log('  aqa-pulse config')
     console.log('  aqa-pulse merge')
     console.log('  aqa-pulse source-facts')
 }

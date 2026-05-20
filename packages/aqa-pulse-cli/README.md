@@ -32,10 +32,10 @@ merge:
   output: test-results/dashboard/ui-merged.json
   allowMissing: true
   inputs:
-    - test-results/dashboard/ui-purchase.json
-    - test-results/dashboard/ui-cpu.json
-    - test-results/dashboard/ui-first.json
-    - test-results/dashboard/ui-second.json
+    - test-results/dashboard/ui-part-1.json
+    - test-results/dashboard/ui-part-2.json
+    - test-results/dashboard/ui-part-3.json
+    - test-results/dashboard/ui-part-4.json
 ```
 
 Пути считаются относительно `projectDir`. Если `projectDir` не указан, пути считаются относительно папки, где лежит `.aqa-pulse.yml`.

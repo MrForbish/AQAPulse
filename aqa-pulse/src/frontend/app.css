@@ -745,6 +745,96 @@ input {
     gap: 18px;
 }
 
+.workspace-admin-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    margin-bottom: 18px;
+}
+
+.workspace-admin-sidebar {
+    position: sticky;
+    top: 18px;
+    max-height: calc(100vh - 36px);
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    overflow: hidden;
+}
+
+.workspace-admin-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.workspace-admin-sidebar-header h2 {
+    margin: 0 0 4px;
+}
+
+.workspace-search-field {
+    display: grid;
+    gap: 8px;
+}
+
+.workspace-search-field span {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.workspace-search-field input {
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(5, 12, 24, 0.78);
+    color: var(--text-main);
+}
+
+.workspace-admin-nav {
+    display: grid;
+    gap: 8px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.workspace-nav-item {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(8, 17, 31, 0.44);
+    color: var(--text-main);
+    text-align: left;
+    cursor: pointer;
+}
+
+.workspace-nav-item:hover,
+.workspace-nav-item.is-selected {
+    border-color: rgba(99, 179, 237, 0.5);
+    background: rgba(14, 116, 144, 0.18);
+}
+
+.workspace-nav-title {
+    font-weight: 700;
+}
+
+.workspace-nav-slug,
+.workspace-nav-meta,
+.workspace-nav-empty {
+    color: var(--text-muted);
+    font-size: 12px;
+    word-break: break-word;
+}
+
+.workspace-admin-detail {
+    min-width: 0;
+}
+
 .workspace-admin-card {
     display: grid;
     gap: 18px;
@@ -1007,6 +1097,129 @@ input {
     gap: 10px;
 }
 
+.gitlab-ci-dialog {
+    width: min(980px, calc(100vw - 32px));
+}
+
+.gitlab-ci-summary,
+.gitlab-ci-section-title,
+.gitlab-variable-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.gitlab-ci-summary {
+    margin-bottom: 16px;
+}
+
+.gitlab-ci-summary h3,
+.gitlab-ci-section-title h3 {
+    margin: 0 0 4px;
+}
+
+.gitlab-ci-variable-list,
+.gitlab-key-list,
+.gitlab-ci-code-block {
+    margin-bottom: 18px;
+}
+
+.gitlab-ci-variable-list {
+    display: grid;
+    gap: 10px;
+}
+
+.gitlab-variable-row {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(8, 17, 31, 0.48);
+}
+
+.gitlab-variable-row code,
+.gitlab-key-value code,
+.gitlab-ci-code-block code {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.gitlab-variable-label,
+.gitlab-key-value {
+    display: grid;
+    gap: 6px;
+}
+
+.gitlab-variable-label strong,
+.gitlab-key-value span {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.gitlab-key-value span {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.gitlab-ci-code-block {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(8, 17, 31, 0.48);
+}
+
+.gitlab-ci-code-block code {
+    display: block;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(99, 179, 237, 0.2);
+}
+
+.info-tooltip {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(99, 179, 237, 0.45);
+    border-radius: 999px;
+    color: #bae6fd;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: help;
+}
+
+.info-tooltip-bubble {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    z-index: 4;
+    width: min(280px, 70vw);
+    padding: 10px 12px;
+    border: 1px solid rgba(99, 179, 237, 0.35);
+    border-radius: 12px;
+    background: rgba(3, 7, 18, 0.96);
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 4px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    box-shadow: var(--shadow-lg);
+}
+
+.info-tooltip:hover .info-tooltip-bubble,
+.info-tooltip:focus .info-tooltip-bubble {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 .detail-pairs {
     display: grid;
     gap: 10px;
@@ -1106,12 +1319,31 @@ input {
 }
 
 @media (max-width: 1180px) {
+    .workspace-admin-layout {
+        grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    }
+
     .workspace-admin-grid-3 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 820px) {
+    .workspace-admin-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .workspace-admin-sidebar {
+        position: static;
+        max-height: 420px;
+    }
+
+    .gitlab-ci-summary,
+    .gitlab-ci-section-title,
+    .gitlab-variable-row {
+        display: grid;
+    }
+
     .workspace-admin-grid-3 {
         grid-template-columns: minmax(0, 1fr);
     }

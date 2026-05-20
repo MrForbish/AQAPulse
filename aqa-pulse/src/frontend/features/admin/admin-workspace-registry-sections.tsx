@@ -21,6 +21,19 @@ export function AdminWorkspaceRegistry(props: {
     onRevokeSession: (slug: string, sessionId: string) => Promise<void>
 }): React.JSX.Element {
     const runtimeBaseUrl = useRuntimeBaseUrl()
+    const [selectedSlug, setSelectedSlug] = React.useState<string | null>(props.workspaces[0]?.slug ?? null)
+    const [searchQuery, setSearchQuery] = React.useState('')
+
+    React.useEffect(() => {
+        if (props.workspaces.length === 0) {
+            setSelectedSlug(null)
+            return
+        }
+
+        if (!selectedSlug || !props.workspaces.some((workspace) => workspace.slug === selectedSlug)) {
+            setSelectedSlug(props.workspaces[0].slug)
+        }
+    }, [props.workspaces, selectedSlug])
 
     if (props.isLoading) {
         return <LoadingView label="Загружаем панель доступа..." />
@@ -34,11 +47,45 @@ export function AdminWorkspaceRegistry(props: {
         )
     }
 
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+    const filteredWorkspaces = normalizedQuery
+        ? props.workspaces.filter((workspace) => `${workspace.name} ${workspace.slug}`.toLowerCase().includes(normalizedQuery))
+        : props.workspaces
+    const selectedWorkspace = props.workspaces.find((workspace) => workspace.slug === selectedSlug) ?? filteredWorkspaces[0] ?? props.workspaces[0]
+
     return (
-        <section className="workspace-admin-list">
-            {props.workspaces.map((workspace) => (
-                <WorkspaceCard key={workspace.slug} workspace={workspace} runtimeBaseUrl={runtimeBaseUrl} {...props} />
-            ))}
+        <section className="workspace-admin-layout">
+            <Panel className="workspace-admin-sidebar">
+                <div className="workspace-admin-sidebar-header">
+                    <div>
+                        <h2>Workspaces</h2>
+                        <p className="subtle-copy">{props.workspaces.length} total</p>
+                    </div>
+                </div>
+                <label className="workspace-search-field">
+                    <span>Search</span>
+                    <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.currentTarget.value)} placeholder="name or slug" />
+                </label>
+                <div className="workspace-admin-nav" role="listbox" aria-label="Workspaces">
+                    {filteredWorkspaces.length > 0 ? filteredWorkspaces.map((workspace) => {
+                        const isSelected = workspace.slug === selectedWorkspace.slug
+                        const activeKeys = workspace.apiKeys.filter((apiKey) => !apiKey.disabledAt).length
+
+                        return (
+                            <button key={workspace.slug} type="button" className={`workspace-nav-item${isSelected ? ' is-selected' : ''}`} onClick={() => setSelectedSlug(workspace.slug)}>
+                                <span className="workspace-nav-title">{workspace.name}</span>
+                                <span className="workspace-nav-slug">{workspace.slug}</span>
+                                <span className="workspace-nav-meta">{activeKeys} active keys · {workspace.users.length} users</span>
+                            </button>
+                        )
+                    }) : (
+                        <div className="workspace-nav-empty">Nothing found</div>
+                    )}
+                </div>
+            </Panel>
+            <div className="workspace-admin-detail">
+                <WorkspaceCard key={selectedWorkspace.slug} workspace={selectedWorkspace} runtimeBaseUrl={runtimeBaseUrl} {...props} />
+            </div>
         </section>
     )
 }
@@ -61,11 +108,13 @@ function WorkspaceCard(props: {
     onRevokeSession: (slug: string, sessionId: string) => Promise<void>
 }): React.JSX.Element {
     const { workspace } = props
+    const [isGitLabSettingsOpen, setIsGitLabSettingsOpen] = React.useState(false)
     const updateKey = `workspace:update:${workspace.slug}`
     const deleteKey = `workspace:delete:${workspace.slug}`
     const resetDataKey = `workspace:reset-data:${workspace.slug}`
 
     return (
+        <>
         <Panel className="workspace-admin-card">
             <div className="workspace-admin-header">
                 <div>
@@ -93,6 +142,7 @@ function WorkspaceCard(props: {
                         <button type="button" className="secondary-button danger-button" disabled={props.busyKey === resetDataKey} onClick={() => void props.onResetWorkspaceData(workspace.slug)}>
                             {props.busyKey === resetDataKey ? 'Clearing...' : 'Clear runs'}
                         </button>
+                        <button type="button" className="secondary-button" onClick={() => setIsGitLabSettingsOpen(true)}>GitLab CI settings</button>
                     </div>
                 </form>
                 <form className="stack admin-form" onSubmit={(event) => void props.onCreateShareLink(event, workspace.slug)}>
@@ -262,7 +312,187 @@ function WorkspaceCard(props: {
                 </Panel>
             </div>
         </Panel>
+        {isGitLabSettingsOpen ? (
+            <GitLabCiSettingsModal workspace={workspace} runtimeBaseUrl={props.runtimeBaseUrl} onClose={() => setIsGitLabSettingsOpen(false)} />
+        ) : null}
+        </>
     )
+}
+
+function GitLabCiSettingsModal(props: {
+    workspace: WorkspaceDescriptor
+    runtimeBaseUrl: string | null
+    onClose: () => void
+}): React.JSX.Element {
+    const [copiedValue, setCopiedValue] = React.useState<string | null>(null)
+    const baseUrl = props.runtimeBaseUrl ?? getCurrentBaseUrl()
+    const variables = buildGitLabVariables(props.workspace, baseUrl)
+    const jobSnippet = buildGitLabJobSnippet(props.workspace, baseUrl)
+
+    async function copyValue(value: string): Promise<void> {
+        const copied = await copyToClipboard(value)
+        setCopiedValue(copied ? value : null)
+    }
+
+    return (
+        <div className="admin-action-modal" role="dialog" aria-modal="true" aria-label="GitLab CI settings">
+            <div className="admin-action-modal-backdrop" onClick={props.onClose} />
+            <Panel title="GitLab CI settings" className="admin-action-dialog gitlab-ci-dialog">
+                <div className="gitlab-ci-summary">
+                    <div>
+                        <h3>{props.workspace.name}</h3>
+                        <p className="subtle-copy">Use these values in GitLab CI/CD variables for workspace <code>{props.workspace.slug}</code>.</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => void copyValue(variables)}>
+                        {copiedValue === variables ? 'Copied' : 'Copy variables'}
+                    </button>
+                </div>
+
+                <div className="gitlab-ci-variable-list">
+                    <GitLabVariableRow
+                        name="AQA_PULSE_BASE_URL"
+                        value={baseUrl}
+                        tooltip="Public URL of this AQA Pulse server. GitLab jobs use it to upload reports."
+                        onCopy={copyValue}
+                        isCopied={copiedValue === baseUrl}
+                    />
+                    <GitLabVariableRow
+                        name="AQA_PULSE_WORKSPACE_SLUG"
+                        value={props.workspace.slug}
+                        tooltip="Workspace identifier. It routes uploaded reports into the correct dashboard."
+                        onCopy={copyValue}
+                        isCopied={copiedValue === props.workspace.slug}
+                    />
+                    <GitLabVariableRow
+                        name="AQA_PULSE_WORKSPACE_API_KEY"
+                        value={props.workspace.apiKeys.length > 0 ? 'Stored keys are shown below by preview only' : 'Create an ingestion key first'}
+                        tooltip="Secret ingestion key. Full tokens are shown only once when created; existing tokens are stored as hashes."
+                        onCopy={copyValue}
+                        isCopied={false}
+                        copyDisabled
+                    />
+                </div>
+
+                <div className="gitlab-ci-section-title">
+                    <h3>Ingestion keys</h3>
+                    <InfoTooltip text="AQA Pulse cannot show old full API keys again. Create a new key if you need a fresh copyable token." />
+                </div>
+                <ul className="admin-compact-list access-admin-list gitlab-key-list">
+                    {props.workspace.apiKeys.length > 0 ? props.workspace.apiKeys.map((apiKey) => (
+                        <li key={apiKey.id} className="access-list-item">
+                            <div className="access-item-head">
+                                <strong>{apiKey.label}</strong>
+                                <span className={`access-state-pill${apiKey.disabledAt ? ' is-disabled' : ' is-active'}`}>{apiKey.disabledAt ? 'Disabled' : 'Active'}</span>
+                            </div>
+                            <div className="gitlab-key-value">
+                                <span>AQA_PULSE_WORKSPACE_API_KEY</span>
+                                <code>{apiKey.tokenPreview}</code>
+                                <InfoTooltip text="This is only a preview, not the full token. GitLab needs the full value that was shown when the key was created." />
+                            </div>
+                            <div className="access-item-meta">
+                                <span>Created: {formatDateTime(apiKey.createdAt)}</span>
+                                <span>Last used: {formatDateTime(apiKey.lastUsedAt)}</span>
+                            </div>
+                        </li>
+                    )) : <li className="is-empty">No ingestion keys yet.</li>}
+                </ul>
+
+                <div className="gitlab-ci-section-title">
+                    <h3>.gitlab-ci.yml example</h3>
+                    <InfoTooltip text="Adjust paths and test command to your project. The important part is passing base URL, workspace slug and API key to the uploader." />
+                </div>
+                <div className="gitlab-ci-code-block">
+                    <code>{jobSnippet}</code>
+                    <button type="button" className="secondary-button" onClick={() => void copyValue(jobSnippet)}>
+                        {copiedValue === jobSnippet ? 'Copied' : 'Copy job'}
+                    </button>
+                </div>
+
+                <div className="admin-action-dialog-actions">
+                    <button type="button" className="secondary-button" onClick={props.onClose}>Close</button>
+                </div>
+            </Panel>
+        </div>
+    )
+}
+
+function GitLabVariableRow(props: {
+    name: string
+    value: string
+    tooltip: string
+    onCopy: (value: string) => Promise<void>
+    isCopied: boolean
+    copyDisabled?: boolean
+}): React.JSX.Element {
+    return (
+        <div className="gitlab-variable-row">
+            <div className="gitlab-variable-label">
+                <strong>{props.name}</strong>
+                <InfoTooltip text={props.tooltip} />
+            </div>
+            <code>{props.value}</code>
+            <button type="button" className="secondary-button" disabled={props.copyDisabled} onClick={() => void props.onCopy(props.value)}>
+                {props.isCopied ? 'Copied' : 'Copy'}
+            </button>
+        </div>
+    )
+}
+
+function InfoTooltip(props: { text: string }): React.JSX.Element {
+    return (
+        <span className="info-tooltip" tabIndex={0} aria-label={props.text}>
+            i
+            <span className="info-tooltip-bubble" role="tooltip">{props.text}</span>
+        </span>
+    )
+}
+
+function buildGitLabVariables(workspace: WorkspaceDescriptor, baseUrl: string): string {
+    return [
+        `AQA_PULSE_BASE_URL=${baseUrl}`,
+        `AQA_PULSE_WORKSPACE_SLUG=${workspace.slug}`,
+        'AQA_PULSE_WORKSPACE_API_KEY=<copy-full-token-when-created>',
+    ].join('\n')
+}
+
+function buildGitLabJobSnippet(workspace: WorkspaceDescriptor, baseUrl: string): string {
+    return [
+        'aqa-pulse-upload:',
+        '  image: node:22-bookworm-slim',
+        '  variables:',
+        `    AQA_PULSE_BASE_URL: "${baseUrl}"`,
+        `    AQA_PULSE_WORKSPACE_SLUG: "${workspace.slug}"`,
+        '    AQA_PULSE_REPORT_PATH: "Playwright/test-results/dashboard/data.json"',
+        '  script:',
+        '    - npm ci',
+        '    - npm test',
+        '    - npx aqa-pulse-server upload-report --report "$AQA_PULSE_REPORT_PATH"',
+        '  artifacts:',
+        '    when: always',
+        '    paths:',
+        '      - Playwright/test-results/dashboard',
+    ].join('\n')
+}
+
+function getCurrentBaseUrl(): string {
+    if (typeof window === 'undefined') {
+        return ''
+    }
+
+    return window.location.origin
+}
+
+async function copyToClipboard(value: string): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(value)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    return false
 }
 
 function formatDateTime(value: string | null): string {

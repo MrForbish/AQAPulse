@@ -1809,6 +1809,105 @@ th {
     -webkit-line-clamp: 1;
 }
 
+.release-view-grid {
+    align-items: stretch;
+}
+
+.release-verdict-panel {
+    overflow: hidden;
+}
+
+.release-verdict-panel.is-good {
+    border-color: rgba(16, 185, 129, 0.28);
+    background:
+        linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(7, 15, 27, 0.86) 42%),
+        linear-gradient(180deg, rgba(12, 22, 39, 0.9), rgba(7, 15, 27, 0.82));
+}
+
+.release-verdict-panel.is-warn {
+    border-color: rgba(245, 158, 11, 0.28);
+    background:
+        linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(7, 15, 27, 0.86) 42%),
+        linear-gradient(180deg, rgba(12, 22, 39, 0.9), rgba(7, 15, 27, 0.82));
+}
+
+.release-verdict-panel.is-danger {
+    border-color: rgba(239, 68, 68, 0.3);
+    background:
+        linear-gradient(135deg, rgba(239, 68, 68, 0.16), rgba(7, 15, 27, 0.88) 42%),
+        linear-gradient(180deg, rgba(12, 22, 39, 0.9), rgba(7, 15, 27, 0.82));
+}
+
+.release-verdict-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.32fr);
+    gap: 20px;
+    align-items: stretch;
+}
+
+.release-verdict-copy {
+    display: grid;
+    gap: 12px;
+    align-content: center;
+}
+
+.release-verdict-copy h2 {
+    margin: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(28px, 4vw, 44px);
+    letter-spacing: -0.04em;
+}
+
+.release-verdict-copy p {
+    margin: 0;
+    max-width: 82ch;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.release-verdict-score {
+    display: grid;
+    gap: 10px;
+    align-content: center;
+    justify-items: end;
+    min-height: 150px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(133, 157, 194, 0.14);
+    background: rgba(5, 12, 24, 0.54);
+}
+
+.release-verdict-score span {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.release-verdict-score strong {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(42px, 6vw, 72px);
+    line-height: 0.95;
+    color: #a5f3fc;
+    letter-spacing: -0.06em;
+}
+
+.release-metrics-grid {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.release-action-list .stack-item {
+    border-color: rgba(14, 165, 233, 0.16);
+}
+
+.release-context-strip .summary-strip-item strong {
+    display: -webkit-box;
+    overflow: hidden;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+}
+
 .overview-signals-grid .metric-value {
     margin: 6px 0 5px;
     font-size: clamp(20px, 2.1vw, 28px);
@@ -2804,6 +2903,15 @@ th {
 
     .incident-panel .incident-grid-react {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .release-verdict-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .release-verdict-score {
+        justify-items: start;
+        min-height: 0;
     }
 }
 

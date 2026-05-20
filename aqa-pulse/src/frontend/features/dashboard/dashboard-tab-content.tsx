@@ -28,6 +28,14 @@ const FlakyTab = React.lazy(async () => {
     }
 })
 
+const ReleaseTab = React.lazy(async () => {
+    const module = await import('./dashboard-release-tab.js')
+
+    return {
+        default: module.ReleaseTab as React.ComponentType<DashboardTabComponentProps>,
+    }
+})
+
 const BusinessModule = React.lazy(async () => {
     const module = await import('./dashboard-modules.js')
 
@@ -64,6 +72,7 @@ const DASHBOARD_TEXT = ru.dashboard
 
 export const DASHBOARD_TABS = [
     { id: 'overview', label: DASHBOARD_TEXT.tabs.overview },
+    { id: 'release', label: 'Релиз' },
     { id: 'performance', label: DASHBOARD_TEXT.tabs.performance },
     { id: 'flaky', label: DASHBOARD_TEXT.tabs.flaky },
     { id: 'business', label: DASHBOARD_TEXT.tabs.business },
@@ -83,6 +92,10 @@ function DashboardTabLoadingState(): React.JSX.Element {
 export function DashboardActiveTabContent(props: DashboardActiveTabContentProps): React.JSX.Element | null {
     if (props.activeTab === 'overview') {
         return <OverviewTab summary={props.summary} workspaceSlug={props.workspaceSlug} />
+    }
+
+    if (props.activeTab === 'release') {
+        return <ReleaseTab summary={props.summary} workspaceSlug={props.workspaceSlug} />
     }
 
     if (props.activeTab === 'performance') {

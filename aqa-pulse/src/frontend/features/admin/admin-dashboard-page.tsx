@@ -34,6 +34,7 @@ export function AdminDashboardPage(): React.JSX.Element {
         createWorkspace,
         updateWorkspace,
         deleteWorkspace,
+        resetWorkspaceData,
         createApiKey,
         createShareLink,
         createUser,
@@ -65,6 +66,7 @@ export function AdminDashboardPage(): React.JSX.Element {
                 busyKey={busyKey}
                 onUpdateWorkspace={updateWorkspace}
                 onDeleteWorkspace={deleteWorkspace}
+                onResetWorkspaceData={resetWorkspaceData}
                 onCreateApiKey={createApiKey}
                 onCreateShareLink={createShareLink}
                 onCreateUser={createUser}

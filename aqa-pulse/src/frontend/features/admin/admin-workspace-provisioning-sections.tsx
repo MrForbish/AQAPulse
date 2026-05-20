@@ -9,6 +9,14 @@ export function AdminProvisioningIntro(props: {
         <section className="admin-grid">
             <Panel title="Создать workspace" description="Workspace создаётся вместе с первичным ingestion key.">
                 <form className="stack admin-form" onSubmit={props.onCreateWorkspace}>
+                    <label>
+                        <span>Template</span>
+                        <select name="template" defaultValue="production">
+                            <option value="production">Production CI</option>
+                            <option value="sandbox">Sandbox / test data</option>
+                            <option value="demo">Demo workspace</option>
+                        </select>
+                    </label>
                     <label><span>Name</span><input type="text" name="name" required /></label>
                     <label><span>Slug</span><input type="text" name="slug" placeholder="demo-client" /></label>
                     <label><span>Initial API key label</span><input type="text" name="apiKeyLabel" placeholder="Primary ingestion key" /></label>

@@ -9,6 +9,7 @@ export function AdminWorkspaceRegistry(props: {
     busyKey: string | null
     onUpdateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onDeleteWorkspace: (slug: string) => Promise<void>
+    onResetWorkspaceData: (slug: string) => Promise<void>
     onCreateApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onCreateShareLink: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onCreateUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
@@ -48,6 +49,7 @@ function WorkspaceCard(props: {
     runtimeBaseUrl: string | null
     onUpdateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onDeleteWorkspace: (slug: string) => Promise<void>
+    onResetWorkspaceData: (slug: string) => Promise<void>
     onCreateApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onCreateShareLink: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     onCreateUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
@@ -61,6 +63,7 @@ function WorkspaceCard(props: {
     const { workspace } = props
     const updateKey = `workspace:update:${workspace.slug}`
     const deleteKey = `workspace:delete:${workspace.slug}`
+    const resetDataKey = `workspace:reset-data:${workspace.slug}`
 
     return (
         <Panel className="workspace-admin-card">
@@ -86,6 +89,9 @@ function WorkspaceCard(props: {
                         </button>
                         <button type="button" className="secondary-button danger-button" disabled={props.busyKey === deleteKey} onClick={() => void props.onDeleteWorkspace(workspace.slug)}>
                             {props.busyKey === deleteKey ? 'Удаляем...' : 'Удалить workspace'}
+                        </button>
+                        <button type="button" className="secondary-button danger-button" disabled={props.busyKey === resetDataKey} onClick={() => void props.onResetWorkspaceData(workspace.slug)}>
+                            {props.busyKey === resetDataKey ? 'Clearing...' : 'Clear runs'}
                         </button>
                     </div>
                 </form>

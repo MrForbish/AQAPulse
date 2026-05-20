@@ -13,6 +13,7 @@ export {
     deleteWorkspaceUserCommand,
     disableWorkspaceApiKeyCommand,
     disableWorkspaceUserCommand,
+    resetWorkspaceDataCommand,
     revokeWorkspaceSessionCommand,
     updateServerSettingsCommand,
     updateWorkspaceCommand,

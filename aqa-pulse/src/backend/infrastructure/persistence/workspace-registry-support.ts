@@ -292,6 +292,7 @@ function normalizeAdminAuditAction(value: unknown): AdminAuditAction {
         case 'workspace-created':
         case 'workspace-updated':
         case 'workspace-deleted':
+        case 'workspace-data-reset':
         case 'workspace-api-key-created':
         case 'workspace-api-key-disabled':
         case 'workspace-api-key-deleted':

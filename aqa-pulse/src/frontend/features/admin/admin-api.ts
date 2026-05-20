@@ -92,6 +92,14 @@ export async function deleteWorkspace(slug: string): Promise<WorkspaceDescriptor
     return payload.workspace
 }
 
+export async function resetWorkspaceData(slug: string): Promise<WorkspaceDescriptor> {
+    const payload = await requestJson<{ workspace: WorkspaceDescriptor }>(`/api/workspaces/${encodeURIComponent(slug)}/reset-data`, {
+        method: 'POST',
+    })
+
+    return payload.workspace
+}
+
 export async function createWorkspaceApiKey(slug: string, label?: string): Promise<WorkspaceProvisioningResult> {
     return requestJson(`/api/workspaces/${encodeURIComponent(slug)}/api-keys`, {
         method: 'POST',

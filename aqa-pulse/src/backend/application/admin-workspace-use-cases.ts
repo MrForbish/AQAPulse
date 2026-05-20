@@ -11,6 +11,7 @@ export {
     bootstrapWorkspaceForDev,
     createWorkspaceCommand,
     deleteWorkspaceCommand,
+    resetWorkspaceDataCommand,
     updateWorkspaceCommand,
 } from './admin-workspace-lifecycle-use-cases'
 export {

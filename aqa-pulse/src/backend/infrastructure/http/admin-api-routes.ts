@@ -19,6 +19,7 @@ import {
 	disableWorkspaceApiKeyCommand,
 	disableWorkspaceUserCommand,
 	ensureWorkspaceReadModelInitialized as initializeWorkspaceReadModel,
+	resetWorkspaceDataCommand,
 	revokeWorkspaceSessionCommand,
 	updateServerSettingsCommand,
 	updateWorkspaceCommand,
@@ -214,6 +215,25 @@ export function registerAdminApiRoutes(app: express.Express, context: AdminRoute
 			})
 
 			response.json(deletedWorkspace)
+		} catch (error) {
+			response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
+		}
+	})
+
+	app.post('/api/workspaces/:slug/reset-data', adminApiGuard, workspaceResolver, (_request: Request, response: Response) => {
+		const workspace = requireWorkspaceFromLocals(response)
+
+		try {
+			const resetWorkspace = resetWorkspaceDataCommand(registry, {
+				deleteWorkspaceData: (slug) => backendStorage.deleteWorkspaceData(slug),
+				invalidateWorkspaceApiStore,
+				ensureWorkspaceReadModelInitialized: (slug) => initializeWorkspaceReadModel(slug, backendStorage, config),
+			}, {
+				actor: resolveAdminActor(response, registry),
+				workspaceSlug: workspace.slug,
+			})
+
+			response.json(resetWorkspace)
 		} catch (error) {
 			response.status(400).json({ error: getErrorMessage(error), workspace: workspace.slug })
 		}

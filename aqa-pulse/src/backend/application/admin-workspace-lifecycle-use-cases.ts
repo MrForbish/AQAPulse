@@ -125,3 +125,32 @@ export function deleteWorkspaceCommand(
 
     return { workspace: deletedWorkspace }
 }
+
+export function resetWorkspaceDataCommand(
+    registry: AdminWorkspaceRegistryPort,
+    runtime: Pick<AdminWorkspaceCommandRuntime, 'deleteWorkspaceData' | 'invalidateWorkspaceApiStore' | 'ensureWorkspaceReadModelInitialized'>,
+    input: { workspaceSlug: string; actor?: AdminActorContext | null },
+): { workspace: WorkspaceDescriptor } {
+    const workspace = registry.getWorkspace(input.workspaceSlug)
+
+    if (!workspace) {
+        throw new Error('Workspace not found.')
+    }
+
+    runtime.deleteWorkspaceData(workspace.slug)
+    runtime.invalidateWorkspaceApiStore(workspace.slug)
+    runtime.ensureWorkspaceReadModelInitialized(workspace.slug)
+    recordAdminAuditIfNeeded(registry, input.actor, {
+        action: 'workspace-data-reset',
+        workspaceSlug: workspace.slug,
+        targetType: 'workspace',
+        targetId: workspace.slug,
+        summary: 'Workspace run data reset',
+        details: {
+            slug: workspace.slug,
+            name: workspace.name,
+        },
+    })
+
+    return { workspace }
+}

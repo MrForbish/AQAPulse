@@ -57,6 +57,7 @@ export interface AdminWorkspaceRegistryPort {
             | 'workspace-created'
             | 'workspace-updated'
             | 'workspace-deleted'
+            | 'workspace-data-reset'
             | 'workspace-api-key-created'
             | 'workspace-api-key-disabled'
             | 'workspace-api-key-deleted'

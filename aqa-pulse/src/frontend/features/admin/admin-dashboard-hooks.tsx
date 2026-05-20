@@ -28,6 +28,7 @@ import {
     fetchAdminServerSettings,
     fetchAdminWorkspaces,
     logoutAdmin,
+    resetWorkspaceData,
     revokeWorkspaceSession,
     updateAdminServerSettings,
     updateWorkspace,
@@ -63,6 +64,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
     createWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>
     updateWorkspace: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     deleteWorkspace: (slug: string) => Promise<void>
+    resetWorkspaceData: (slug: string) => Promise<void>
     createApiKey: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     createShareLink: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
     createUser: (event: React.FormEvent<HTMLFormElement>, slug: string) => Promise<void>
@@ -223,7 +225,8 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         const formData = new FormData(form)
         const name = String(formData.get('name') ?? '').trim()
         const slug = String(formData.get('slug') ?? '').trim()
-        const apiKeyLabel = String(formData.get('apiKeyLabel') ?? '').trim()
+        const template = normalizeWorkspaceTemplate(formData.get('template'))
+        const apiKeyLabel = String(formData.get('apiKeyLabel') ?? '').trim() || getDefaultApiKeyLabel(template)
 
         if (!name) {
             setActionResult({ title: 'Ошибка создания workspace', tone: 'error', details: { error: 'Поле name обязательно.' } })
@@ -242,6 +245,8 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
                 details: mapWorkspaceProvisioningDetails(createdWorkspace),
                 copyItems: [
                     { label: 'API key token', value: createdWorkspace.apiKey.token },
+                    { label: 'GitLab CI variables', value: buildGitLabVariables(createdWorkspace) },
+                    { label: 'GitLab upload job', value: buildGitLabUploadJob(createdWorkspace) },
                     { label: 'Workspace login path', value: `/w/${createdWorkspace.workspace.slug}/login` },
                     { label: 'API key exchange path', value: `/auth/workspaces/${createdWorkspace.workspace.slug}/api-keys/login` },
                 ],
@@ -311,6 +316,31 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
             }
 
             setActionResult({ title: 'Ошибка удаления workspace', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Не удалось удалить workspace.') } })
+        } finally {
+            setBusyKey(null)
+        }
+    }
+
+    async function resetWorkspaceDataAction(slug: string): Promise<void> {
+        if (typeof window !== 'undefined' && !window.confirm(`Clear run history and raw reports for workspace ${slug}? API keys and users will stay active.`)) {
+            return
+        }
+
+        const submitKey = `workspace:reset-data:${slug}`
+        setBusyKey(submitKey)
+        setErrorMessage(null)
+
+        try {
+            const workspace = await resetWorkspaceData(slug)
+            setWorkspaces((currentWorkspaces) => mergeWorkspace(currentWorkspaces, workspace))
+            setActionResult({ title: 'Workspace data cleared', tone: 'info', details: { workspace: slug, note: 'Run history and raw reports were removed. Access tokens stayed untouched.' } })
+            await refreshSupplementaryData()
+        } catch (error) {
+            if (handleUnauthorized(error)) {
+                return
+            }
+
+            setActionResult({ title: 'Workspace data clear failed', tone: 'error', details: { workspace: slug, error: readErrorMessage(error, 'Could not clear workspace run data.') } })
         } finally {
             setBusyKey(null)
         }
@@ -645,6 +675,7 @@ export function useAdminDashboardState(initialWorkspaces: WorkspaceDescriptor[] 
         createWorkspace: createWorkspaceAction,
         updateWorkspace: updateWorkspaceAction,
         deleteWorkspace: deleteWorkspaceAction,
+        resetWorkspaceData: resetWorkspaceDataAction,
         createApiKey: createApiKeyAction,
         createShareLink: createShareLinkAction,
         createUser: createUserAction,
@@ -669,6 +700,59 @@ function mapWorkspaceProvisioningDetails(result: WorkspaceProvisioningResult): R
         workspaceLoginPath: `/w/${result.workspace.slug}/login`,
         apiKeyExchangePath: `/auth/workspaces/${result.workspace.slug}/api-keys/login`,
     }
+}
+
+type WorkspaceTemplate = 'production' | 'sandbox' | 'demo'
+
+function normalizeWorkspaceTemplate(value: FormDataEntryValue | null): WorkspaceTemplate {
+    return value === 'sandbox' || value === 'demo' ? value : 'production'
+}
+
+function getDefaultApiKeyLabel(template: WorkspaceTemplate): string {
+    if (template === 'sandbox') {
+        return 'Sandbox GitLab ingestion'
+    }
+
+    if (template === 'demo') {
+        return 'Demo ingestion'
+    }
+
+    return 'Production GitLab ingestion'
+}
+
+function buildGitLabVariables(result: WorkspaceProvisioningResult): string {
+    return [
+        `AQA_PULSE_BASE_URL=${getCurrentBaseUrl()}`,
+        `AQA_PULSE_WORKSPACE_SLUG=${result.workspace.slug}`,
+        `AQA_PULSE_WORKSPACE_API_KEY=${result.apiKey.token}`,
+    ].join('\n')
+}
+
+function buildGitLabUploadJob(result: WorkspaceProvisioningResult): string {
+    return [
+        'aqa-pulse-upload:',
+        '  image: node:22-bookworm-slim',
+        '  variables:',
+        `    AQA_PULSE_BASE_URL: "${getCurrentBaseUrl()}"`,
+        `    AQA_PULSE_WORKSPACE_SLUG: "${result.workspace.slug}"`,
+        '    AQA_PULSE_REPORT_PATH: "Playwright/test-results/dashboard/data.json"',
+        '  script:',
+        '    - npm ci',
+        '    - npm test',
+        '    - npx aqa-pulse-server upload-report --report "$AQA_PULSE_REPORT_PATH"',
+        '  artifacts:',
+        '    when: always',
+        '    paths:',
+        '      - Playwright/test-results/dashboard',
+    ].join('\n')
+}
+
+function getCurrentBaseUrl(): string {
+    if (typeof window === 'undefined') {
+        return ''
+    }
+
+    return window.location.origin
 }
 
 function mapWorkspaceUserProvisioningDetails(result: WorkspaceUserProvisioningResult): Record<string, string> {

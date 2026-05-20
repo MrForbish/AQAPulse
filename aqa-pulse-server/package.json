@@ -39,6 +39,7 @@
     "SELF-HOSTED-QUICKSTART.md",
     "SELF-HOSTED-INSTALL.md",
     "GITLAB-CI-INTEGRATION.md",
+    "Makefile",
     "Dockerfile",
     "docker-compose.yml",
     ".env.example"
@@ -51,6 +52,7 @@
     "docker:restart": "docker compose restart aqa-pulse-server",
     "update:docker": "node ./scripts/update-self-hosted.js",
     "setup:docker": "node ./scripts/setup-self-hosted.js",
+    "deploy:self-hosted": "node ./scripts/setup-self-hosted.js --build-package",
     "start": "node ./bin/aqa-pulse-server.js start",
     "init": "node ./bin/aqa-pulse-server.js init",
     "bootstrap:workspace": "node ./bin/aqa-pulse-server.js bootstrap-workspace",

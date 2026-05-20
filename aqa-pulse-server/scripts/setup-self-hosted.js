@@ -45,6 +45,10 @@ async function main() {
     const hostDataDir = path.resolve(serverRoot, envValues.AQA_PULSE_HOST_DATA_DIR || './data')
     fs.mkdirSync(hostDataDir, { recursive: true })
 
+    if (!options.skipPackageBuild) {
+        ensurePackageBuild(serverRoot, options)
+    }
+
     const port = normalizePort(envValues.PORT) ?? DEFAULT_PORT
     const localBaseUrl = normalizeBaseUrl(options.localBaseUrl || `http://127.0.0.1:${port}`)
     const baseUrl = resolvePublicBaseUrl(options, port)
@@ -103,6 +107,9 @@ function parseArgs(args) {
         skipStart: false,
         skipBootstrap: false,
         skipWorkspaceUser: false,
+        forcePackageBuild: false,
+        skipPackageBuild: false,
+        skipInstall: false,
         help: false,
     }
 
@@ -131,6 +138,21 @@ function parseArgs(args) {
 
         if (arg === '--skip-workspace-user') {
             options.skipWorkspaceUser = true
+            continue
+        }
+
+        if (arg === '--build-package') {
+            options.forcePackageBuild = true
+            continue
+        }
+
+        if (arg === '--skip-build-package') {
+            options.skipPackageBuild = true
+            continue
+        }
+
+        if (arg === '--skip-install') {
+            options.skipInstall = true
             continue
         }
 
@@ -378,6 +400,45 @@ function writeNginxConfig(serverRoot, options, upstreamPort) {
     return targetPath
 }
 
+function ensurePackageBuild(serverRoot, options) {
+    const distEntry = path.join(serverRoot, 'dist', 'backend', 'index.js')
+
+    if (!options.forcePackageBuild && fs.existsSync(distEntry)) {
+        console.log('Package build found: dist/backend/index.js')
+        return
+    }
+
+    const appRoot = path.resolve(serverRoot, '..', 'aqa-pulse')
+    console.log(options.forcePackageBuild ? 'Rebuilding server package...' : 'Server package build is missing, building it now...')
+
+    if (!options.skipInstall) {
+        ensureNpmInstall(appRoot)
+        ensureNpmInstall(serverRoot)
+    }
+
+    runCommand(getNpmCommand(), ['run', 'build'], { cwd: serverRoot, stdio: 'inherit' })
+
+    if (!fs.existsSync(distEntry)) {
+        throw new Error('Build finished, but dist/backend/index.js was not created.')
+    }
+}
+
+function ensureNpmInstall(projectRoot) {
+    const packageLockPath = path.join(projectRoot, 'package-lock.json')
+    const nodeModulesPath = path.join(projectRoot, 'node_modules')
+
+    if (!fs.existsSync(packageLockPath) || fs.existsSync(nodeModulesPath)) {
+        return
+    }
+
+    console.log(`Installing dependencies: ${projectRoot}`)
+    runCommand(getNpmCommand(), ['ci'], { cwd: projectRoot, stdio: 'inherit' })
+}
+
+function getNpmCommand() {
+    return process.platform === 'win32' ? 'npm.cmd' : 'npm'
+}
+
 function sanitizeFileSegment(value) {
     return value
         .toLowerCase()
@@ -464,7 +525,7 @@ function sleep(timeoutMs) {
 
 function runCommand(command, args, options) {
     const result = spawnSync(command, args, {
-        cwd: process.cwd(),
+        cwd: options.cwd || process.cwd(),
         stdio: options.stdio,
         encoding: 'utf8',
     })
@@ -540,5 +601,8 @@ function printHelp() {
     console.log('  --skip-start                      Не запускать docker compose автоматически')
     console.log('  --skip-bootstrap                  Не создавать workspace автоматически')
     console.log('  --skip-workspace-user             При bootstrap не создавать workspace user token')
+    console.log('  --build-package                   Пересобрать dist перед docker compose')
+    console.log('  --skip-build-package              Не собирать dist автоматически')
+    console.log('  --skip-install                    Не запускать npm ci при отсутствии node_modules')
     console.log('  --health-timeout-ms <ms>          Сколько ждать /api/health')
 }

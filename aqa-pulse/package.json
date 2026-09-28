@@ -56,8 +56,7 @@
   "files": [
     "dist-ts/**/*",
     "dist/web/**/*",
-    "bin/**/*",
-    "README.md"
+    "bin/**/*"
   ],
   "scripts": {
     "parse": "ts-node src/parser.ts",

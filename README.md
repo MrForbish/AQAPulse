@@ -1,6 +1,40 @@
 # AQA Pulse
 
-Изолированный прототип аналитического дашборда для Playwright, вынесенный в отдельную директорию в корне `autotests`.
+AQA Pulse — локальная платформа аналитики Playwright-прогонов. Она собирает в одном dashboard здоровье тестов, динамику прогонов, flaky-аналитику, кластеры ошибок и proxy-метрики релизного риска.
+
+## Быстрый локальный запуск
+
+Требуется Node.js 22 или новее. Все npm-команды выполняются из `aqa-pulse/`.
+
+```bash
+cd aqa-pulse
+npm ci
+npm run generate:history-demo
+npm run typecheck
+npm run api
+```
+
+После запуска открой:
+
+- dashboard: <http://127.0.0.1:3000/>;
+- health check: <http://127.0.0.1:3000/api/health>;
+- JSON-сводку: <http://127.0.0.1:3000/api/summary>.
+
+Демо-сценарий строит два прогона из `aqa-pulse/fixtures/sample-llm-report*.json`, поэтому dashboard сразу показывает тренды и дельты.
+
+## Скриншоты
+
+### Обзор
+
+![AQA Pulse — обзор dashboard](docs/screenshots/dashboard-overview.png)
+
+### Производительность
+
+![AQA Pulse — метрики производительности](docs/screenshots/dashboard-performance.png)
+
+### Flaky-аналитика
+
+![AQA Pulse — flaky-аналитика](docs/screenshots/dashboard-flaky.png)
 
 ## Что уже делает AQA Pulse
 
@@ -140,27 +174,30 @@ Browser-safe shared utilities, metric heading helpers, bootstrap helpers, locale
 ## Структура
 
 ```text
-aqa-pulse/
-├── fixtures/               # демо-репорт для локальной проверки
-├── src/                    # TypeScript-исходники
-├── dist/                   # итоговый JSON + HTML после генерации, плюс history.json
-├── history/                # архив запусков: <run>/data.json + metadata.json
-├── package.json
-├── tsconfig.json
-└── README.md
+AQA Pulse/
+├── README.md               # основная документация
+├── docs/screenshots/       # актуальные скриншоты демо
+├── aqa-pulse/              # core, React UI и runtime API
+│   ├── fixtures/           # демо-репорты
+│   ├── src/                # TypeScript-исходники
+│   ├── dist/               # сборка и сгенерированные данные
+│   └── history/            # архив прогонов
+├── aqa-pulse-browser/      # browser-safe публичный package
+├── aqa-pulse-server/       # self-hosted server package
+└── packages/aqa-pulse-cli/ # CLI package
 ```
 
-## Быстрый старт
+## Статическая сборка без API
 
 Все команды ниже, если не указано иное, выполняются из каталога `aqa-pulse/`.
 
 ```bash
-npm install
+npm ci
 npm run generate:history-demo
 npm run typecheck
 ```
 
-После этого открой `aqa-pulse/dist/index.html` в браузере.
+После этого открой `dist/index.html` в браузере.
 
 ## SaaS foundation (workspace-scoped MVP)
 
@@ -383,10 +420,9 @@ npm run server:pack:check
 
 Отдельные практичные инструкции:
 
-- [`../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md`](../aqa-pulse-server/SELF-HOSTED-QUICKSTART.md) — короткая версия: как быстро поставить на свой сервер
-- [`../aqa-pulse-server/SELF-HOSTED-INSTALL.md`](../aqa-pulse-server/SELF-HOSTED-INSTALL.md) — как поставить на свой сервер
-- [`../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md`](../aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md) — полный self-hosted deployment guide
-- [`../aqa-pulse-server/MIGRATION.md`](../aqa-pulse-server/MIGRATION.md) — как переходить со старого pre-React delivery flow на React runtime
+- [`aqa-pulse-server/README.md`](aqa-pulse-server/README.md) — быстрый старт и команды server package
+- [`aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md`](aqa-pulse-server/SELF-HOSTED-DEPLOYMENT.md) — полный self-hosted deployment guide
+- [`aqa-pulse-server/MIGRATION.md`](aqa-pulse-server/MIGRATION.md) — как переходить со старого pre-React delivery flow на React runtime
 
 Он нужен для self-hosted / on-prem сценария и содержит:
 
